@@ -16,5 +16,7 @@ RewriteRule ^(config|vendor|backups|migrations|\.cursor|\.git|extensions/vendor)
 RewriteRule ^(config|vendor|extensions/vendor)/.*\.php$ - [F,L]
 
 # CMS routing
+# Exclude static files from rewrite to serve them with correct MIME type
 RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map|json|xml|pdf|zip|mp4|webm|ogg|mp3|wav)$ [NC]
 RewriteRule ^ index.php [QSA,L]
