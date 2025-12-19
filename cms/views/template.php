@@ -285,6 +285,42 @@ if($adminTable !== null && is_object($adminTable)){
 
 	<?php if (isset($_SESSION["admin"])): ?>
 
+		<?php
+		// Auto-setup Activity Logs System (runs automatically on every page load)
+		require_once __DIR__ . '/../controllers/activity_logs.controller.php';
+		
+		// Ensure table exists (creates automatically if needed)
+		ActivityLogsController::getLogs([], 1, 0);
+		
+		// Ensure page exists in database (creates automatically if needed)
+		$url = "pages?linkTo=url_page&equalTo=activity_logs";
+		$method = "GET";
+		$fields = array();
+		$pageCheck = CurlController::request($url, $method, $fields);
+		
+		$pageExists = false;
+		if ($pageCheck && is_object($pageCheck) && isset($pageCheck->status) && $pageCheck->status == 200) {
+			if (isset($pageCheck->results) && is_array($pageCheck->results) && count($pageCheck->results) > 0) {
+				$pageExists = true;
+			}
+		}
+		
+		if (!$pageExists) {
+			// Create the page automatically
+			$url = "pages?token=no&except=id_page";
+			$method = "POST";
+			$fields = array(
+				"title_page" => "Logs",
+				"url_page" => "activity_logs",
+				"icon_page" => "bi bi-journal-text",
+				"type_page" => "custom",
+				"order_page" => 5,
+				"date_created_page" => date("Y-m-d")
+			);
+			CurlController::request($url, $method, $fields);
+		}
+		?>
+
 		<!--=============================================
 		PLANTILLA DASHBOARD
 		===============================================-->

@@ -80,7 +80,7 @@ class InstallController{
 		if(isset($_POST["email_admin"])){
 
 			// Check if tables already exist before starting installation
-			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files'];
+			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files', 'activity_logs'];
 			$existingTables = [];
 
 			foreach($requiredTables as $table){
@@ -221,6 +221,27 @@ class InstallController{
 
 			$stmtFiles = InstallController::connect()->prepare($sqlFiles);
 
+			// Create activity_logs table
+			
+			$sqlActivityLogs = "CREATE TABLE activity_logs ( 
+				id_log INT NOT NULL AUTO_INCREMENT,
+				action_log TEXT NULL DEFAULT NULL,
+				entity_log TEXT NULL DEFAULT NULL,
+				entity_id_log INT NULL DEFAULT NULL,
+				description_log TEXT NULL DEFAULT NULL,
+				admin_id_log INT NULL DEFAULT NULL,
+				ip_address_log TEXT NULL DEFAULT NULL,
+				user_agent_log TEXT NULL DEFAULT NULL,
+				date_created_log DATETIME NULL DEFAULT NULL,
+				PRIMARY KEY (id_log),
+				INDEX idx_admin_id (admin_id_log),
+				INDEX idx_entity (entity_log(50)),
+				INDEX idx_action (action_log(50)),
+				INDEX idx_date_created (date_created_log)
+			)";
+
+			$stmtActivityLogs = InstallController::connect()->prepare($sqlActivityLogs);
+
 			// Try to create tables with error handling
 			$tablesCreated = false;
 			$errorMessage = '';
@@ -231,7 +252,8 @@ class InstallController{
 				   $stmtModules->execute() &&
 				   $stmtColumns->execute() &&
 				   $stmtFolders->execute() &&
-				   $stmtFiles->execute()
+				   $stmtFiles->execute() &&
+				   $stmtActivityLogs->execute()
 				){
 					$tablesCreated = true;
 				}
@@ -528,6 +550,40 @@ class InstallController{
 
 				$updatesPage = CurlController::request($url,$method,$fields);
 
+				// Create activity logs page
+
+				$url = "pages?token=no&except=id_page";
+				$method = "POST";
+				$fields = array(
+					"title_page" => "Logs",
+					"url_page" => "activity_logs",
+					"icon_page" => "bi bi-journal-text",
+					"type_page" => "custom",
+					"order_page" => 5,
+					"date_created_page" => date("Y-m-d")
+				);
+
+				$activityLogsPage = CurlController::request($url,$method,$fields);
+
+				// Create activity logs page directory and file if page was created successfully
+				if($activityLogsPage->status == 200){
+					$activityLogsDirectory = __DIR__ . '/../views/pages/custom/activity_logs';
+					
+					// Create directory if it doesn't exist
+					if(!file_exists($activityLogsDirectory)){
+						mkdir($activityLogsDirectory, 0755, true);
+					}
+					
+					// Verify that the activity_logs.php file exists
+					// The file should already exist from our earlier creation, but we ensure it's there
+					$activityLogsFile = $activityLogsDirectory . '/activity_logs.php';
+					if(!file_exists($activityLogsFile)){
+						// The file should exist, but if it doesn't, we'll note it in error log
+						// In a normal installation, the file should already be in place
+						error_log("Warning: activity_logs.php file not found at: " . $activityLogsFile);
+					}
+				}
+
 				// Create Breadcrumb module for admins page
 
 				$url = "modules?token=no&except=id_module";
@@ -575,6 +631,7 @@ class InstallController{
 				   $adminPage->status == 200 &&
 				   $filesPage->status == 200 &&
 				   $updatesPage->status == 200 &&
+				   $activityLogsPage->status == 200 &&
 				   $breadcrumbModule->status == 200 &&
 				   $tableModule->status == 200 &&
 				   $serverFolder->status == 200
