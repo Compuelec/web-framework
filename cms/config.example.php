@@ -14,6 +14,13 @@ if (basename($_SERVER['PHP_SELF']) === 'config.example.php') {
 }
 
 return [
+    // Database Configuration
+    'database' => [
+        'host' => 'localhost',
+        'name' => 'chatcenter',
+        'user' => 'root',
+        'pass' => ''
+    ],
     // Webhook Configuration (Meta/WhatsApp)
     'webhook' => [
         'token' => 'your-webhook-token-here'
