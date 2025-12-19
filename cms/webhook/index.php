@@ -2,12 +2,17 @@
 
 // Load configuration
 $configPath = __DIR__ . '/../config.php';
+$config = null;
 if(file_exists($configPath)){
 	$config = require $configPath;
-} else {
-	// Fallback to example or environment variable
+}
+
+if(!is_array($config)){
 	$examplePath = __DIR__ . '/../config.example.php';
 	$config = file_exists($examplePath) ? require $examplePath : [];
+}
+
+if(is_array($config)){
 	$config['webhook']['token'] = getenv('WEBHOOK_TOKEN') ?: ($config['webhook']['token'] ?? '');
 }
 

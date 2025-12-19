@@ -8,12 +8,19 @@ ini_set("error_log", DIR."/php_error_log");
 
 // Load configuration for timezone
 $configPath = __DIR__ . '/config.php';
+$config = null;
 if(file_exists($configPath)){
 	$config = require $configPath;
-	$timezone = $config['timezone'] ?? 'America/Santiago';
-} else {
-	$timezone = 'America/Santiago';
 }
+
+if(!is_array($config)){
+	$examplePath = __DIR__ . '/config.example.php';
+	if(file_exists($examplePath)){
+		$config = require $examplePath;
+	}
+}
+
+$timezone = is_array($config) ? ($config['timezone'] ?? 'America/Santiago') : 'America/Santiago';
 date_default_timezone_set($timezone);
 
 require_once "controllers/template.controller.php";

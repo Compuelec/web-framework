@@ -34,7 +34,7 @@ if(isset($_GET["scode"])){
 			<form method="POST" class="needs-validation" novalidate>
 				
 				<h3 class="pt-3 text-center">
-					<?php echo $admin->symbol_admin ?> <?php echo $admin->title_admin ?>
+					<i class="<?php echo $admin->symbol_admin ?> textColor"></i> <?php echo $admin->title_admin ?>
 				</h3>
 
 				<hr>

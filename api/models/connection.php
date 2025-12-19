@@ -8,12 +8,18 @@ class Connection{
 	static public function getConfig(){
 		$configPath = __DIR__ . '/../config.php';
 		if(file_exists($configPath)){
-			return require $configPath;
+			$config = require $configPath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Fallback to example if config doesn't exist
 		$examplePath = __DIR__ . '/../config.example.php';
 		if(file_exists($examplePath)){
-			return require $examplePath;
+			$config = require $examplePath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Last resort: use environment variables or defaults
 		return [
@@ -63,16 +69,16 @@ class Connection{
 	// Database connection
 	static public function connect(){
 		$config = self::getConfig();
-		$dbConfig = $config['database'];
+		$dbConfig = $config['database'] ?? [];
 		
 		try{
 			$link = new PDO(
-				"mysql:host=".$dbConfig['host'].";dbname=".$dbConfig['name'],
-				$dbConfig['user'], 
-				$dbConfig['pass']
+				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name'] ?? 'chatcenter'),
+				$dbConfig['user'] ?? 'root', 
+				$dbConfig['pass'] ?? ''
 			);
 
-			$link->exec("set names ".$dbConfig['charset']);
+			$link->exec("set names ".($dbConfig['charset'] ?? 'utf8mb4'));
 
 		}catch(PDOException $e){
 

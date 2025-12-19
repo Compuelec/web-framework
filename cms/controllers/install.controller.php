@@ -7,16 +7,25 @@ class InstallController{
 		// Try CMS config first
 		$configPath = __DIR__ . '/../config.php';
 		if(file_exists($configPath)){
-			return require $configPath;
+			$config = require $configPath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		$examplePath = __DIR__ . '/../config.example.php';
 		if(file_exists($examplePath)){
-			return require $examplePath;
+			$config = require $examplePath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Fallback to API config
 		$apiConfigPath = __DIR__ . '/../../api/config.php';
 		if(file_exists($apiConfigPath)){
-			return require $apiConfigPath;
+			$config = require $apiConfigPath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Last resort: defaults
 		return [
@@ -69,6 +78,37 @@ class InstallController{
 	public function install(){
 
 		if(isset($_POST["email_admin"])){
+
+			// Check if tables already exist before starting installation
+			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files'];
+			$existingTables = [];
+
+			foreach($requiredTables as $table){
+				if(InstallController::getTable($table) == 200){
+					$existingTables[] = $table;
+				}
+			}
+
+			// If any tables exist, show error and stop installation
+			if(!empty($existingTables)){
+				$tablesList = implode(', ', $existingTables);
+				$dropCommand = "DROP TABLE IF EXISTS " . implode(', ', $existingTables) . ";";
+				$message = "Las siguientes tablas ya existen en la base de datos: <strong>" . $tablesList . "</strong><br><br>" .
+						   "Para realizar una instalación limpia, debe eliminar estas tablas primero.<br><br>" .
+						   "Puede hacerlo desde su cliente de base de datos (phpMyAdmin, MySQL Workbench, etc.) o ejecutando el siguiente comando SQL:<br><br>" .
+						   "<code style='background: #f4f4f4; padding: 5px; border-radius: 3px;'>" . htmlspecialchars($dropCommand) . "</code>";
+				
+				$messageEscaped = json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+				echo '<script>
+					fncMatPreloader("off");
+					fncFormatInputs();
+					fncSweetAlert("error", 
+						"Tablas ya existen en la base de datos", 
+						' . $messageEscaped . '
+					);
+				</script>';
+				return;
+			}
 
 			echo '<script>
 					fncMatPreloader("on");
@@ -181,13 +221,75 @@ class InstallController{
 
 			$stmtFiles = InstallController::connect()->prepare($sqlFiles);
 
-			if($stmtAdmins->execute() && 
-			   $stmtPages->execute() &&
-			   $stmtModules->execute() &&
-			   $stmtColumns->execute() &&
-			   $stmtFolders->execute() &&
-			   $stmtFiles->execute()
-			){
+			// Try to create tables with error handling
+			$tablesCreated = false;
+			$errorMessage = '';
+
+			try {
+				if($stmtAdmins->execute() && 
+				   $stmtPages->execute() &&
+				   $stmtModules->execute() &&
+				   $stmtColumns->execute() &&
+				   $stmtFolders->execute() &&
+				   $stmtFiles->execute()
+				){
+					$tablesCreated = true;
+				}
+			} catch(PDOException $e) {
+				$errorMessage = $e->getMessage();
+				$tablesCreated = false;
+			}
+
+			if($tablesCreated){
+
+				// Wait for database and information_schema to be ready
+				// Try up to 10 times with increasing delays
+				$maxRetries = 10;
+				$tablesReady = false;
+				$requiredTables = ['pages', 'admins'];
+				$requiredPagesColumns = ['id_page', 'title_page', 'url_page', 'icon_page', 'type_page', 'order_page', 'date_created_page'];
+				
+				for($i = 0; $i < $maxRetries; $i++){
+					$delay = ($i + 1) * 500000; // 0.5s, 1s, 1.5s, 2s, 2.5s, etc.
+					if($i > 0){
+						usleep($delay);
+					}
+					
+					// Check if tables are accessible via information_schema
+					$allReady = true;
+					foreach($requiredTables as $table){
+						if(InstallController::getTable($table) != 200){
+							$allReady = false;
+							break;
+						}
+					}
+					
+					// Also verify that required columns exist in pages table
+					if($allReady){
+						$database = InstallController::infoDatabase()["database"];
+						$columnsCheck = InstallController::connect()->query("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema = '$database' AND table_name = 'pages' AND COLUMN_NAME IN ('" . implode("','", $requiredPagesColumns) . "')")->fetchAll(PDO::FETCH_COLUMN);
+						
+						if(count($columnsCheck) < count($requiredPagesColumns)){
+							$allReady = false;
+						}
+					}
+					
+					if($allReady){
+						$tablesReady = true;
+						break;
+					}
+				}
+				
+				if(!$tablesReady){
+					$errorMessage = "Las tablas se crearon pero no están completamente sincronizadas con information_schema. Por favor, espere unos segundos e intente nuevamente.<br><br>Si el problema persiste, verifique que la base de datos esté funcionando correctamente.";
+					$errorMessageEscaped = json_encode($errorMessage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+					echo '<script>
+						fncMatPreloader("off");
+						fncFormatInputs();
+						fncSweetAlert("error","Error de sincronización",' . $errorMessageEscaped . ');
+					</script>';
+					return;
+				}
 
 				// Create super admin
 
@@ -222,6 +324,66 @@ class InstallController{
 				);
 
 				$homePage = CurlController::request($url,$method,$fields);
+				
+				// Get API config for error message
+				$apiConfig = self::getConfig();
+				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
+				
+				// Debug: Log full response for troubleshooting (escape for HTML/JS)
+				$fullResponse = json_encode($homePage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+				
+				// Check if home page creation failed
+				if(!is_object($homePage)){
+					$errorDetails = 'La respuesta de la API no es un objeto válido. Tipo recibido: ' . gettype($homePage);
+					if(is_string($homePage)){
+						$errorDetails .= '. Contenido: ' . htmlspecialchars($homePage, ENT_QUOTES, 'UTF-8');
+					}
+				} elseif(!isset($homePage->status)){
+					$errorDetails = 'La respuesta de la API no contiene el campo "status".';
+				} elseif((int)$homePage->status !== 200){
+					$errorDetails = 'El status de la respuesta es ' . (int)$homePage->status . ' (se esperaba 200).';
+					if(isset($homePage->message)){
+						$errorDetails .= ' Mensaje: ' . htmlspecialchars($homePage->message, ENT_QUOTES, 'UTF-8');
+					}
+					if(isset($homePage->results)){
+						if(is_string($homePage->results)){
+							$errorDetails .= ' Error: ' . htmlspecialchars($homePage->results, ENT_QUOTES, 'UTF-8');
+						} elseif(is_array($homePage->results) && isset($homePage->results[0]) && isset($homePage->results[2])){
+							$errorDetails .= ' Error de base de datos: ' . htmlspecialchars($homePage->results[2], ENT_QUOTES, 'UTF-8') . ' (Código: ' . $homePage->results[0] . ')';
+						} else {
+							$errorDetails .= ' Resultados: ' . htmlspecialchars(json_encode($homePage->results, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+						}
+					}
+				} else {
+					// Success case - no error
+					$errorDetails = '';
+				}
+				
+				// If there's an error, show detailed message
+				if(!empty($errorDetails)){
+					$errorMessage = "No se pudo crear la página de inicio.<br><br>";
+					$errorMessage .= "<strong>Detalles del error:</strong><br>" . htmlspecialchars($errorDetails, ENT_QUOTES, 'UTF-8') . "<br><br>";
+					$errorMessage .= "<strong>Respuesta completa de la API:</strong><br>";
+					// Escape the JSON response properly for HTML
+					$fullResponseEscaped = htmlspecialchars($fullResponse, ENT_QUOTES, 'UTF-8');
+					$errorMessage .= "<pre style='background: #f4f4f4; padding: 10px; border-radius: 5px; font-size: 0.85rem; max-height: 200px; overflow-y: auto;'>" . $fullResponseEscaped . "</pre><br>";
+					$errorMessage .= "<strong>Verifique que:</strong><br>";
+					$errorMessage .= "1. La API esté accesible en: <code>" . htmlspecialchars($apiBaseUrl, ENT_QUOTES, 'UTF-8') . "pages</code><br>";
+					$errorMessage .= "2. La base de datos esté configurada correctamente<br>";
+					$errorMessage .= "3. Las tablas se hayan creado correctamente<br>";
+					$errorMessage .= "4. La tabla 'pages' tenga las columnas correctas<br>";
+					$errorMessage .= "5. No haya conflictos con registros existentes";
+					
+					// Escape properly for JavaScript - use JSON_HEX flags to prevent syntax errors
+					$errorMessageEscaped = json_encode($errorMessage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+					
+					echo '<script>
+						fncMatPreloader("off");
+						fncFormatInputs();
+						fncSweetAlert("error","Error al crear página de inicio",' . $errorMessageEscaped . ');
+					</script>';
+					return;
+				}
 
 				// Create admins page
 
@@ -239,18 +401,98 @@ class InstallController{
 				$adminPage = CurlController::request($url,$method,$fields);
 
 				$adminPageId = null;
+				$errorDetails = '';
 
-				if(is_object($adminPage) && isset($adminPage->status) && (int)$adminPage->status === 200 && isset($adminPage->results) && is_object($adminPage->results) && isset($adminPage->results->lastId)){
+				// Get API config for error message
+				$apiConfig = self::getConfig();
+				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
 
-					$adminPageId = $adminPage->results->lastId;
+				// Debug: Log full response for troubleshooting (escape for HTML/JS)
+				$fullResponse = json_encode($adminPage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+				// Debug: Check response structure and extract lastId
+				if(!is_object($adminPage)){
+					$errorDetails = 'La respuesta de la API no es un objeto. Tipo: ' . gettype($adminPage);
+					if(is_string($adminPage)){
+						$errorDetails .= '. Contenido: ' . substr($adminPage, 0, 200);
+					}
+				} elseif(!isset($adminPage->status)){
+					$errorDetails = 'La respuesta no tiene el campo "status". Estructura: ' . json_encode($adminPage, JSON_PRETTY_PRINT);
+				} elseif((int)$adminPage->status !== 200){
+					$errorDetails = 'Error HTTP: ' . $adminPage->status . '. Mensaje: ' . (isset($adminPage->message) ? $adminPage->message : 'Sin mensaje');
+					if(isset($adminPage->results)){
+						if(is_string($adminPage->results)){
+							$errorDetails .= '. Respuesta: ' . $adminPage->results;
+						} elseif(is_object($adminPage->results) || is_array($adminPage->results)){
+							$errorDetails .= '. Detalles: ' . json_encode($adminPage->results, JSON_PRETTY_PRINT);
+						}
+					}
+				} elseif(!isset($adminPage->results)){
+					$errorDetails = 'La respuesta no tiene el campo "results". Estructura completa: ' . json_encode($adminPage, JSON_PRETTY_PRINT);
+				} else {
+					// Try multiple ways to extract lastId
+					if(is_object($adminPage->results)){
+						// Direct access
+						if(isset($adminPage->results->lastId)){
+							$adminPageId = $adminPage->results->lastId;
+						} else {
+							// Try as array
+							$resultsArray = (array)$adminPage->results;
+							if(isset($resultsArray['lastId'])){
+								$adminPageId = $resultsArray['lastId'];
+							}
+						}
+					} elseif(is_array($adminPage->results)){
+						// Check if it's a PDO error array (numeric keys)
+						if(isset($adminPage->results[0]) && isset($adminPage->results[2])){
+							$errorDetails = 'Error de base de datos: ' . $adminPage->results[2] . ' (Código: ' . $adminPage->results[0] . ')';
+						} elseif(isset($adminPage->results['lastId'])){
+							// Array with lastId key
+							$adminPageId = $adminPage->results['lastId'];
+						} elseif(isset($adminPage->results[0]) && is_object($adminPage->results[0]) && isset($adminPage->results[0]->lastId)){
+							// Array of objects, first element
+							$adminPageId = $adminPage->results[0]->lastId;
+						} else {
+							$errorDetails = 'El campo "results" es un array inesperado: ' . json_encode($adminPage->results, JSON_PRETTY_PRINT);
+						}
+					} else {
+						$errorDetails = 'El campo "results" tiene un tipo inesperado: ' . gettype($adminPage->results);
+						if(is_string($adminPage->results)){
+							$errorDetails .= '. Contenido: ' . $adminPage->results;
+						}
+					}
+					
+					// If we still don't have lastId, create detailed error
+					if($adminPageId === null && empty($errorDetails)){
+						$availableFields = is_object($adminPage->results) ? implode(', ', array_keys((array)$adminPage->results)) : (is_array($adminPage->results) ? implode(', ', array_keys($adminPage->results)) : 'N/A');
+						$errorDetails = 'No se pudo extraer "lastId" de la respuesta. Campos disponibles en "results": ' . $availableFields;
+						if(is_object($adminPage->results) && isset($adminPage->results->comment)){
+							$errorDetails .= '. Comentario: ' . $adminPage->results->comment;
+						}
+					}
 				}
 
 				if($adminPageId === null){
-
+					// Build error message safely
+					$errorMessage = "No se pudo crear la página de administradores.<br><br>";
+					$errorMessage .= "<strong>Detalles del error:</strong><br>" . htmlspecialchars($errorDetails, ENT_QUOTES, 'UTF-8') . "<br><br>";
+					$errorMessage .= "<strong>Respuesta completa de la API:</strong><br>";
+					// Escape the JSON response properly for HTML
+					$fullResponseEscaped = htmlspecialchars($fullResponse, ENT_QUOTES, 'UTF-8');
+					$errorMessage .= "<pre style='background: #f4f4f4; padding: 10px; border-radius: 5px; font-size: 0.85rem; max-height: 200px; overflow-y: auto;'>" . $fullResponseEscaped . "</pre><br>";
+					$errorMessage .= "<strong>Verifique que:</strong><br>";
+					$errorMessage .= "1. La API esté accesible en: <code>" . htmlspecialchars($apiBaseUrl, ENT_QUOTES, 'UTF-8') . "pages</code><br>";
+					$errorMessage .= "2. La base de datos esté configurada correctamente<br>";
+					$errorMessage .= "3. Las tablas se hayan creado correctamente<br>";
+					$errorMessage .= "4. La tabla 'pages' tenga las columnas correctas";
+					
+					// Escape properly for JavaScript - use JSON_HEX flags to prevent syntax errors
+					$errorMessageEscaped = json_encode($errorMessage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+					
 					echo '<script>
 						fncMatPreloader("off");
 						fncFormatInputs();
-						fncSweetAlert("error","No se pudo crear la página de administradores. Verifique que la API esté accesible y revise el log.","");
+						fncSweetAlert("error","Error al crear página de administradores",' . $errorMessageEscaped . ');
 					</script>';
 
 					return;
@@ -491,6 +733,18 @@ class InstallController{
 
 				}
 
+			} else {
+				// If table creation failed, show error
+				$errorMsg = !empty($errorMessage) 
+					? "Error al crear las tablas: " . htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') 
+					: "Error al crear las tablas. Verifique que tenga permisos suficientes en la base de datos.";
+				
+				$errorMsgEscaped = json_encode($errorMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+				echo '<script>
+					fncMatPreloader("off");
+					fncFormatInputs();
+					fncSweetAlert("error", "Error en la instalación", ' . $errorMsgEscaped . ');
+				</script>';
 			}		
 
 		}

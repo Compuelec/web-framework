@@ -6,12 +6,18 @@ class CurlController{
 	private static function getConfig(){
 		$configPath = __DIR__ . '/../config.php';
 		if(file_exists($configPath)){
-			return require $configPath;
+			$config = require $configPath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Fallback to example if config doesn't exist
 		$examplePath = __DIR__ . '/../config.example.php';
 		if(file_exists($examplePath)){
-			return require $examplePath;
+			$config = require $examplePath;
+			if(is_array($config)){
+				return $config;
+			}
 		}
 		// Last resort: use environment variables or defaults
 		return [
@@ -37,19 +43,32 @@ class CurlController{
 
 		$curl = curl_init();
 
+		// Convert array to form-urlencoded string if needed
+		$postFields = $fields;
+		if(is_array($fields) && ($method == 'POST' || $method == 'PUT')){
+			$postFields = http_build_query($fields);
+		}
+
+		$headers = array(
+			'Authorization: '.$apiKey
+		);
+
+		// Add Content-Type for POST/PUT requests
+		if(($method == 'POST' || $method == 'PUT') && is_array($fields)){
+			$headers[] = 'Content-Type: application/x-www-form-urlencoded';
+		}
+
 		curl_setopt_array($curl, array(
 			CURLOPT_URL => $apiBaseUrl.$url,
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_ENCODING => '',
 			CURLOPT_MAXREDIRS => 10,
-			CURLOPT_TIMEOUT => 30, // Changed from 0 to 30 seconds
+			CURLOPT_TIMEOUT => 30,
 			CURLOPT_FOLLOWLOCATION => true,
 			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
 			CURLOPT_CUSTOMREQUEST => $method,
-			CURLOPT_POSTFIELDS => $fields,
-			CURLOPT_HTTPHEADER => array(
-				'Authorization: '.$apiKey
-			),
+			CURLOPT_POSTFIELDS => $postFields,
+			CURLOPT_HTTPHEADER => $headers,
 		));
 
 		$response = curl_exec($curl);

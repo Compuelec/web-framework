@@ -98,7 +98,9 @@ if($adminTable !== null && is_object($adminTable)){
 
 		<?php if ($admin->font_admin != null): ?>
 
-			<?php echo $admin->font_admin ?>
+			<style>
+				<?php echo $admin->font_admin ?>
+			</style>
 
 		<?php endif ?>
 
@@ -115,7 +117,14 @@ if($adminTable !== null && is_object($adminTable)){
 			<?php if ($admin->font_admin != null):?>
 
 				body{
-					font-family: <?php echo str_replace("+"," ",explode("=",explode(":",explode("?",$admin->font_admin)[1])[0])[1]) ?>, sans-serif !important;	
+					<?php 
+						$fontParts = explode("\n\n", $admin->font_admin);
+						if(isset($fontParts[1])){
+							echo $fontParts[1];
+						}else{
+							echo $admin->font_admin;
+						}
+					?>
 				}
 
 			<?php endif ?>

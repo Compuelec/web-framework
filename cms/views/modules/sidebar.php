@@ -21,7 +21,7 @@ if($pages->status == 200){
 <div class="bg-white shadow" id="sidebar-wrapper">
 
 	<div class="sidebar-heading bg-white text-dark my-2">
-		<?php echo $admin->symbol_admin ?>
+		<i class="<?php echo $admin->symbol_admin ?> textColor"></i>
 		<span class="menu-text"><?php echo $admin->title_admin ?></span>
 	</div>
 

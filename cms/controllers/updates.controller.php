@@ -17,20 +17,32 @@ class UpdatesController {
         // Try CMS config first
         $configPath = __DIR__ . '/../config.php';
         if (file_exists($configPath)) {
-            return require $configPath;
+            $config = require $configPath;
+            if (is_array($config)) {
+                return $config;
+            }
         }
         $examplePath = __DIR__ . '/../config.example.php';
         if (file_exists($examplePath)) {
-            return require $examplePath;
+            $config = require $examplePath;
+            if (is_array($config)) {
+                return $config;
+            }
         }
         // Fallback to API config
         $apiConfigPath = __DIR__ . '/../../api/config.php';
         if (file_exists($apiConfigPath)) {
-            return require $apiConfigPath;
+            $config = require $apiConfigPath;
+            if (is_array($config)) {
+                return $config;
+            }
         }
         $apiExamplePath = __DIR__ . '/../../api/config.example.php';
         if (file_exists($apiExamplePath)) {
-            return require $apiExamplePath;
+            $config = require $apiExamplePath;
+            if (is_array($config)) {
+                return $config;
+            }
         }
         return [];
     }
