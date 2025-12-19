@@ -62,7 +62,7 @@
               class="form-control rounded" 
               id="title_admin"
               name="title_admin"
-              value="<?php echo $admin->title_admin ?>"
+              value="<?php echo $_SESSION["admin"]->title_admin ?>"
               required
               >
 
@@ -79,14 +79,14 @@
                         </label>
                         <div class="input-group">
                             <span class="input-group-text">
-                                <i class="bi <?php echo $admin->symbol_admin ?>" id="iconPreviewPlaceholder"></i>
+                                <i class="bi <?php echo $_SESSION["admin"]->symbol_admin ?>" id="iconPreviewPlaceholder"></i>
                             </span>
                             <input 
                             type="text"
                             class="form-control"
                             id="symbol_admin"
                             name="symbol_admin"
-                            value="<?php echo htmlspecialchars($admin->symbol_admin) ?>"
+                            value="<?php echo htmlspecialchars($_SESSION["admin"]->symbol_admin) ?>"
                             readonly
                             required
                             >
@@ -107,7 +107,7 @@
                             class="form-control form-control-color"
                             id="color_admin"
                             name="color_admin"
-                            value="<?php echo $admin->color_admin ?>"
+                            value="<?php echo $_SESSION["admin"]->color_admin ?>"
                             title="Escoge Color"
                             style="width: 60px; height: 38px;"
                             >
@@ -115,7 +115,7 @@
                             type="text"
                             class="form-control"
                             id="color_admin_text"
-                            value="<?php echo $admin->color_admin ?>"
+                            value="<?php echo $_SESSION["admin"]->color_admin ?>"
                             readonly
                             style="max-width: 100px;"
                             >
@@ -139,14 +139,14 @@
                     placeholder="Seleccionar tipografía"
                     readonly
                     rows="2"
-                    ><?php echo htmlspecialchars($admin->font_admin) ?></textarea>
+                    ><?php echo htmlspecialchars($_SESSION["admin"]->font_admin) ?></textarea>
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSelectFont" data-bs-toggle="modal" data-bs-target="#fontSelectorModal">
                         <i class="bi bi-grid-3x3-gap"></i>
                     </button>
                 </div>
-                <div id="fontPreview" class="mt-2 p-2 border rounded bg-light" <?php if(empty($admin->font_admin)): ?> style="display: none;" <?php endif ?>>
+                <div id="fontPreview" class="mt-2 p-2 border rounded bg-light" <?php if(empty($_SESSION["admin"]->font_admin)): ?> style="display: none;" <?php endif ?>>
                     <small class="text-muted d-block mb-1"><strong>Vista previa:</strong></small>
-                    <span id="fontPreviewText" style="font-size: 0.95rem; <?php if(!empty($admin->font_admin)): ?><?php echo explode("\n\n", $admin->font_admin)[1] ?? $admin->font_admin ?><?php endif ?>">Texto de ejemplo con la fuente seleccionada</span>
+                    <span id="fontPreviewText" style="font-size: 0.95rem; <?php if(!empty($_SESSION["admin"]->font_admin)): ?><?php echo explode("\n\n", $_SESSION["admin"]->font_admin)[1] ?? $_SESSION["admin"]->font_admin ?><?php endif ?>">Texto de ejemplo con la fuente seleccionada</span>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@
               class="form-control rounded" 
               id="back_admin"
               name="back_admin"
-              value="<?php echo $admin->back_admin ?>"
+              value="<?php echo $_SESSION["admin"]->back_admin ?>"
               >
 
             </div>

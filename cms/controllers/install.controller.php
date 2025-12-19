@@ -513,6 +513,21 @@ class InstallController{
 
 				$filesPage = CurlController::request($url,$method,$fields);
 
+				// Create updates page
+
+				$url = "pages?token=no&except=id_page";
+				$method = "POST";
+				$fields = array(
+					"title_page" => "Actualizaciones",
+					"url_page" => "updates",
+					"icon_page" => "bi bi-arrow-repeat",
+					"type_page" => "custom",
+					"order_page" => 4,
+					"date_created_page" => date("Y-m-d")
+				);
+
+				$updatesPage = CurlController::request($url,$method,$fields);
+
 				// Create Breadcrumb module for admins page
 
 				$url = "modules?token=no&except=id_module";
@@ -559,6 +574,7 @@ class InstallController{
 				   $homePage->status == 200 &&
 				   $adminPage->status == 200 &&
 				   $filesPage->status == 200 &&
+				   $updatesPage->status == 200 &&
 				   $breadcrumbModule->status == 200 &&
 				   $tableModule->status == 200 &&
 				   $serverFolder->status == 200
