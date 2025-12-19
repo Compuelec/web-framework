@@ -70,23 +70,103 @@ class UpdatesController {
     }
     
     /**
+     * Check GitHub for latest release
+     * 
+     * @param string $owner GitHub repository owner
+     * @param string $repo GitHub repository name
+     * @param string $token Optional GitHub token for private repos
+     * @return array|null Release information or null on error
+     */
+    private static function checkGitHubRelease($owner, $repo, $token = null) {
+        $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/releases/latest";
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        $headers = ['Accept: application/vnd.github.v3+json'];
+        if ($token) {
+            $headers[] = "Authorization: token {$token}";
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode === 200 && $result) {
+            $release = json_decode($result, true);
+            if ($release && isset($release['tag_name'])) {
+                return $release;
+            }
+        } else if ($httpCode === 404) {
+            // Try tags API if releases/latest doesn't exist
+            return self::checkGitHubTag($owner, $repo, $token);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Check GitHub for latest tag (fallback if no releases)
+     * 
+     * @param string $owner GitHub repository owner
+     * @param string $repo GitHub repository name
+     * @param string $token Optional GitHub token
+     * @return array|null Tag information or null on error
+     */
+    private static function checkGitHubTag($owner, $repo, $token = null) {
+        $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/tags";
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        $headers = ['Accept: application/vnd.github.v3+json'];
+        if ($token) {
+            $headers[] = "Authorization: token {$token}";
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode === 200 && $result) {
+            $tags = json_decode($result, true);
+            if (is_array($tags) && count($tags) > 0) {
+                // Get the first tag (usually the latest)
+                $tag = $tags[0];
+                return [
+                    'tag_name' => $tag['name'],
+                    'zipball_url' => $tag['zipball_url'] ?? "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$tag['name']}.zip"
+                ];
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
      * Check for available updates
      * 
-     * This method checks a remote server or local file for available updates
-     * You can configure the update server URL in config.php
+     * This method checks GitHub releases/tags, remote server, or local file for available updates
+     * Priority: GitHub > Remote Server > Local File
      * 
      * @return array Update information
      */
     public static function checkForUpdates() {
         $currentVersion = VersionManager::getCurrentVersion();
         $config = self::getConfig();
-        
-        // Update server URL - can be configured in config.php
-        $updateServerUrl = $config['updates']['server_url'] ?? 'https://updates.yourframework.com/api/check';
-        
-        // For now, we'll use a local JSON file as example
-        // In production, this would be a remote API endpoint
-        $updateInfoFile = __DIR__ . '/../../updates/update-info.json';
         
         $response = [
             'current_version' => $currentVersion,
@@ -97,29 +177,96 @@ class UpdatesController {
         ];
         
         try {
-            // Try to get update info from local file first (for testing)
-            if (file_exists($updateInfoFile)) {
-                $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+            $updateConfig = $config['updates'] ?? [];
+            
+            // Priority 1: Check GitHub if configured
+            if (isset($updateConfig['github_owner']) && isset($updateConfig['github_repo'])) {
+                $owner = $updateConfig['github_owner'];
+                $repo = $updateConfig['github_repo'];
+                $token = $updateConfig['github_token'] ?? null;
                 
-                if ($updateInfo && isset($updateInfo['latest_version'])) {
-                    $latestVersion = $updateInfo['latest_version'];
-                    $response['latest_version'] = $latestVersion;
+                $release = self::checkGitHubRelease($owner, $repo, $token);
+                
+                if ($release) {
+                    // Extract version from tag (remove 'v' prefix if present)
+                    $latestVersion = preg_replace('/^v/', '', $release['tag_name']);
                     
-                    // Check if update_available is explicitly set in JSON, otherwise compare versions
-                    if (isset($updateInfo['update_available'])) {
-                        $response['update_available'] = (bool)$updateInfo['update_available'];
-                    } else {
+                    // Validate version format
+                    if (preg_match('/^\d+\.\d+\.\d+/', $latestVersion)) {
+                        $response['latest_version'] = $latestVersion;
                         $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                        
+                        if ($response['update_available']) {
+                            // Find zipball URL
+                            $zipUrl = null;
+                            if (isset($release['zipball_url'])) {
+                                $zipUrl = $release['zipball_url'];
+                            } else if (isset($release['assets'])) {
+                                foreach ($release['assets'] as $asset) {
+                                    if (isset($asset['browser_download_url']) && 
+                                        pathinfo($asset['browser_download_url'], PATHINFO_EXTENSION) === 'zip') {
+                                        $zipUrl = $asset['browser_download_url'];
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Fallback: construct zip URL from tag
+                            if (!$zipUrl) {
+                                $zipUrl = "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$release['tag_name']}.zip";
+                            }
+                            
+                            $response['update_info'] = [
+                                'latest_version' => $latestVersion,
+                                'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
+                                'changelog' => [
+                                    $latestVersion => [
+                                        'version' => $latestVersion,
+                                        'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
+                                        'type' => VersionManager::isMajorUpdate($currentVersion, $latestVersion) ? 'major' : 'minor',
+                                        'changes' => isset($release['body']) ? array_filter(explode("\n", $release['body'])) : [],
+                                        'breaking_changes' => VersionManager::isMajorUpdate($currentVersion, $latestVersion),
+                                        'requires_migration' => false
+                                    ]
+                                ],
+                                'download_url' => $zipUrl,
+                                'source' => 'github',
+                                'github_release' => $release
+                            ];
+                            $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                        }
                     }
-                    
-                    if ($response['update_available']) {
-                        $response['update_info'] = $updateInfo;
-                        $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
-                    }
+                } else {
+                    $response['error'] = 'Unable to fetch GitHub release information';
                 }
-            } else {
+            } 
+            // Priority 2: Check remote server (if configured and GitHub not used)
+            else {
+                $updateServerUrl = $updateConfig['server_url'] ?? null;
+                $updateInfoFile = __DIR__ . '/../../updates/update-info.json';
+                
+                // Try local file first (for testing)
+                if (file_exists($updateInfoFile)) {
+                    $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+                    
+                    if ($updateInfo && isset($updateInfo['latest_version'])) {
+                        $latestVersion = $updateInfo['latest_version'];
+                        $response['latest_version'] = $latestVersion;
+                        
+                        if (isset($updateInfo['update_available'])) {
+                            $response['update_available'] = (bool)$updateInfo['update_available'];
+                        } else {
+                            $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                        }
+                        
+                        if ($response['update_available']) {
+                            $response['update_info'] = $updateInfo;
+                            $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                        }
+                    }
+                } 
                 // Try remote server (if configured)
-                if (!empty($updateServerUrl) && filter_var($updateServerUrl, FILTER_VALIDATE_URL)) {
+                else if (!empty($updateServerUrl) && filter_var($updateServerUrl, FILTER_VALIDATE_URL)) {
                     $ch = curl_init();
                     curl_setopt($ch, CURLOPT_URL, $updateServerUrl);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -127,7 +274,6 @@ class UpdatesController {
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                     curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
                     
-                    // Send current version
                     curl_setopt($ch, CURLOPT_POST, true);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
                         'current_version' => $currentVersion,
@@ -261,15 +407,24 @@ class UpdatesController {
         
         // Create database backup using mysqldump
         $command = sprintf(
-            'mysqldump -h %s -u %s %s %s > %s 2>&1',
+            'mysqldump -h %s -u %s%s %s > %s 2>&1',
             escapeshellarg($dbHost),
             escapeshellarg($dbUser),
-            !empty($dbPass) ? '-p' . escapeshellarg($dbPass) : '',
+            !empty($dbPass) ? ' -p' . escapeshellarg($dbPass) : '',
             escapeshellarg($dbName),
             escapeshellarg($dbBackupFile)
         );
         
         exec($command, $output, $returnCode);
+        
+        // If backup failed, return error info
+        if ($returnCode !== 0) {
+            return [
+                'success' => false,
+                'backup_path' => $backupPath,
+                'error' => 'Database backup failed. Return code: ' . $returnCode . '. Output: ' . implode("\n", $output)
+            ];
+        }
         
         // Backup critical files
         $filesToBackup = [
@@ -294,20 +449,195 @@ class UpdatesController {
     }
     
     /**
+     * Download ZIP file from URL
+     * 
+     * @param string $url URL to download from
+     * @param string $destination Destination file path
+     * @param string $token Optional GitHub token for private repos
+     * @return array Result with success status and file path
+     */
+    private static function downloadZip($url, $destination, $token = null) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300); // 5 minutes timeout for large files
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
+        
+        $headers = [];
+        if ($token) {
+            $headers[] = "Authorization: token {$token}";
+        }
+        if (!empty($headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+        
+        $fp = fopen($destination, 'w');
+        if (!$fp) {
+            return [
+                'success' => false,
+                'error' => 'Cannot create destination file'
+            ];
+        }
+        
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        fclose($fp);
+        
+        if ($httpCode === 200 && file_exists($destination) && filesize($destination) > 0) {
+            return [
+                'success' => true,
+                'file_path' => $destination,
+                'file_size' => filesize($destination)
+            ];
+        } else {
+            if (file_exists($destination)) {
+                unlink($destination);
+            }
+            return [
+                'success' => false,
+                'error' => $curlError ?: "HTTP {$httpCode}: Failed to download update"
+            ];
+        }
+    }
+    
+    /**
+     * Extract ZIP file to destination
+     * 
+     * @param string $zipPath Path to ZIP file
+     * @param string $destination Destination directory
+     * @return array Result with success status
+     */
+    private static function extractZip($zipPath, $destination) {
+        if (!class_exists('ZipArchive')) {
+            return [
+                'success' => false,
+                'error' => 'ZipArchive class not available. Please install php-zip extension.'
+            ];
+        }
+        
+        $zip = new ZipArchive();
+        $result = $zip->open($zipPath);
+        
+        if ($result !== TRUE) {
+            return [
+                'success' => false,
+                'error' => "Cannot open ZIP file. Error code: {$result}"
+            ];
+        }
+        
+        // Create destination directory
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+        
+        // Extract all files
+        $extracted = $zip->extractTo($destination);
+        $zip->close();
+        
+        if (!$extracted) {
+            return [
+                'success' => false,
+                'error' => 'Failed to extract ZIP file'
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'extracted_to' => $destination
+        ];
+    }
+    
+    /**
+     * Copy files from extracted update to project, preserving config files
+     * 
+     * @param string $sourceDir Source directory (extracted update)
+     * @param string $targetDir Target directory (project root)
+     * @return array Result with success status and files copied
+     */
+    private static function copyUpdateFiles($sourceDir, $targetDir) {
+        $filesCopied = [];
+        $errors = [];
+        $preservedFiles = [
+            'api/config.php',
+            'cms/config.php',
+            'VERSION'
+        ];
+        
+        // Find the actual project directory inside the extracted zip
+        // GitHub zips usually have format: owner-repo-tag/
+        $dirs = glob($sourceDir . '/*', GLOB_ONLYDIR);
+        if (count($dirs) > 0) {
+            $sourceDir = $dirs[0];
+        }
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        
+        foreach ($iterator as $item) {
+            $sourcePath = $item->getPathname();
+            $relativePath = str_replace($sourceDir . DIRECTORY_SEPARATOR, '', $sourcePath);
+            
+            // Skip preserved files
+            $shouldPreserve = false;
+            foreach ($preservedFiles as $preserved) {
+                if (strpos($relativePath, $preserved) !== false) {
+                    $shouldPreserve = true;
+                    break;
+                }
+            }
+            
+            if ($shouldPreserve) {
+                continue;
+            }
+            
+            $targetPath = $targetDir . DIRECTORY_SEPARATOR . $relativePath;
+            
+            if ($item->isDir()) {
+                if (!is_dir($targetPath)) {
+                    mkdir($targetPath, 0755, true);
+                }
+            } else {
+                $targetDirPath = dirname($targetPath);
+                if (!is_dir($targetDirPath)) {
+                    mkdir($targetDirPath, 0755, true);
+                }
+                
+                if (copy($sourcePath, $targetPath)) {
+                    $filesCopied[] = $relativePath;
+                } else {
+                    $errors[] = "Failed to copy: {$relativePath}";
+                }
+            }
+        }
+        
+        return [
+            'success' => empty($errors),
+            'files_copied' => $filesCopied,
+            'errors' => $errors
+        ];
+    }
+    
+    /**
      * Process framework update
      * 
-     * This is a simplified version. In production, you would:
-     * 1. Download the update package
-     * 2. Verify integrity (checksums)
-     * 3. Extract files
-     * 4. Run migrations
-     * 5. Update version
+     * Downloads update from GitHub or configured source, extracts and installs it
+     * 
+     * @param string $targetVersion Target version to update to
+     * @return array Result with success status and update details
      */
     public static function processUpdate($targetVersion) {
         $currentVersion = VersionManager::getCurrentVersion();
+        $config = self::getConfig();
         
         // Validate target version
-        if (!preg_match('/^\d+\.\d+\.\d+$/', $targetVersion)) {
+        if (!preg_match('/^\d+\.\d+\.\d+/', $targetVersion)) {
             return [
                 'success' => false,
                 'error' => 'Invalid version format'
@@ -328,32 +658,86 @@ class UpdatesController {
             if (!$backup['success']) {
                 return [
                     'success' => false,
-                    'error' => 'Failed to create backup'
+                    'error' => 'Failed to create backup: ' . ($backup['error'] ?? 'Unknown error')
                 ];
             }
             
-            // Step 2: Run database migrations
+            // Step 2: Get update info to find download URL
+            $updateInfo = self::checkForUpdates();
+            if (!$updateInfo['update_available'] || !isset($updateInfo['update_info']['download_url'])) {
+                return [
+                    'success' => false,
+                    'error' => 'Update information not available or download URL not found'
+                ];
+            }
+            
+            $downloadUrl = $updateInfo['update_info']['download_url'];
+            $updateConfig = $config['updates'] ?? [];
+            $token = $updateConfig['github_token'] ?? null;
+            
+            // Step 3: Download update package
+            $tempDir = sys_get_temp_dir() . '/framework_update_' . time();
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            
+            $zipPath = $tempDir . '/update.zip';
+            $downloadResult = self::downloadZip($downloadUrl, $zipPath, $token);
+            
+            if (!$downloadResult['success']) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to download update: ' . ($downloadResult['error'] ?? 'Unknown error')
+                ];
+            }
+            
+            // Step 4: Extract ZIP
+            $extractDir = $tempDir . '/extracted';
+            $extractResult = self::extractZip($zipPath, $extractDir);
+            
+            if (!$extractResult['success']) {
+                unlink($zipPath);
+                return [
+                    'success' => false,
+                    'error' => 'Failed to extract update: ' . ($extractResult['error'] ?? 'Unknown error')
+                ];
+            }
+            
+            // Step 5: Copy files to project (preserving config files)
+            $projectRoot = __DIR__ . '/../../';
+            $copyResult = self::copyUpdateFiles($extractDir, $projectRoot);
+            
+            // Clean up temporary files
+            self::deleteDirectory($tempDir);
+            
+            if (!$copyResult['success']) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to copy update files: ' . implode(', ', $copyResult['errors'])
+                ];
+            }
+            
+            // Step 6: Run database migrations
             $migrationResult = self::runMigrations($currentVersion, $targetVersion);
             
-            // Step 3: Update files (in production, this would download and extract)
-            // For now, we'll just update the version file
-            // In production, you would:
-            // - Download update package from server
-            // - Verify checksum
-            // - Extract to temporary directory
-            // - Replace files (preserving config.php)
-            // - Run post-update scripts
-            
-            // Step 4: Update version
+            // Step 7: Update version
             VersionManager::updateVersion($targetVersion);
             
-            // Step 5: Record update
-            $status = $migrationResult['success'] ? 'completed' : 'completed_with_warnings';
+            // Step 8: Record update
+            $status = ($migrationResult['success'] && $copyResult['success']) ? 'completed' : 'completed_with_warnings';
+            $notes = [];
+            if (!$migrationResult['success']) {
+                $notes[] = 'Migration warnings: ' . ($migrationResult['notes'] ?? 'Unknown');
+            }
+            if (!empty($copyResult['errors'])) {
+                $notes[] = 'File copy errors: ' . implode(', ', $copyResult['errors']);
+            }
+            
             self::recordUpdate(
                 $currentVersion,
                 $targetVersion,
                 $status,
-                $migrationResult['notes'] ?? ''
+                implode(' | ', $notes)
             );
             
             return [
@@ -361,7 +745,9 @@ class UpdatesController {
                 'from_version' => $currentVersion,
                 'to_version' => $targetVersion,
                 'backup_path' => $backup['backup_path'],
-                'migrations' => $migrationResult
+                'migrations' => $migrationResult,
+                'files_copied' => count($copyResult['files_copied']),
+                'copy_errors' => $copyResult['errors']
             ];
             
         } catch (Exception $e) {
@@ -377,6 +763,26 @@ class UpdatesController {
                 'error' => $e->getMessage()
             ];
         }
+    }
+    
+    /**
+     * Delete directory recursively
+     * 
+     * @param string $dir Directory to delete
+     * @return bool Success status
+     */
+    private static function deleteDirectory($dir) {
+        if (!is_dir($dir)) {
+            return false;
+        }
+        
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            is_dir($path) ? self::deleteDirectory($path) : unlink($path);
+        }
+        
+        return rmdir($dir);
     }
     
     /**

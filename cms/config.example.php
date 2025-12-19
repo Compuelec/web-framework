@@ -49,11 +49,21 @@ return [
 
     // Updates Configuration
     'updates' => [
-        // URL del servidor de actualizaciones (opcional)
-        // Si no se especifica, se usará el archivo local updates/update-info.json
+        // Opción 1: GitHub Releases/Tags (recomendado)
+        // El sistema verificará automáticamente los releases/tags en GitHub
+        'github_owner' => 'tu-usuario-github',        // Usuario u organización de GitHub
+        'github_repo' => 'tu-repositorio',            // Nombre del repositorio
+        'github_token' => null,                       // Token de GitHub (opcional, solo para repos privados)
+                                                      // Genera un token en: https://github.com/settings/tokens
+        
+        // Opción 2: Servidor de actualizaciones personalizado (alternativa a GitHub)
+        // Si se configuran github_owner y github_repo, esta opción se ignora
         'server_url' => 'https://updates.yourframework.com/api/check',
         
-        // Habilitar actualizaciones automáticas (recomendado: false para producción)
+        // Opción 3: Archivo local (solo para desarrollo/testing)
+        // Si no se configura GitHub ni server_url, se usará updates/update-info.json
+        
+        // Habilitar verificación automática de actualizaciones
         'auto_check' => true,
         
         // Intervalo de verificación automática en horas (solo si auto_check es true)

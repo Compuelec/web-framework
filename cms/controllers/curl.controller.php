@@ -22,14 +22,14 @@ class CurlController{
 		// Last resort: use environment variables or defaults
 		return [
 			'api' => [
-				'base_url' => getenv('API_BASE_URL') ?: 'http://localhost/chatcenter/api/',
-				'key' => getenv('API_KEY') ?: ''
+				'base_url' => getenv('API_BASE_URL'),
+				'key' => getenv('API_KEY')
 			],
 			'openai' => [
-				'api_url' => getenv('OPENAI_API_URL') ?: 'https://api.openai.com/v1/chat/completions',
-				'model' => getenv('OPENAI_MODEL') ?: 'gpt-4-0613',
-				'token' => getenv('OPENAI_TOKEN') ?: '',
-				'organization' => getenv('OPENAI_ORG') ?: ''
+				'api_url' => getenv('OPENAI_API_URL'),
+				'model' => getenv('OPENAI_MODEL'),
+				'token' => getenv('OPENAI_TOKEN'),
+				'organization' => getenv('OPENAI_ORG')
 			]
 		];
 	}
@@ -38,8 +38,8 @@ class CurlController{
 	static public function request($url,$method,$fields){
 
 		$config = self::getConfig();
-		$apiBaseUrl = $config['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
-		$apiKey = $config['api']['key'] ?? '';
+		$apiBaseUrl = $config['api']['base_url'];
+		$apiKey = $config['api']['key'];
 
 		$curl = curl_init();
 
@@ -131,10 +131,10 @@ class CurlController{
 		$openaiConfig = $config['openai'] ?? [];
 		
 		// Use provided token/org or fallback to config
-		$apiToken = $token ?: ($openaiConfig['token'] ?? '');
-		$apiOrg = $org ?: ($openaiConfig['organization'] ?? '');
-		$apiUrl = $openaiConfig['api_url'] ?? 'https://api.openai.com/v1/chat/completions';
-		$model = $openaiConfig['model'] ?? 'gpt-4-0613';
+		$apiToken = $token ?: ($openaiConfig['token']);
+		$apiOrg = $org ?: ($openaiConfig['organization']);
+		$apiUrl = $openaiConfig['api_url'];
+		$model = $openaiConfig['model'];
 
 		$curl = curl_init();
 

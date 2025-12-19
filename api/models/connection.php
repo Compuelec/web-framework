@@ -24,22 +24,22 @@ class Connection{
 		// Last resort: use environment variables or defaults
 		return [
 			'database' => [
-				'host' => getenv('DB_HOST') ?: 'localhost',
-				'name' => getenv('DB_NAME') ?: 'chatcenter',
-				'user' => getenv('DB_USER') ?: 'root',
-				'pass' => getenv('DB_PASS') ?: '',
+				'host' => getenv('DB_HOST'),
+				'name' => getenv('DB_NAME'),
+				'user' => getenv('DB_USER'),
+				'pass' => getenv('DB_PASS'),
 				'charset' => 'utf8mb4'
 			],
 			'api' => [
-				'key' => getenv('API_KEY') ?: '',
+				'key' => getenv('API_KEY'),
 				'public_access_tables' => ['']
 			],
 			'jwt' => [
-				'secret' => getenv('JWT_SECRET') ?: '',
+				'secret' => getenv('JWT_SECRET'),
 				'expiration' => 86400
 			],
 			'password' => [
-				'salt' => getenv('PASSWORD_SALT') ?: '$2a$07$azybxcags23425sdg23sdfhsd$'
+				'salt' => getenv('PASSWORD_SALT'),
 			]
 		];
 	}
@@ -73,12 +73,12 @@ class Connection{
 		
 		try{
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root', 
-				$dbConfig['pass'] ?? ''
+				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name']),
+				$dbConfig['user'], 
+				$dbConfig['pass']
 			);
 
-			$link->exec("set names ".($dbConfig['charset'] ?? 'utf8mb4'));
+			$link->exec("set names ".($dbConfig['charset']));
 
 		}catch(PDOException $e){
 
