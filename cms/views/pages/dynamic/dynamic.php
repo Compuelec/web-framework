@@ -75,7 +75,7 @@ if($modules->status == 200){
                 <?php endif ?>
 
                 <!--=========================================
-                Cuando el módulo es personalizado
+                When the module is custom
                 ===========================================-->
 
                 <?php if ($module->type_module == "custom"): ?>

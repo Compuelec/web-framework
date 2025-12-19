@@ -1,19 +1,21 @@
 {
   "latest_version": "1.0.1",
   "update_available": true,
-  "release_date": "2024-01-15",
+  "release_date": "2024-12-19",
   "changelog": {
     "1.0.1": {
       "version": "1.0.1",
-      "release_date": "2024-01-15",
-      "type": "patch",
+      "release_date": "2024-12-19",
+      "type": "minor",
       "changes": [
-        "Fixed security vulnerability in authentication",
-        "Improved API response times",
-        "Updated dependencies"
+        "Added activity logs system for tracking user actions",
+        "New ActivityLogsController for managing activity logs",
+        "Helper function logActivity() for easy logging throughout the application",
+        "Activity logs table automatically created during installation",
+        "Logs include action, entity, admin ID, IP address, and user agent"
       ],
       "breaking_changes": false,
-      "requires_migration": false
+      "requires_migration": true
     }
   },
   "download_url": "https://updates.yourframework.com/downloads/1.0.1.zip",

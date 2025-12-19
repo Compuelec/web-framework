@@ -68,11 +68,6 @@ yarn-error.log
 package-lock.json
 yarn.lock
 
-# Build and dist
-dist/
-build/
-*.min.js
-*.min.css
 
 # Logs
 logs/
