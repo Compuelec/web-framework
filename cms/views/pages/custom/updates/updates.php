@@ -51,12 +51,17 @@ $updateHistory = UpdatesController::getUpdateHistory();
 				<i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
 				<div class="flex-grow-1">
 					<h5 class="alert-heading mb-1">¡Actualización Disponible!</h5>
-					<p class="mb-0">
+						<p class="mb-0">
 						Hay una nueva versión disponible: <strong>v<?php echo htmlspecialchars($updateInfo['latest_version']); ?></strong>
 						<?php if (isset($updateInfo['is_major_update']) && $updateInfo['is_major_update']): ?>
 							<span class="badge bg-danger ms-2">Actualización Mayor</span>
 						<?php endif; ?>
 					</p>
+					<?php if (isset($updateInfo['error']) && $updateInfo['error']): ?>
+						<div class="text-danger small mt-1 mb-2">
+							<i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($updateInfo['error']); ?>
+						</div>
+					<?php endif; ?>
 					<?php if (isset($updateInfo['update_info']['changelog'][$updateInfo['latest_version']])): ?>
 						<details class="mt-2">
 							<summary class="cursor-pointer">Ver cambios</summary>

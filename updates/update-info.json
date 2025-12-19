@@ -6,20 +6,19 @@
     "1.0.1": {
       "version": "1.0.1",
       "release_date": "2024-12-19",
-      "type": "minor",
+      "type": "patch",
       "changes": [
-        "Added activity logs system for tracking user actions",
-        "New ActivityLogsController for managing activity logs",
-        "Helper function logActivity() for easy logging throughout the application",
-        "Activity logs table automatically created during installation",
-        "Logs include action, entity, admin ID, IP address, and user agent"
+        "Optimización de la carga de módulos del CMS",
+        "Mejoras en el sistema de detección de actualizaciones",
+        "Corrección de errores menores en la interfaz de usuario",
+        "Actualización de dependencias de seguridad"
       ],
       "breaking_changes": false,
-      "requires_migration": true
+      "requires_migration": false
     }
   },
-  "download_url": "https://updates.yourframework.com/downloads/1.0.1.zip",
-  "checksum": "sha256:abc123def456...",
+  "download_url": "https://github.com/Compuelec/web-framework/archive/refs/tags/v1.0.1.zip",
+  "checksum": "",
   "min_php_version": "7.4",
   "min_mysql_version": "5.7"
 }

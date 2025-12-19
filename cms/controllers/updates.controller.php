@@ -104,9 +104,24 @@ class UpdatesController {
             if ($release && isset($release['tag_name'])) {
                 return $release;
             }
-        } else if ($httpCode === 404) {
-            // Try tags API if releases/latest doesn't exist
-            return self::checkGitHubTag($owner, $repo, $token);
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            error_log("GitHub API Error: $errorMessage");
+            self::$lastGitHubError = $errorMessage;
+            
+            if ($httpCode === 404) {
+                // Try tags API if releases/latest doesn't exist
+                return self::checkGitHubTag($owner, $repo, $token);
+            }
         }
         
         return null;
@@ -139,6 +154,7 @@ class UpdatesController {
         
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
         
         if ($httpCode === 200 && $result) {
@@ -151,9 +167,81 @@ class UpdatesController {
                     'zipball_url' => $tag['zipball_url'] ?? "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$tag['name']}.zip"
                 ];
             }
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            self::$lastGitHubError = $errorMessage;
         }
         
         return null;
+    }
+    
+    /**
+     * Check GitHub for a specific release by tag
+     * 
+     * @param string $owner GitHub repository owner
+     * @param string $repo GitHub repository name
+     * @param string $tag Tag name (e.g., "1.0.1" or "v1.0.1")
+     * @param string $token Optional GitHub token
+     * @return array|null Release information or null on error
+     */
+    private static function checkGitHubReleaseByTag($owner, $repo, $tag, $token = null) {
+        $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/releases/tags/{$tag}";
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        $headers = ['Accept: application/vnd.github.v3+json'];
+        if ($token) {
+            $headers[] = "Authorization: token {$token}";
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode === 200 && $result) {
+            $release = json_decode($result, true);
+            if ($release && isset($release['tag_name'])) {
+                return $release;
+            }
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            error_log("GitHub API Error: $errorMessage");
+            self::$lastGitHubError = $errorMessage;
+        }
+        
+        return null;
+    }
+
+    private static $lastGitHubError = null;
+
+    public static function getLastGitHubError() {
+        return self::$lastGitHubError;
     }
     
     /**
@@ -216,6 +304,37 @@ class UpdatesController {
                                 $zipUrl = "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$release['tag_name']}.zip";
                             }
                             
+                            // Procesar el body del release para extraer los cambios
+                            $changes = [];
+                            if (isset($release['body']) && !empty($release['body'])) {
+                                $body = trim($release['body']);
+                                // Dividir por líneas y procesar
+                                $lines = explode("\n", $body);
+                                foreach ($lines as $line) {
+                                    $line = trim($line);
+                                    // Ignorar líneas vacías y encabezados markdown
+                                    if (empty($line) || preg_match('/^#+\s/', $line)) {
+                                        continue;
+                                    }
+                                    // Remover marcadores de lista markdown (-, *, +) y numeración
+                                    $line = preg_replace('/^[-*+]\s+/', '', $line);
+                                    $line = preg_replace('/^\d+\.\s+/', '', $line);
+                                    // Remover enlaces markdown [texto](url) -> texto
+                                    $line = preg_replace('/\[([^\]]+)\]\([^\)]+\)/', '$1', $line);
+                                    // Remover código markdown `código` -> código
+                                    $line = preg_replace('/`([^`]+)`/', '$1', $line);
+                                    // Remover negritas/cursivas markdown
+                                    $line = preg_replace('/\*\*([^\*]+)\*\*/', '$1', $line);
+                                    $line = preg_replace('/\*([^\*]+)\*/', '$1', $line);
+                                    $line = preg_replace('/__([^_]+)__/', '$1', $line);
+                                    $line = preg_replace('/_([^_]+)_/', '$1', $line);
+                                    
+                                    if (!empty($line)) {
+                                        $changes[] = $line;
+                                    }
+                                }
+                            }
+                            
                             $response['update_info'] = [
                                 'latest_version' => $latestVersion,
                                 'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
@@ -224,7 +343,7 @@ class UpdatesController {
                                         'version' => $latestVersion,
                                         'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
                                         'type' => VersionManager::isMajorUpdate($currentVersion, $latestVersion) ? 'major' : 'minor',
-                                        'changes' => isset($release['body']) ? array_filter(explode("\n", $release['body'])) : [],
+                                        'changes' => $changes,
                                         'breaking_changes' => VersionManager::isMajorUpdate($currentVersion, $latestVersion),
                                         'requires_migration' => false
                                     ]
@@ -237,7 +356,129 @@ class UpdatesController {
                         }
                     }
                 } else {
-                    $response['error'] = 'Unable to fetch GitHub release information';
+                    // GitHub falló, intentar obtener información del release específico por tag
+                    // Primero intentar obtener el release por tag específico si tenemos la versión del archivo local
+                    $updateInfoFile = __DIR__ . '/../../updates/update-info.json';
+                    $releaseFromGitHub = null;
+                    
+                    // Si tenemos archivo local, intentar obtener el release específico de GitHub usando el tag
+                    if (file_exists($updateInfoFile)) {
+                        $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+                        
+                        if ($updateInfo && isset($updateInfo['latest_version'])) {
+                            $latestVersion = $updateInfo['latest_version'];
+                            
+                            // Intentar obtener el release específico de GitHub por tag
+                            $tagName = 'v' . $latestVersion; // Intentar con prefijo 'v'
+                            $releaseFromGitHub = self::checkGitHubReleaseByTag($owner, $repo, $tagName, $token);
+                            
+                            // Si no funciona con 'v', intentar sin prefijo
+                            if (!$releaseFromGitHub) {
+                                $releaseFromGitHub = self::checkGitHubReleaseByTag($owner, $repo, $latestVersion, $token);
+                            }
+                        }
+                    }
+                    
+                    // Si encontramos el release en GitHub, usar esa información
+                    if ($releaseFromGitHub) {
+                        $latestVersion = preg_replace('/^v/', '', $releaseFromGitHub['tag_name']);
+                        
+                        if (preg_match('/^\d+\.\d+\.\d+/', $latestVersion)) {
+                            $response['latest_version'] = $latestVersion;
+                            $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                            
+                            if ($response['update_available']) {
+                                // Procesar el body del release para extraer los cambios
+                                $changes = [];
+                                if (isset($releaseFromGitHub['body']) && !empty($releaseFromGitHub['body'])) {
+                                    $body = trim($releaseFromGitHub['body']);
+                                    $lines = explode("\n", $body);
+                                    foreach ($lines as $line) {
+                                        $line = trim($line);
+                                        if (empty($line) || preg_match('/^#+\s/', $line)) {
+                                            continue;
+                                        }
+                                        $line = preg_replace('/^[-*+]\s+/', '', $line);
+                                        $line = preg_replace('/^\d+\.\s+/', '', $line);
+                                        $line = preg_replace('/\[([^\]]+)\]\([^\)]+\)/', '$1', $line);
+                                        $line = preg_replace('/`([^`]+)`/', '$1', $line);
+                                        $line = preg_replace('/\*\*([^\*]+)\*\*/', '$1', $line);
+                                        $line = preg_replace('/\*([^\*]+)\*/', '$1', $line);
+                                        $line = preg_replace('/__([^_]+)__/', '$1', $line);
+                                        $line = preg_replace('/_([^_]+)_/', '$1', $line);
+                                        
+                                        if (!empty($line)) {
+                                            $changes[] = $line;
+                                        }
+                                    }
+                                }
+                                
+                                // Encontrar zipball URL
+                                $zipUrl = null;
+                                if (isset($releaseFromGitHub['zipball_url'])) {
+                                    $zipUrl = $releaseFromGitHub['zipball_url'];
+                                } else if (isset($releaseFromGitHub['assets'])) {
+                                    foreach ($releaseFromGitHub['assets'] as $asset) {
+                                        if (isset($asset['browser_download_url']) && 
+                                            pathinfo($asset['browser_download_url'], PATHINFO_EXTENSION) === 'zip') {
+                                            $zipUrl = $asset['browser_download_url'];
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (!$zipUrl) {
+                                    $zipUrl = "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$releaseFromGitHub['tag_name']}.zip";
+                                }
+                                
+                                $response['update_info'] = [
+                                    'latest_version' => $latestVersion,
+                                    'release_date' => isset($releaseFromGitHub['published_at']) ? date('Y-m-d', strtotime($releaseFromGitHub['published_at'])) : null,
+                                    'changelog' => [
+                                        $latestVersion => [
+                                            'version' => $latestVersion,
+                                            'release_date' => isset($releaseFromGitHub['published_at']) ? date('Y-m-d', strtotime($releaseFromGitHub['published_at'])) : null,
+                                            'type' => VersionManager::isMajorUpdate($currentVersion, $latestVersion) ? 'major' : 'minor',
+                                            'changes' => $changes,
+                                            'breaking_changes' => VersionManager::isMajorUpdate($currentVersion, $latestVersion),
+                                            'requires_migration' => false
+                                        ]
+                                    ],
+                                    'download_url' => $zipUrl,
+                                    'source' => 'github',
+                                    'github_release' => $releaseFromGitHub
+                                ];
+                                $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                                $response['error'] = null;
+                            }
+                        }
+                    }
+                    
+                    // Si no se encontró en GitHub, usar archivo local como fallback
+                    if (!$releaseFromGitHub && file_exists($updateInfoFile)) {
+                        $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+                        
+                        if ($updateInfo && isset($updateInfo['latest_version'])) {
+                            $latestVersion = $updateInfo['latest_version'];
+                            $response['latest_version'] = $latestVersion;
+                            
+                            if (isset($updateInfo['update_available'])) {
+                                $response['update_available'] = (bool)$updateInfo['update_available'];
+                            } else {
+                                $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                            }
+                            
+                            if ($response['update_available']) {
+                                $response['update_info'] = $updateInfo;
+                                $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                                $response['error'] = 'Using local update information. GitHub release not found. (' . self::getLastGitHubError() . ')';
+                            }
+                        } else {
+                            $response['error'] = 'Unable to fetch GitHub release information and local update file is invalid';
+                        }
+                    } else if (!$releaseFromGitHub) {
+                        $response['error'] = 'Unable to fetch GitHub release information and local update file not found';
+                    }
                 }
             } 
             // Priority 2: Check remote server (if configured and GitHub not used)
