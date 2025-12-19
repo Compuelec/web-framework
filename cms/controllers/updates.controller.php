@@ -104,7 +104,13 @@ class UpdatesController {
                 if ($updateInfo && isset($updateInfo['latest_version'])) {
                     $latestVersion = $updateInfo['latest_version'];
                     $response['latest_version'] = $latestVersion;
-                    $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                    
+                    // Check if update_available is explicitly set in JSON, otherwise compare versions
+                    if (isset($updateInfo['update_available'])) {
+                        $response['update_available'] = (bool)$updateInfo['update_available'];
+                    } else {
+                        $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                    }
                     
                     if ($response['update_available']) {
                         $response['update_info'] = $updateInfo;

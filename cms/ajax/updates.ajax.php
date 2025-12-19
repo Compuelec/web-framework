@@ -12,8 +12,8 @@ require_once __DIR__ . '/../controllers/updates.controller.php';
 
 header('Content-Type: application/json');
 
-// Check if user is authenticated (you may want to add proper authentication)
-if (!isset($_SESSION['admin_id'])) {
+// Check if user is authenticated
+if (!isset($_SESSION['admin'])) {
     echo json_encode([
         'success' => false,
         'error' => 'Unauthorized'

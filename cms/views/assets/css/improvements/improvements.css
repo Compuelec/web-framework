@@ -1,0 +1,237 @@
+/*=============================================
+Styles for CMS improvements
+=============================================*/
+
+/* Global Search */
+#globalSearchModal .modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#globalSearchInput {
+    font-size: 1.1rem;
+    padding: 1rem;
+}
+
+#globalSearchInput:focus {
+    box-shadow: none;
+    border-color: #0d6efd;
+}
+
+#globalSearchResults .global-search-result {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+#globalSearchResults .global-search-result:hover,
+#globalSearchResults .global-search-result.active {
+    background-color: #f8f9fa;
+    border-left-color: #0d6efd;
+}
+
+#globalSearchResults .global-search-result mark {
+    background-color: #fff3cd;
+    padding: 0;
+    font-weight: 600;
+}
+
+/* Notifications */
+#notificationBell {
+    cursor: pointer;
+}
+
+#notificationBell:hover {
+    opacity: 0.8;
+}
+
+#notificationBellLink {
+    text-decoration: none;
+    display: inline-block;
+    position: relative;
+}
+
+#notificationDropdown {
+    border-radius: 12px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #dee2e6 !important;
+    padding: 0 !important;
+}
+
+#notificationDropdown .dropdown-divider {
+    margin: 0;
+}
+
+.notification-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa !important;
+    border-left-color: #0d6efd;
+    color: inherit;
+}
+
+.notification-item.bg-light {
+    border-left-color: #0d6efd;
+}
+
+.notification-item.update-notification {
+    background-color: #fff3cd !important;
+    border-left-color: #ffc107;
+}
+
+.notification-item.update-notification:hover {
+    background-color: #ffe69c !important;
+}
+
+.notification-item h6 {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.notification-item p {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.notification-item small {
+    font-size: 0.7rem;
+}
+
+/* Export Buttons */
+.export-buttons {
+    margin-left: 0.5rem;
+}
+
+.export-btn {
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.export-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.export-btn i {
+    margin-right: 0.25rem;
+}
+
+/* Module Edit/Delete Buttons Spacing */
+.card-header .position-absolute .btn {
+    transition: all 0.2s ease;
+    margin-left: 4px;
+}
+
+.card-header .position-absolute .btn:first-child {
+    margin-left: 0;
+}
+
+.card-header .position-absolute .btn:hover {
+    background-color: #f8f9fa !important;
+    transform: scale(1.05);
+    z-index: 11;
+}
+
+/* Ensure export buttons don't overlap with module buttons */
+.card-header .nav {
+    margin-right: 80px;
+}
+
+@media (max-width: 991px) {
+    .card-header .nav {
+        margin-right: 0;
+    }
+    
+    .card-header .position-absolute {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        margin-top: 10px;
+        display: inline-block;
+    }
+}
+
+/* Toast Notifications */
+#notificationContainer {
+    pointer-events: none;
+}
+
+#notificationContainer .toast {
+    pointer-events: auto;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+/* Performance visual improvements */
+#loadTable {
+    will-change: transform;
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.global-search-result,
+.notification-item {
+    animation: fadeIn 0.2s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #notificationDropdown {
+        width: 100% !important;
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+    
+    .export-buttons {
+        flex-direction: column;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .export-btn {
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* Loading states */
+.export-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Keyboard shortcuts hint */
+kbd {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 2px #fff;
+    color: #212529;
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25em 0.4em;
+    white-space: nowrap;
+}
+

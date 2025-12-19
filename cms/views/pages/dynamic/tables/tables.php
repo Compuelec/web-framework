@@ -86,30 +86,29 @@ Cargamos el módulo tabla
 
 <div class="<?php if ($module->width_module == "100"): ?> col-lg-12 <?php endif ?><?php if ($module->width_module == "75"): ?> col-lg-9 <?php endif ?><?php if ($module->width_module == "50"): ?> col-lg-6 <?php endif ?><?php if ($module->width_module == "33"): ?> col-lg-4 <?php endif ?><?php if ($module->width_module == "25"): ?> col-lg-3 <?php endif ?> col-12 mb-3 position-relative">
 
-	<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
-
-		<div class="position-absolute border rounded bg-white" style="top:0px; right:12px; z-index:100">
-			
-			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 myModule" item='<?php echo json_encode($module) ?>' idPage="<?php echo $page->results[0]->id_page ?>">
-				<i class="bi bi-pencil-square"></i>
-			</button>
-
-			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 deleteModule" idModule=<?php echo base64_encode($module->id_module) ?> >
-				<i class="bi bi-trash"></i>
-			</button>
-
-
-		</div>
-		
-	<?php endif ?>
-	
 	<div class="card rounded p-3 w-100" id="cardTable">
 
 		<!--=========================================
         Cabecera de la tabla
         ===========================================-->
 		
-		<div class="card-header bg-white">
+		<div class="card-header bg-white position-relative">
+			
+			<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
+
+				<div class="position-absolute" style="top:10px; right:10px; z-index:10;">
+					
+					<button type="button" class="btn btn-sm text-muted rounded m-0 px-2 py-1 border bg-white shadow-sm myModule" item='<?php echo json_encode($module) ?>' idPage="<?php echo $page->results[0]->id_page ?>" title="Editar módulo">
+						<i class="bi bi-pencil-square"></i>
+					</button>
+
+					<button type="button" class="btn btn-sm text-muted rounded m-0 px-2 py-1 border bg-white shadow-sm deleteModule ms-1" idModule=<?php echo base64_encode($module->id_module) ?> title="Eliminar módulo">
+						<i class="bi bi-trash"></i>
+					</button>
+
+				</div>
+				
+			<?php endif ?>
 			
 			<div class="d-lg-flex justify-content-between">
 
@@ -132,7 +131,25 @@ Cargamos el módulo tabla
 
 				<div class="mb-3">
 					
-					<ul class="nav justify-content-lg-end">
+					<ul class="nav justify-content-lg-end align-items-center">
+
+						<!--=========================================
+				        Export buttons
+				        ===========================================-->
+						
+						<li class="nav-item p-0 me-2">
+							<div class="btn-group export-buttons" role="group">
+								<button type="button" class="btn btn-sm btn-outline-success export-btn" data-format="excel" title="Exportar a Excel">
+									<i class="bi bi-file-earmark-excel"></i> Excel
+								</button>
+								<button type="button" class="btn btn-sm btn-outline-primary export-btn" data-format="csv" title="Exportar a CSV">
+									<i class="bi bi-filetype-csv"></i> CSV
+								</button>
+								<button type="button" class="btn btn-sm btn-outline-danger export-btn" data-format="pdf" title="Exportar a PDF">
+									<i class="bi bi-file-earmark-pdf"></i> PDF
+								</button>
+							</div>
+						</li>
 
 						<!--=========================================
 				        Botón para rango de fechas

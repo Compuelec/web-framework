@@ -260,6 +260,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/colors/colors.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/fms/fms.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/chat/chat.css">
+	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css">
 
 
 </head>
@@ -495,8 +496,14 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js"></script>
+	
+	<!-- Nuevas funcionalidades mejoradas -->
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/performance/performance.js"></script>
 		
-	<?php endif ?>
+<?php endif ?>
 		
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/forms/forms.js"></script>
 	
