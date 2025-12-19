@@ -34,7 +34,7 @@ if($pages->status == 200){
 			<?php foreach ($pages as $key => $value): ?>
 
 
-				<?php if ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || $_SESSION["admin"]->rol_admin == "editor" && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page] == "on" ): ?>
+				<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page] == "on"))): ?>
 
 				<li class="list-group-item list-group-item-action position-relative" idPage="<?php echo base64_encode($value->id_page) ?>">
 
@@ -53,7 +53,7 @@ if($pages->status == 200){
 
 				 	</a>
 
-				 	<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
+				 	<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
 
 				 		<span class="position-absolute border rounded bg-white btnPages" style="right:5px; top:15px">
 				 			
@@ -85,7 +85,7 @@ if($pages->status == 200){
 
 	</ul>
 
-	<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
+	<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
 
 		<hr class="borderDashboard">
 

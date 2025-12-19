@@ -1,0 +1,23 @@
+{
+  "latest_version": "1.0.1",
+  "update_available": true,
+  "release_date": "2024-01-15",
+  "changelog": {
+    "1.0.1": {
+      "version": "1.0.1",
+      "release_date": "2024-01-15",
+      "type": "patch",
+      "changes": [
+        "Fixed security vulnerability in authentication",
+        "Improved API response times",
+        "Updated dependencies"
+      ],
+      "breaking_changes": false,
+      "requires_migration": false
+    }
+  },
+  "download_url": "https://updates.yourframework.com/downloads/1.0.1.zip",
+  "checksum": "sha256:abc123def456...",
+  "min_php_version": "7.4",
+  "min_mysql_version": "5.7"
+}

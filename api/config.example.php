@@ -7,6 +7,12 @@
  * The config.php file is ignored by git for security.
  */
 
+// Prevent direct access
+if (basename($_SERVER['PHP_SELF']) === 'config.example.php') {
+    http_response_code(403);
+    die('Direct access to this file is not allowed.');
+}
+
 return [
     // Database configuration
     'database' => [

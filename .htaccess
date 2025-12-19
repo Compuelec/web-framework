@@ -1,0 +1,52 @@
+# Security: Protect sensitive files and directories
+
+# Disable directory listing
+Options All -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(config\.php|config\.example\.php|\.env|\.env\.local|VERSION|composer\.json|composer\.lock|package\.json|package-lock\.json|\.gitignore|\.gitattributes)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect sensitive directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Block access to sensitive directories
+    RewriteRule ^(backups|migrations|\.cursor|\.git|vendor|node_modules|\.vscode|\.idea)/ - [F,L]
+    
+    # Block access to config files in any subdirectory
+    RewriteRule .*/config\.php$ - [F,L]
+    RewriteRule .*/config\.example\.php$ - [F,L]
+    
+    # Block access to .env files
+    RewriteRule .*\.env.*$ - [F,L]
+    
+    # Block access to VERSION file
+    RewriteRule ^VERSION$ - [F,L]
+    
+    # Block access to composer files
+    RewriteRule .*composer\.(json|lock)$ - [F,L]
+    
+    # Block access to package files
+    RewriteRule .*package(-lock)?\.json$ - [F,L]
+</IfModule>
+
+# Additional security headers (optional but recommended)
+<IfModule mod_headers.c>
+    # Prevent MIME type sniffing
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Enable XSS protection
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # Prevent clickjacking
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # Referrer policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Disable server signature
+ServerSignature Off

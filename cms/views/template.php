@@ -45,14 +45,25 @@ $adminTable = CurlController::request($url,$method,$fields);
 
 // echo '<pre>$adminTable '; print_r($adminTable); echo '</pre>';
 
-if($adminTable->status == 404){
+// Initialize admin as null
+$admin = null;
 
-	$admin = null;
-
-}else{
-
-	$admin = $adminTable->results[0];
-
+// Check if adminTable is not null and has the expected structure
+if($adminTable !== null && is_object($adminTable)){
+	
+	if(isset($adminTable->status) && $adminTable->status == 404){
+		
+		$admin = null;
+		
+	}else if(isset($adminTable->status) && $adminTable->status == 200){
+		
+		// Check if results exists and has at least one element
+		if(isset($adminTable->results) && is_array($adminTable->results) && count($adminTable->results) > 0){
+			$admin = $adminTable->results[0];
+		}
+		
+	}
+	
 }
 
 // echo '<pre>$admin '; print_r($admin); echo '</pre>';
@@ -300,7 +311,7 @@ if($adminTable->status == 404){
 						Validar permisos
 						===========================================-->
 
-						<?php if ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || $_SESSION["admin"]->rol_admin == "editor" && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"): ?>
+						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"))): ?>
 
 							<!--=========================================
 							Agregamos páginas dinámicas y personalizadas
@@ -314,13 +325,22 @@ if($adminTable->status == 404){
 
 								$page = CurlController::request($url,$method,$fields);
 								
-								if($page->status == 200 && $page->results[0]->type_page == "modules"){
+								// Check if page is not null and has valid structure
+								if($page !== null && is_object($page) && isset($page->status) && $page->status == 200 && isset($page->results) && is_array($page->results) && count($page->results) > 0 && isset($page->results[0]->type_page)){
+									
+									if($page->results[0]->type_page == "modules"){
 
-									include "pages/dynamic/dynamic.php";
-								
-								}else if($page->status == 200 && $page->results[0]->type_page == "custom"){
+										include "pages/dynamic/dynamic.php";
+									
+									}else if($page->results[0]->type_page == "custom"){
 
-									include "pages/custom/".$routesArray[0]."/".$routesArray[0].".php";
+										include "pages/custom/".$routesArray[0]."/".$routesArray[0].".php";
+									
+									}else{
+
+										include "pages/404/404.php";
+									
+									}
 								
 								}else{
 

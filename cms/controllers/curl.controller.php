@@ -42,7 +42,7 @@ class CurlController{
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_ENCODING => '',
 			CURLOPT_MAXREDIRS => 10,
-			CURLOPT_TIMEOUT => 0,
+			CURLOPT_TIMEOUT => 30, // Changed from 0 to 30 seconds
 			CURLOPT_FOLLOWLOCATION => true,
 			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
 			CURLOPT_CUSTOMREQUEST => $method,
@@ -53,10 +53,55 @@ class CurlController{
 		));
 
 		$response = curl_exec($curl);
+		$httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		$curlError = curl_error($curl);
 
 		curl_close($curl);
-		$response = json_decode($response);
-		return $response;
+
+		// Handle cURL errors
+		if ($response === false || !empty($curlError)) {
+			return (object)[
+				'status' => 500,
+				'message' => 'Error de conexión: ' . ($curlError ?: 'Error desconocido'),
+				'results' => []
+			];
+		}
+
+		// Decode JSON response
+		$decodedResponse = json_decode($response);
+
+		// If JSON decode failed or returned null, return error object
+		if ($decodedResponse === null && json_last_error() !== JSON_ERROR_NONE) {
+			return (object)[
+				'status' => 500,
+				'message' => 'Error al decodificar respuesta JSON: ' . json_last_error_msg(),
+				'results' => []
+			];
+		}
+
+		// If decoded response is null but no JSON error, return error object
+		if ($decodedResponse === null) {
+			return (object)[
+				'status' => $httpCode ?: 500,
+				'message' => 'Respuesta vacía del servidor',
+				'results' => []
+			];
+		}
+
+		// Ensure response has status property
+		if (!isset($decodedResponse->status)) {
+			$decodedResponse->status = $httpCode ?: 200;
+		}
+
+		// Ensure response has results property if it's an array response
+		if (!isset($decodedResponse->results) && is_array($decodedResponse)) {
+			$decodedResponse = (object)[
+				'status' => $httpCode ?: 200,
+				'results' => $decodedResponse
+			];
+		}
+
+		return $decodedResponse;
 
 	}
 

@@ -1,0 +1,3 @@
+# Protect migrations directory
+Order allow,deny
+Deny from all

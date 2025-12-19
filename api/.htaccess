@@ -3,5 +3,18 @@ Options -MultiViews
 
 RewriteEngine On
 
+# Protect sensitive files
+<FilesMatch "^(config\.php|config\.example\.php|\.env|\.env\.local)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect sensitive directories
+RewriteRule ^(config|vendor|backups|migrations|\.cursor|\.git) - [F,L]
+
+# Protect PHP files in sensitive locations
+RewriteRule ^(config|vendor)/.*\.php$ - [F,L]
+
+# API routing
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]
