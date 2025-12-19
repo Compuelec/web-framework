@@ -1,0 +1,80 @@
+# Cursor
+.cursor/
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# PHP
+composer.lock
+composer.phar
+*.log
+php_error_log
+*.cache
+
+# Sensitive configuration files
+.env
+.env.local
+.env.*.local
+config.local.php
+*.key
+*.pem
+
+# Configuration files (use .example files as templates)
+api/config.php
+cms/config.php
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+
+# Database files
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# Upload files (if they shouldn't be versioned)
+uploads/
+files/
+storage/
+
+# Node modules (if there's frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Build and dist
+dist/
+build/
+*.min.js
+*.min.css
+
+# Logs
+logs/
+*.log
+log.txt

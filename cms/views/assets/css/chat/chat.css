@@ -1,0 +1,128 @@
+.main-container {
+  display: flex;
+  height: 100vh;
+  flex-direction: row;
+}
+.contact-list {
+/*  min-width: 100%;*/
+  width:100%;
+  background-color: #f0f0f0;
+  border-left: 1px solid #ccc;
+  padding: 10px;
+  display: block;
+}
+.contact-list h5 {
+  margin-bottom: 15px;
+}
+.contact-item {
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #fff;
+  margin-bottom: 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.contact-item:hover {
+  background-color: #e2f0d9;
+}
+.chat-container {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  background-color: #fff;
+}
+.chat-header {
+  background-color: #075e54;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chat-header .bot-name {
+  font-weight: bold;
+}
+.chat-body {
+  flex: 1;
+  padding: 15px;
+  padding-bottom:80px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-image: url('http://cms.chatcenter-dev.com/views/assets/files/67f557e4564f048.png');
+  background-size: auto;
+  background-repeat: repeat;
+}
+.msg {
+  position: relative;
+  max-width: 75%;
+  padding: 10px;
+  border-radius: 10px;
+  line-height: 1.4;
+}
+.msg.user {
+  align-self: flex-start;
+  background-color: #D9FDD3;
+}
+
+.msg.user span {
+  position: inherit;
+  bottom:0;
+  right:0;
+}
+.msg.bot {
+  align-self: flex-end;
+  background-color: #fff;
+}
+.chat-footer {
+  display: flex;
+  padding: 10px;
+  border-top: 1px solid #ddd;
+  background-color: #fff;
+  bottom:0px;
+}
+.chat-footer input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+}
+
+.chat-footer button.attach {
+  border: 1px solid #bbb;
+  background-color: #eee;
+  border-radius: 50%;
+  color:#333;
+  width: 40px;
+  height: 40px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.chat-footer button.send {
+  background-color: #075e54;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+@media (min-width: 992px) {
+  .chat-container {
+    display:flex;
+  }
+  .contact-list {
+    max-width:300px;
+  }
+}
+@media (max-width: 768px) {
+  .chat-body {
+    padding: 10px;
+  }
+  .msg {
+    max-width: 85%;
+  }
+}
