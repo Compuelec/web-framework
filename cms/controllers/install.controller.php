@@ -44,9 +44,9 @@ class InstallController{
 		$config = self::getConfig();
 		$dbConfig = $config['database'] ?? [];
 		return [
-			"database" => $dbConfig['name'] ?? 'chatcenter',
-			"user" => $dbConfig['user'] ?? 'root',
-			"pass" => $dbConfig['pass'] ?? ''
+			"database" => $dbConfig['name'],
+			"user" => $dbConfig['user'],
+			"pass" => $dbConfig['pass']
 		];
 	}
 
@@ -57,12 +57,12 @@ class InstallController{
 		
 		try{
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root',
-				$dbConfig['pass'] ?? ''
+				"mysql:host=".($dbConfig['host']).";dbname=".($dbConfig['name']),
+				$dbConfig['user'],
+				$dbConfig['pass']
 			);
 			
-			$link->exec("set names ".($dbConfig['charset'] ?? 'utf8mb4'));
+			$link->exec("set names ".($dbConfig['charset']));
 
 		}catch(PDOException $e){
 
@@ -349,7 +349,7 @@ class InstallController{
 				
 				// Get API config for error message
 				$apiConfig = self::getConfig();
-				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
+				$apiBaseUrl = $apiConfig['api']['base_url'];
 				
 				// Debug: Log full response for troubleshooting (escape for HTML/JS)
 				$fullResponse = json_encode($homePage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -427,7 +427,7 @@ class InstallController{
 
 				// Get API config for error message
 				$apiConfig = self::getConfig();
-				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
+				$apiBaseUrl = $apiConfig['api']['base_url'];
 
 				// Debug: Log full response for troubleshooting (escape for HTML/JS)
 				$fullResponse = json_encode($adminPage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

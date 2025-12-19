@@ -189,7 +189,7 @@ var GlobalSearch = {
             });
         });
         
-        // Resaltar término de búsqueda
+        // Highlight search term
         this.highlightSearchTerm();
     },
     

@@ -56,24 +56,24 @@ return [
 
     // Updates Configuration
     'updates' => [
-        // Opción 1: GitHub Releases/Tags (recomendado)
-        // El sistema verificará automáticamente los releases/tags en GitHub
-        'github_owner' => 'tu-usuario-github',        // Usuario u organización de GitHub
-        'github_repo' => 'tu-repositorio',            // Nombre del repositorio
-        'github_token' => null,                       // Token de GitHub (opcional, solo para repos privados)
-                                                      // Genera un token en: https://github.com/settings/tokens
+        // Option 1: GitHub Releases/Tags (recommended)
+        // The system will automatically check releases/tags on GitHub
+        'github_owner' => 'tu-usuario-github',        // GitHub user or organization
+        'github_repo' => 'tu-repositorio',            // Repository name
+        'github_token' => null,                       // GitHub token (optional, only for private repos)
+                                                      // Generate a token at: https://github.com/settings/tokens
         
-        // Opción 2: Servidor de actualizaciones personalizado (alternativa a GitHub)
-        // Si se configuran github_owner y github_repo, esta opción se ignora
+        // Option 2: Custom update server (alternative to GitHub)
+        // If github_owner and github_repo are configured, this option is ignored
         'server_url' => 'https://updates.yourframework.com/api/check',
         
-        // Opción 3: Archivo local (solo para desarrollo/testing)
-        // Si no se configura GitHub ni server_url, se usará updates/update-info.json
+        // Option 3: Local file (only for development/testing)
+        // If GitHub or server_url are not configured, updates/update-info.json will be used
         
-        // Habilitar verificación automática de actualizaciones
+        // Enable automatic update checking
         'auto_check' => true,
         
-        // Intervalo de verificación automática en horas (solo si auto_check es true)
+        // Automatic check interval in hours (only if auto_check is true)
         'check_interval' => 24
     ]
 ];
