@@ -389,12 +389,27 @@ class PackageInstallController {
         // The password is already in the restored database
         
         // Delete database.sql file after successful installation (before showing success message)
-        if ($dbRestored && $databaseFilePath && file_exists($databaseFilePath)) {
-            $deleteResult = @unlink($databaseFilePath);
-            if ($deleteResult) {
-                error_log("Info: Deleted database.sql file after successful installation");
+        if ($dbRestored) {
+            // Get database file path if not already set
+            if ($databaseFilePath === null) {
+                $rootDir = dirname(dirname(__DIR__));
+                $databaseFilePath = $rootDir . '/database.sql';
+            }
+            
+            if ($databaseFilePath && file_exists($databaseFilePath)) {
+                // Try to delete the file
+                $deleteResult = @unlink($databaseFilePath);
+                if ($deleteResult) {
+                    error_log("Info: Successfully deleted database.sql file after installation: " . $databaseFilePath);
+                } else {
+                    // Try to get more info about why it failed
+                    $error = error_get_last();
+                    $filePerms = file_exists($databaseFilePath) ? substr(sprintf('%o', fileperms($databaseFilePath)), -4) : 'N/A';
+                    $dirPerms = is_dir(dirname($databaseFilePath)) ? substr(sprintf('%o', fileperms(dirname($databaseFilePath))), -4) : 'N/A';
+                    error_log("Warning: Could not delete database.sql file: " . $databaseFilePath . ". File perms: $filePerms, Dir perms: $dirPerms. Error: " . ($error['message'] ?? 'Unknown'));
+                }
             } else {
-                error_log("Warning: Could not delete database.sql file: " . $databaseFilePath);
+                error_log("Info: database.sql file not found or already deleted: " . ($databaseFilePath ?? 'N/A'));
             }
         }
         
