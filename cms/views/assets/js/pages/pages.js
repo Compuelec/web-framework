@@ -30,6 +30,12 @@ $(document).on("click",".myPage",function(){
 			$("#url_page").val(JSON.parse(page).url_page);
 			$("#icon_page").val(JSON.parse(page).icon_page);
 			$("#type_page").val(JSON.parse(page).type_page);
+			
+			// Update icon preview
+			const iconPreview = document.getElementById('iconPagePreview');
+			if (iconPreview && JSON.parse(page).icon_page) {
+				iconPreview.className = `bi ${JSON.parse(page).icon_page}`;
+			}
 		
 
 		}else{
@@ -38,6 +44,12 @@ $(document).on("click",".myPage",function(){
 			$("#url_page").val('');
 			$("#icon_page").val('');
 			$("#type_page").val('');
+			
+			// Reset icon preview
+			const iconPreview = document.getElementById('iconPagePreview');
+			if (iconPreview) {
+				iconPreview.className = 'bi bi-gear';
+			}
 		}
 
 	})
