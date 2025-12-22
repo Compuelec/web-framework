@@ -334,11 +334,21 @@ $(document).ready(function() {
 	});
 	
 	// Clear logs button
-	$('#clearLogsBtn').on('click', async function() {
-		const confirmed = await fncSweetAlert("confirm", '¿Estás seguro de que deseas eliminar todos los logs de actividad? Esta acción no se puede deshacer.');
-		if (!confirmed) {
-			return;
-		}
+	$('#clearLogsBtn').on('click', function() {
+		Swal.fire({
+            title: '¿Estás seguro?',
+            text: '¿Estás seguro de que deseas eliminar todos los logs de actividad? Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                return;
+            }
+        })
 		
 		$.ajax({
 			url: '<?php echo $cmsBasePath; ?>/ajax/activity_logs.ajax.php',
@@ -349,14 +359,14 @@ $(document).ready(function() {
 			dataType: 'json',
 			success: function(response) {
 				if (response.success) {
-					fncSweetAlert("success", 'Logs eliminados exitosamente', "");
+					Swal.fire('Logs eliminados exitosamente', '', 'success');
 					loadLogs(currentPage, currentLimit, currentFilters);
 				} else {
-					fncSweetAlert("error", 'Error al eliminar logs: ' + (response.error || 'Error desconocido'), "");
+					Swal.fire('Error', 'Error al eliminar logs: ' + (response.error || 'Error desconocido'), 'error');
 				}
 			},
 			error: function() {
-				fncSweetAlert("error", 'Error al conectar con el servidor', "");
+				Swal.fire('Error', 'Error al conectar con el servidor', 'error');
 			}
 		});
 	});
