@@ -10,6 +10,21 @@ require_once __DIR__ . '/../../../../controllers/packaging.controller.php';
 
 $packages = PackagingController::getPackages();
 
+// Calculate base path for downloads
+// Use the global $cmsBasePath from template.php, or calculate it
+if (!isset($cmsBasePath)) {
+    require_once __DIR__ . '/../../../../controllers/template.controller.php';
+    $cmsBasePath = TemplateController::cmsBasePath();
+}
+// Remove /cms from the base path to get project root
+$projectBasePath = str_replace('/cms', '', $cmsBasePath);
+// If base path is empty or just ".", use relative path
+if (empty($projectBasePath) || $projectBasePath === '.') {
+    $projectBasePath = '../../../../';
+} else {
+    $projectBasePath = rtrim($projectBasePath, '/');
+}
+
 ?>
 
 <div class="container-fluid p-4">
@@ -40,7 +55,8 @@ $packages = PackagingController::getPackages();
 					</p>
 					<ul class="mb-0">
 						<li>Todos los archivos fuente del proyecto</li>
-						<li>Archivos de ejemplo de configuración</li>
+						<li>Archivos de configuración (config.php)</li>
+						<li>Dependencias (vendor/)</li>
 						<li>Scripts y controladores</li>
 						<li>Vistas y assets</li>
 						<li><strong>Base de datos completa (database.sql)</strong></li>
@@ -51,10 +67,10 @@ $packages = PackagingController::getPackages();
 						<strong>¿Qué se excluye del paquete?</strong>
 					</p>
 					<ul class="mb-0">
-						<li>Archivos de configuración sensibles (config.php)</li>
-						<li>Dependencias (vendor/, node_modules/)</li>
 						<li>Archivos de respaldo y logs</li>
 						<li>Archivos temporales</li>
+						<li>Archivos del sistema (.DS_Store, Thumbs.db)</li>
+						<li>Archivos de control de versiones (.git/)</li>
 					</ul>
 				</div>
 			</div>
@@ -102,7 +118,7 @@ $packages = PackagingController::getPackages();
 										<?php echo htmlspecialchars($package['created']); ?>
 									</td>
 									<td>
-										<a href="<?php echo htmlspecialchars($package['download_url']); ?>" 
+										<a href="<?php echo htmlspecialchars($projectBasePath . '/packages/' . $package['filename']); ?>" 
 										   class="btn btn-sm btn-primary" 
 										   download>
 											<i class="bi bi-download"></i> Descargar
@@ -168,8 +184,25 @@ document.addEventListener('DOMContentLoaded', function() {
 				'Content-Type': 'application/json'
 			}
 		})
-		.then(response => response.json())
-		.then(data => {
+		.then(response => {
+			// Check if response is ok
+			if (!response.ok) {
+				throw new Error('HTTP error! status: ' + response.status);
+			}
+			// Get response text first to debug
+			return response.text();
+		})
+		.then(text => {
+			// Try to parse JSON
+			let data;
+			try {
+				data = JSON.parse(text);
+			} catch (e) {
+				console.error('Error parsing JSON:', e);
+				console.error('Response text:', text);
+				throw new Error('Error al parsear la respuesta del servidor: ' + e.message);
+			}
+			
 			packagingModal.hide();
 			
 			if (data.success) {
@@ -177,38 +210,46 @@ document.addEventListener('DOMContentLoaded', function() {
 					? ' Incluye la base de datos completa (database.sql).'
 					: ' Nota: No se pudo incluir la base de datos.';
 				
-				fncSweetAlert(
-					'success',
-					'Paquete creado exitosamente',
-					`El paquete "${data.filename}" se ha creado correctamente (${data.size_mb} MB).${dbMessage}`,
-					function() {
-						location.reload();
-					}
-				);
+				Swal.fire({
+					icon: 'success',
+					title: 'Paquete creado exitosamente',
+					text: `El paquete "${data.filename}" se ha creado correctamente (${data.size_mb} MB).${dbMessage}`,
+					showConfirmButton: false,
+					timer: 2000
+				}).then(() => {
+					location.reload();
+				});
 			} else {
 				fncSweetAlert(
 					'error',
-					'Error al crear paquete',
-					data.message || 'No se pudo crear el paquete'
+					data.message || data.error || 'No se pudo crear el paquete',
+					''
 				);
 			}
 		})
 		.catch(error => {
 			packagingModal.hide();
+			console.error('Error creating package:', error);
 			fncSweetAlert(
 				'error',
-				'Error',
-				'Ocurrió un error al crear el paquete: ' + error.message
+				'Ocurrió un error al crear el paquete: ' + error.message,
+				''
 			);
 		});
 	}
 	
 	function deletePackage(filename) {
-		fncSweetAlert(
-			'warning',
-			'¿Eliminar paquete?',
-			`¿Estás seguro de que deseas eliminar "${filename}"?`,
-			function() {
+		Swal.fire({
+			title: '¿Eliminar paquete?',
+			text: `¿Estás seguro de que deseas eliminar "${filename}"?`,
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonColor: '#d33',
+			cancelButtonColor: '#3085d6',
+			confirmButtonText: 'Sí, eliminar',
+			cancelButtonText: 'Cancelar'
+		}).then((result) => {
+			if (result.isConfirmed) {
 				const formData = new FormData();
 				formData.append('action', 'delete');
 				formData.append('filename', filename);
@@ -220,32 +261,32 @@ document.addEventListener('DOMContentLoaded', function() {
 				.then(response => response.json())
 				.then(data => {
 					if (data.success) {
-						fncSweetAlert(
-							'success',
-							'Paquete eliminado',
-							'El paquete se ha eliminado correctamente.',
-							function() {
-								location.reload();
-							}
-						);
+						Swal.fire({
+							icon: 'success',
+							title: 'Paquete eliminado',
+							text: 'El paquete se ha eliminado correctamente.',
+							showConfirmButton: false,
+							timer: 1500
+						}).then(() => {
+							location.reload();
+						});
 					} else {
-						fncSweetAlert(
-							'error',
-							'Error',
-							data.message || 'No se pudo eliminar el paquete'
-						);
+						Swal.fire({
+							icon: 'error',
+							title: 'Error',
+							text: data.message || 'No se pudo eliminar el paquete'
+						});
 					}
 				})
 				.catch(error => {
-					fncSweetAlert(
-						'error',
-						'Error',
-						'Ocurrió un error al eliminar el paquete: ' + error.message
-					);
+					Swal.fire({
+						icon: 'error',
+						title: 'Error',
+						text: 'Ocurrió un error al eliminar el paquete: ' + error.message
+					});
 				});
-			},
-			true
-		);
+			}
+		});
 	}
 });
 </script>

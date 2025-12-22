@@ -54,11 +54,16 @@ class UpdatesController {
         $config = self::getConfig();
         $dbConfig = $config['database'] ?? [];
         
+        // Validate required database configuration
+        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+            die("Error: Database configuration is missing. Please configure your database settings in config.php");
+        }
+        
         try {
             $link = new PDO(
-                "mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-                $dbConfig['user'] ?? 'root',
-                $dbConfig['pass'] ?? ''
+                "mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+                $dbConfig['user'],
+                $dbConfig['pass']
             );
             $link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -430,10 +435,18 @@ class UpdatesController {
         $config = self::getConfig();
         $dbConfig = $config['database'] ?? [];
 
-        $dbName = $dbConfig['name'] ?? 'chatcenter';
-        $dbUser = $dbConfig['user'] ?? 'root';
-        $dbPass = $dbConfig['pass'] ?? '';
-        $dbHost = $dbConfig['host'] ?? 'localhost';
+        // Validate required database configuration
+        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+            return [
+                'success' => false,
+                'message' => 'Database configuration is incomplete. Please configure all database settings in config.php'
+            ];
+        }
+
+        $dbName = $dbConfig['name'];
+        $dbUser = $dbConfig['user'];
+        $dbPass = $dbConfig['pass'];
+        $dbHost = $dbConfig['host'];
 
         $dbBackupFile = $backupPath . '/database.sql';
 

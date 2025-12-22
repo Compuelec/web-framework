@@ -72,18 +72,50 @@ class PathUpdaterController {
     public static function updateCmsConfig($domainInfo, $dbConfig, $apiKey = null, $passwordSalt = null) {
         $configPath = __DIR__ . '/../config.php';
         $examplePath = __DIR__ . '/../config.example.php';
+        $configDir = dirname($configPath);
+        
+        // Ensure directory exists and is writable
+        if (!is_dir($configDir)) {
+            if (!mkdir($configDir, 0755, true)) {
+                return ['success' => false, 'message' => 'No se pudo crear el directorio de configuración: ' . $configDir];
+            }
+        }
+        
+        if (!is_writable($configDir)) {
+            return ['success' => false, 'message' => 'El directorio no tiene permisos de escritura: ' . $configDir . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configDir)), -4)];
+        }
         
         // If config.php doesn't exist, create it from example
         if (!file_exists($configPath) && file_exists($examplePath)) {
-            copy($examplePath, $configPath);
+            if (!copy($examplePath, $configPath)) {
+                return ['success' => false, 'message' => 'No se pudo copiar el archivo de ejemplo. Verifique permisos.'];
+            }
+            // Set permissions on new file
+            chmod($configPath, 0644);
         }
         
         if (!file_exists($configPath)) {
-            return ['success' => false, 'message' => 'No se encontró el archivo de configuración'];
+            return ['success' => false, 'message' => 'No se encontró el archivo de configuración y no se pudo crear desde el ejemplo'];
+        }
+        
+        // Check if file is writable
+        if (!is_writable($configPath)) {
+            return ['success' => false, 'message' => 'El archivo de configuración no tiene permisos de escritura: ' . $configPath . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configPath)), -4)];
         }
         
         // Load current configuration
         $config = require $configPath;
+        
+        // Ensure all required sections exist
+        if (!isset($config['database'])) {
+            $config['database'] = [];
+        }
+        if (!isset($config['api'])) {
+            $config['api'] = [];
+        }
+        if (!isset($config['password'])) {
+            $config['password'] = [];
+        }
         
         // Update configuration
         if (isset($dbConfig['host'])) {
@@ -97,6 +129,10 @@ class PathUpdaterController {
         }
         if (isset($dbConfig['pass'])) {
             $config['database']['pass'] = $dbConfig['pass'];
+        }
+        // Ensure charset is set
+        if (!isset($config['database']['charset'])) {
+            $config['database']['charset'] = 'utf8mb4';
         }
         
         // Update API URL
@@ -116,11 +152,22 @@ class PathUpdaterController {
         
         // Save configuration
         $configContent = self::generateConfigFile($config);
-        $result = file_put_contents($configPath, $configContent);
+        
+        // Try to write with error handling
+        $result = @file_put_contents($configPath, $configContent, LOCK_EX);
         
         if ($result === false) {
-            return ['success' => false, 'message' => 'No se pudo escribir el archivo de configuración'];
+            $error = error_get_last();
+            $errorMsg = 'No se pudo escribir el archivo de configuración';
+            if ($error && isset($error['message'])) {
+                $errorMsg .= ': ' . $error['message'];
+            }
+            $errorMsg .= '. Verifique permisos de escritura en: ' . $configPath;
+            return ['success' => false, 'message' => $errorMsg];
         }
+        
+        // Clear file stat cache to ensure fresh reads
+        clearstatcache(true, $configPath);
         
         return [
             'success' => true,
@@ -131,23 +178,154 @@ class PathUpdaterController {
     }
     
     /**
-     * Updates the API configuration file
+     * Updates only API URLs in CMS configuration (does not touch database config)
+     * Returns success even if file is not writable (non-blocking)
      */
-    public static function updateApiConfig($dbConfig, $apiKey = null, $jwtSecret = null, $passwordSalt = null) {
+    public static function updateCmsConfigUrlsOnly($domainInfo) {
+        $configPath = __DIR__ . '/../config.php';
+        $examplePath = __DIR__ . '/../config.example.php';
+        
+        // If config.php doesn't exist, try to create it from example
+        if (!file_exists($configPath) && file_exists($examplePath)) {
+            if (!@copy($examplePath, $configPath)) {
+                return ['success' => false, 'message' => 'No se pudo crear config.php desde el ejemplo'];
+            }
+            @chmod($configPath, 0644);
+        }
+        
+        if (!file_exists($configPath)) {
+            return ['success' => false, 'message' => 'No se encontró el archivo de configuración'];
+        }
+        
+        // Check if file is writable - if not, return success anyway (non-blocking)
+        if (!is_writable($configPath)) {
+            return ['success' => false, 'message' => 'El archivo de configuración no tiene permisos de escritura (puede continuar la instalación)'];
+        }
+        
+        // Load current configuration
+        $config = require $configPath;
+        
+        // Ensure api section exists
+        if (!isset($config['api'])) {
+            $config['api'] = [];
+        }
+        
+        // Update only API URL
+        $config['api']['base_url'] = $domainInfo['api_url'] . '/';
+        
+        // Save configuration
+        $configContent = self::generateConfigFile($config);
+        $result = @file_put_contents($configPath, $configContent, LOCK_EX);
+        
+        if ($result === false) {
+            return ['success' => false, 'message' => 'No se pudo escribir el archivo de configuración (puede continuar la instalación)'];
+        }
+        
+        clearstatcache(true, $configPath);
+        
+        return [
+            'success' => true,
+            'message' => 'URLs del CMS actualizadas'
+        ];
+    }
+    
+    /**
+     * Updates only API URLs in API configuration (does not touch database config)
+     * Returns success even if file is not writable (non-blocking)
+     */
+    public static function updateApiConfigUrlsOnly($domainInfo) {
         $configPath = __DIR__ . '/../../api/config.php';
         $examplePath = __DIR__ . '/../../api/config.example.php';
         
-        // If config.php doesn't exist, create it from example
+        // If config.php doesn't exist, try to create it from example
         if (!file_exists($configPath) && file_exists($examplePath)) {
-            copy($examplePath, $configPath);
+            if (!@copy($examplePath, $configPath)) {
+                return ['success' => false, 'message' => 'No se pudo crear config.php de la API desde el ejemplo'];
+            }
+            @chmod($configPath, 0644);
         }
         
         if (!file_exists($configPath)) {
             return ['success' => false, 'message' => 'No se encontró el archivo de configuración de la API'];
         }
         
+        // Check if file is writable - if not, return success anyway (non-blocking)
+        if (!is_writable($configPath)) {
+            return ['success' => false, 'message' => 'El archivo de configuración de la API no tiene permisos de escritura (puede continuar la instalación)'];
+        }
+        
         // Load current configuration
         $config = require $configPath;
+        
+        // Save configuration (API config doesn't have base_url, so we just ensure it's valid)
+        $configContent = self::generateConfigFile($config);
+        $result = @file_put_contents($configPath, $configContent, LOCK_EX);
+        
+        if ($result === false) {
+            return ['success' => false, 'message' => 'No se pudo escribir el archivo de configuración de la API (puede continuar la instalación)'];
+        }
+        
+        clearstatcache(true, $configPath);
+        
+        return [
+            'success' => true,
+            'message' => 'Configuración de la API actualizada'
+        ];
+    }
+    
+    /**
+     * Updates the API configuration file
+     */
+    public static function updateApiConfig($dbConfig, $apiKey = null, $jwtSecret = null, $passwordSalt = null) {
+        $configPath = __DIR__ . '/../../api/config.php';
+        $examplePath = __DIR__ . '/../../api/config.example.php';
+        $configDir = dirname($configPath);
+        
+        // Ensure directory exists and is writable
+        if (!is_dir($configDir)) {
+            if (!mkdir($configDir, 0755, true)) {
+                return ['success' => false, 'message' => 'No se pudo crear el directorio de configuración de la API: ' . $configDir];
+            }
+        }
+        
+        if (!is_writable($configDir)) {
+            return ['success' => false, 'message' => 'El directorio de la API no tiene permisos de escritura: ' . $configDir . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configDir)), -4)];
+        }
+        
+        // If config.php doesn't exist, create it from example
+        if (!file_exists($configPath) && file_exists($examplePath)) {
+            if (!copy($examplePath, $configPath)) {
+                return ['success' => false, 'message' => 'No se pudo copiar el archivo de ejemplo de la API. Verifique permisos.'];
+            }
+            // Set permissions on new file
+            chmod($configPath, 0644);
+        }
+        
+        if (!file_exists($configPath)) {
+            return ['success' => false, 'message' => 'No se encontró el archivo de configuración de la API y no se pudo crear desde el ejemplo'];
+        }
+        
+        // Check if file is writable
+        if (!is_writable($configPath)) {
+            return ['success' => false, 'message' => 'El archivo de configuración de la API no tiene permisos de escritura: ' . $configPath . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configPath)), -4)];
+        }
+        
+        // Load current configuration
+        $config = require $configPath;
+        
+        // Ensure all required sections exist
+        if (!isset($config['database'])) {
+            $config['database'] = [];
+        }
+        if (!isset($config['api'])) {
+            $config['api'] = [];
+        }
+        if (!isset($config['jwt'])) {
+            $config['jwt'] = [];
+        }
+        if (!isset($config['password'])) {
+            $config['password'] = [];
+        }
         
         // Update database configuration
         if (isset($dbConfig['host'])) {
@@ -161,6 +339,10 @@ class PathUpdaterController {
         }
         if (isset($dbConfig['pass'])) {
             $config['database']['pass'] = $dbConfig['pass'];
+        }
+        // Ensure charset is set
+        if (!isset($config['database']['charset'])) {
+            $config['database']['charset'] = 'utf8mb4';
         }
         
         // Generate new keys if not provided
@@ -181,11 +363,22 @@ class PathUpdaterController {
         
         // Save configuration
         $configContent = self::generateConfigFile($config);
-        $result = file_put_contents($configPath, $configContent);
+        
+        // Try to write with error handling
+        $result = @file_put_contents($configPath, $configContent, LOCK_EX);
         
         if ($result === false) {
-            return ['success' => false, 'message' => 'No se pudo escribir el archivo de configuración de la API'];
+            $error = error_get_last();
+            $errorMsg = 'No se pudo escribir el archivo de configuración de la API';
+            if ($error && isset($error['message'])) {
+                $errorMsg .= ': ' . $error['message'];
+            }
+            $errorMsg .= '. Verifique permisos de escritura en: ' . $configPath;
+            return ['success' => false, 'message' => $errorMsg];
         }
+        
+        // Clear file stat cache to ensure fresh reads
+        clearstatcache(true, $configPath);
         
         return [
             'success' => true,
@@ -262,11 +455,20 @@ class PathUpdaterController {
      */
     public static function updateDatabaseUrls($oldDomain, $newDomain, $dbConfig) {
         try {
+            // Validate required database configuration
+            if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+                return [
+                    'success' => false,
+                    'message' => 'Database configuration is incomplete',
+                    'updated_count' => 0
+                ];
+            }
+            
             // Connect to database
             $link = new PDO(
-                "mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-                $dbConfig['user'] ?? 'root',
-                $dbConfig['pass'] ?? ''
+                "mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+                $dbConfig['user'],
+                $dbConfig['pass']
             );
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
@@ -337,10 +539,15 @@ class PathUpdaterController {
      */
     public static function detectOldDomainFromDatabase($dbConfig) {
         try {
+            // Validate required database configuration
+            if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+                return null;
+            }
+            
             $link = new PDO(
-                "mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-                $dbConfig['user'] ?? 'root',
-                $dbConfig['pass'] ?? ''
+                "mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+                $dbConfig['user'],
+                $dbConfig['pass']
             );
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             

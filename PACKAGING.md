@@ -109,11 +109,12 @@ require_once 'cms/controllers/path-updater.controller.php';
 $domainInfo = PathUpdaterController::detectDomain();
 
 // Actualizar configuración del CMS
+// NOTA: Los valores de base de datos deben venir de tu configuración, no estar hardcodeados
 $dbConfig = [
-    'host' => 'localhost',
-    'name' => 'chatcenter',
-    'user' => 'root',
-    'pass' => ''
+    'host' => 'tu_host',      // Ejemplo: 'localhost' o '127.0.0.1'
+    'name' => 'tu_database',   // Ejemplo: 'mi_base_datos'
+    'user' => 'tu_usuario',    // Ejemplo: 'root' o tu usuario de BD
+    'pass' => 'tu_password'     // Tu contraseña de base de datos
 ];
 PathUpdaterController::updateCmsConfig($domainInfo, $dbConfig);
 

@@ -18,16 +18,22 @@ class ActivityLogsController {
 			$config = self::getConfig();
 			$dbConfig = $config['database'] ?? [];
 			
+			// Validate required database configuration
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				error_log("Ensure activity_logs table error: Database configuration is missing");
+				return false;
+			}
+			
 			$link = new PDO(
-				"mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root',
-				$dbConfig['pass'] ?? ''
+				"mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+				$dbConfig['user'],
+				$dbConfig['pass']
 			);
 			
 			$link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
 			
 			// Check if table exists
-			$database = $dbConfig['name'] ?? 'chatcenter';
+			$database = $dbConfig['name'];
 			$checkTable = $link->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$database' AND table_name = 'activity_logs'")->fetchColumn();
 			
 			if ($checkTable == 0) {
@@ -82,10 +88,16 @@ class ActivityLogsController {
 			$config = self::getConfig();
 			$dbConfig = $config['database'] ?? [];
 			
+			// Validate required database configuration
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				error_log("Activity log error: Database configuration is missing");
+				return false;
+			}
+			
 			$link = new PDO(
-				"mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root',
-				$dbConfig['pass'] ?? ''
+				"mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+				$dbConfig['user'],
+				$dbConfig['pass']
 			);
 			
 			$link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
@@ -157,10 +169,16 @@ class ActivityLogsController {
 			$config = self::getConfig();
 			$dbConfig = $config['database'] ?? [];
 			
+			// Validate required database configuration
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				error_log("Activity log error: Database configuration is missing");
+				return false;
+			}
+			
 			$link = new PDO(
-				"mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root',
-				$dbConfig['pass'] ?? ''
+				"mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+				$dbConfig['user'],
+				$dbConfig['pass']
 			);
 			
 			$link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
@@ -231,10 +249,16 @@ class ActivityLogsController {
 			$config = self::getConfig();
 			$dbConfig = $config['database'] ?? [];
 			
+			// Validate required database configuration
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				error_log("Activity log error: Database configuration is missing");
+				return false;
+			}
+			
 			$link = new PDO(
-				"mysql:host=" . ($dbConfig['host'] ?? 'localhost') . ";dbname=" . ($dbConfig['name'] ?? 'chatcenter'),
-				$dbConfig['user'] ?? 'root',
-				$dbConfig['pass'] ?? ''
+				"mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+				$dbConfig['user'],
+				$dbConfig['pass']
 			);
 			
 			$link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
@@ -279,16 +303,8 @@ class ActivityLogsController {
 				return $config;
 			}
 		}
-		// Last resort: defaults
-		return [
-			'database' => [
-				'host' => 'localhost',
-				'name' => 'chatcenter',
-				'user' => 'root',
-				'pass' => '',
-				'charset' => 'utf8mb4'
-			]
-		];
+		// No configuration found - return empty array
+		return [];
 	}
 }
 

@@ -32,85 +32,38 @@
 					</div>
 				</div>
 
-				<!-- Section: Database Configuration -->
+				<!-- Section: Database Configuration Info -->
+				<?php
+				require_once __DIR__ . '/../../../controllers/install.controller.php';
+				$config = InstallController::getConfig();
+				$dbConfig = $config['database'] ?? [];
+				$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
+				?>
 				<div class="mb-4">
 					<h6 class="section-title mb-3">
 						<i class="bi bi-database me-2"></i>
 						Configuración de Base de Datos
 					</h6>
-					
-					<div class="row g-3">
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="db_host" class="form-label small">
-									Servidor <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="text"
-								class="form-control"
-								id="db_host"
-								name="db_host"
-								value="localhost"
-								placeholder="localhost"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Requerido</div>
-							</div>
+					<?php if ($hasDbConfig): ?>
+						<div class="alert alert-success">
+							<small>
+								<i class="bi bi-check-circle me-2"></i>
+								<strong>Configuración de base de datos encontrada:</strong><br>
+								Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
+								Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
+								Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
+								<em>La configuración de base de datos se lee desde <code>config.php</code></em>
+							</small>
 						</div>
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="db_name" class="form-label small">
-									Base de Datos <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="text"
-								class="form-control"
-								id="db_name"
-								name="db_name"
-								value="chatcenter"
-								placeholder="chatcenter"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Requerido</div>
-							</div>
+					<?php else: ?>
+						<div class="alert alert-warning">
+							<small>
+								<i class="bi bi-exclamation-triangle me-2"></i>
+								<strong>Configuración de base de datos no encontrada.</strong><br>
+								Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación.
+							</small>
 						</div>
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="db_user" class="form-label small">
-									Usuario <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="text"
-								class="form-control"
-								id="db_user"
-								name="db_user"
-								value="root"
-								placeholder="root"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Requerido</div>
-							</div>
-						</div>
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="db_pass" class="form-label small">
-									Contraseña
-								</label>
-								<input 
-								type="password"
-								class="form-control"
-								id="db_pass"
-								name="db_pass"
-								placeholder="••••••••"
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Opcional</div>
-							</div>
-						</div>
-					</div>
+					<?php endif; ?>
 				</div>
 
 				<!-- Section: Administrator Information -->

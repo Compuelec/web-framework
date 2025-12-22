@@ -5,6 +5,9 @@ class CurlController{
 	// Load configuration
 	private static function getConfig(){
 		$configPath = __DIR__ . '/../config.php';
+		// Clear cache to ensure we read the latest config
+		clearstatcache(true, $configPath);
+		
 		if(file_exists($configPath)){
 			$config = require $configPath;
 			if(is_array($config)){
@@ -13,6 +16,7 @@ class CurlController{
 		}
 		// Fallback to example if config doesn't exist
 		$examplePath = __DIR__ . '/../config.example.php';
+		clearstatcache(true, $examplePath);
 		if(file_exists($examplePath)){
 			$config = require $examplePath;
 			if(is_array($config)){
@@ -37,9 +41,11 @@ class CurlController{
 	// API requests
 	static public function request($url,$method,$fields){
 
+		// Force reload config to get latest values
+		clearstatcache();
 		$config = self::getConfig();
-		$apiBaseUrl = $config['api']['base_url'];
-		$apiKey = $config['api']['key'];
+		$apiBaseUrl = $config['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
+		$apiKey = $config['api']['key'] ?? '';
 
 		$curl = curl_init();
 

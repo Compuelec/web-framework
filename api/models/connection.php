@@ -7,6 +7,9 @@ class Connection{
 	// Load configuration
 	static public function getConfig(){
 		$configPath = __DIR__ . '/../config.php';
+		// Clear cache to ensure we read the latest config
+		clearstatcache(true, $configPath);
+		
 		if(file_exists($configPath)){
 			$config = require $configPath;
 			if(is_array($config)){
@@ -15,6 +18,7 @@ class Connection{
 		}
 		// Fallback to example if config doesn't exist
 		$examplePath = __DIR__ . '/../config.example.php';
+		clearstatcache(true, $examplePath);
 		if(file_exists($examplePath)){
 			$config = require $examplePath;
 			if(is_array($config)){
@@ -71,14 +75,20 @@ class Connection{
 		$config = self::getConfig();
 		$dbConfig = $config['database'] ?? [];
 		
+		// Validate required database configuration
+		if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+			error_log("Database Connection Error: Missing required database configuration");
+			return null;
+		}
+		
 		try{
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name']),
+				"mysql:host=".$dbConfig['host'].";dbname=".$dbConfig['name'],
 				$dbConfig['user'], 
 				$dbConfig['pass']
 			);
 
-			$link->exec("set names ".($dbConfig['charset']));
+			$link->exec("set names ".($dbConfig['charset'] ?? 'utf8mb4'));
 
 		}catch(PDOException $e){
 			// Log error instead of die() to prevent breaking JSON response
