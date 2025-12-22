@@ -231,11 +231,102 @@ class ActivityLogsController {
 			
 			$stmt->execute();
 			
-			return $stmt->fetchAll(PDO::FETCH_OBJ);
+			$results = $stmt->fetchAll(PDO::FETCH_OBJ);
+			return is_array($results) ? $results : [];
 			
 		} catch (PDOException $e) {
 			error_log("Get activity logs error: " . $e->getMessage());
+			error_log("SQL: " . $sql);
+			error_log("Params: " . print_r($params, true));
 			return [];
+		} catch (Exception $e) {
+			error_log("Get activity logs general error: " . $e->getMessage());
+			return [];
+		}
+	}
+	
+	/**
+	 * Get total count of logs with filters
+	 * 
+	 * @param array $filters Optional filters (admin_id, entity, action, date_from, date_to)
+	 * @return int Total count of logs
+	 */
+	public static function getLogsCount($filters = []) {
+		// Ensure table exists before counting
+		self::ensureTableExists();
+		
+		try {
+			$config = self::getConfig();
+			$dbConfig = $config['database'] ?? [];
+			
+			// Validate required database configuration
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				error_log("Activity log error: Database configuration is missing");
+				return 0;
+			}
+			
+			$link = new PDO(
+				"mysql:host=" . $dbConfig['host'] . ";dbname=" . $dbConfig['name'],
+				$dbConfig['user'],
+				$dbConfig['pass']
+			);
+			
+			$link->exec("set names " . ($dbConfig['charset'] ?? 'utf8mb4'));
+			
+			$sql = "SELECT COUNT(*) as total
+			FROM activity_logs al
+			WHERE 1=1";
+			
+			$params = [];
+			
+			if (isset($filters['admin_id'])) {
+				$sql .= " AND al.admin_id_log = :admin_id";
+				$params[':admin_id'] = $filters['admin_id'];
+			}
+			
+			if (isset($filters['entity'])) {
+				$sql .= " AND al.entity_log = :entity";
+				$params[':entity'] = $filters['entity'];
+			}
+			
+			if (isset($filters['action'])) {
+				$sql .= " AND al.action_log = :action";
+				$params[':action'] = $filters['action'];
+			}
+			
+			if (isset($filters['date_from'])) {
+				$sql .= " AND al.date_created_log >= :date_from";
+				$params[':date_from'] = $filters['date_from'];
+			}
+			
+			if (isset($filters['date_to'])) {
+				$sql .= " AND al.date_created_log <= :date_to";
+				$params[':date_to'] = $filters['date_to'];
+			}
+			
+			$stmt = $link->prepare($sql);
+			
+			foreach ($params as $key => $value) {
+				$stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+			}
+			
+			$stmt->execute();
+			$result = $stmt->fetch(PDO::FETCH_OBJ);
+			
+			if ($result && isset($result->total)) {
+				return (int)$result->total;
+			}
+			
+			return 0;
+			
+		} catch (PDOException $e) {
+			error_log("Get activity logs count error: " . $e->getMessage());
+			error_log("SQL: " . $sql);
+			error_log("Params: " . print_r($params, true));
+			return 0;
+		} catch (Exception $e) {
+			error_log("Get activity logs count general error: " . $e->getMessage());
+			return 0;
 		}
 	}
 	
