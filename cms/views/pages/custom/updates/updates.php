@@ -51,17 +51,12 @@ $updateHistory = UpdatesController::getUpdateHistory();
 				<i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
 				<div class="flex-grow-1">
 					<h5 class="alert-heading mb-1">¡Actualización Disponible!</h5>
-						<p class="mb-0">
+					<p class="mb-0">
 						Hay una nueva versión disponible: <strong>v<?php echo htmlspecialchars($updateInfo['latest_version']); ?></strong>
 						<?php if (isset($updateInfo['is_major_update']) && $updateInfo['is_major_update']): ?>
 							<span class="badge bg-danger ms-2">Actualización Mayor</span>
 						<?php endif; ?>
 					</p>
-					<?php if (isset($updateInfo['error']) && $updateInfo['error']): ?>
-						<div class="text-danger small mt-1 mb-2">
-							<i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($updateInfo['error']); ?>
-						</div>
-					<?php endif; ?>
 					<?php if (isset($updateInfo['update_info']['changelog'][$updateInfo['latest_version']])): ?>
 						<details class="mt-2">
 							<summary class="cursor-pointer">Ver cambios</summary>
@@ -185,11 +180,11 @@ $(document).ready(function() {
 					// Reload page to show update info
 					location.reload();
 				} else {
-					fncSweetAlert("error", 'Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'), "");
+					fncSweetAlert('error', 'Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'), '');
 				}
 			},
 			error: function() {
-				fncSweetAlert("error", 'Error al conectar con el servidor de actualizaciones', "");
+				fncSweetAlert('error', 'Error al conectar con el servidor de actualizaciones', '');
 			},
 			complete: function() {
 				btn.prop('disabled', false).html(originalHtml);
@@ -198,74 +193,75 @@ $(document).ready(function() {
 	});
 	
 	// Install update button
-	$('#installUpdateBtn').on('click', async function() {
-		const confirmed = await fncSweetAlert("confirm", '¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.');
-		if (!confirmed) {
-			return;
-		}
-		
-		const version = $(this).data('version');
-		const modal = new bootstrap.Modal(document.getElementById('updateProgressModal'));
-		modal.show();
-		
-		// Update progress steps
-		const steps = [
-			{ text: 'Creando respaldo...', progress: 25 },
-			{ text: 'Ejecutando migraciones...', progress: 50 },
-			{ text: 'Actualizando archivos...', progress: 75 },
-			{ text: 'Finalizando...', progress: 100 }
-		];
-		
-		let currentStep = 0;
-		
-		const updateProgress = function(stepIndex) {
-			if (stepIndex < steps.length) {
-				$('#updateProgressSteps p').eq(stepIndex).removeClass('text-muted').html('<i class="bi bi-check-circle-fill text-success"></i> ' + steps[stepIndex].text);
-				$('.progress-bar').css('width', steps[stepIndex].progress + '%');
-				
-				if (stepIndex < steps.length - 1) {
-					$('#updateProgressSteps p').eq(stepIndex + 1).removeClass('text-muted').html('<i class="bi bi-hourglass-split"></i> ' + steps[stepIndex + 1].text);
-				}
+	$('#installUpdateBtn').on('click', function() {
+		fncSweetAlert('confirm', '¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.', '').then((confirmed) => {
+			if (!confirmed) {
+				return;
 			}
-		};
 		
-		// Simulate progress (in production, this would be real-time updates via WebSocket or polling)
-		updateProgress(0);
-		setTimeout(() => updateProgress(1), 1000);
-		setTimeout(() => updateProgress(2), 2000);
-		setTimeout(() => updateProgress(3), 3000);
-		
-		// Make actual update request
-		$.ajax({
-			url: '<?php echo $cmsBasePath; ?>/ajax/updates.ajax.php',
-			method: 'POST',
-			data: {
-				action: 'update',
-				version: version
-			},
-			dataType: 'json',
-			success: function(response) {
-				setTimeout(() => {
-					modal.hide();
+			const version = $(this).data('version');
+			const modal = new bootstrap.Modal(document.getElementById('updateProgressModal'));
+			modal.show();
+			
+			// Update progress steps
+			const steps = [
+				{ text: 'Creando respaldo...', progress: 25 },
+				{ text: 'Ejecutando migraciones...', progress: 50 },
+				{ text: 'Actualizando archivos...', progress: 75 },
+				{ text: 'Finalizando...', progress: 100 }
+			];
+			
+			let currentStep = 0;
+			
+			const updateProgress = function(stepIndex) {
+				if (stepIndex < steps.length) {
+					$('#updateProgressSteps p').eq(stepIndex).removeClass('text-muted').html('<i class="bi bi-check-circle-fill text-success"></i> ' + steps[stepIndex].text);
+					$('.progress-bar').css('width', steps[stepIndex].progress + '%');
 					
-					if (response.success) {
-						fncSweetAlert("success", '¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version, "");
-						setTimeout(() => {
-							location.reload();
-						}, 2000);
-					} else {
-						fncSweetAlert("error", 'Error al instalar la actualización: ' + (response.error || 'Error desconocido'), "");
+					if (stepIndex < steps.length - 1) {
+						$('#updateProgressSteps p').eq(stepIndex + 1).removeClass('text-muted').html('<i class="bi bi-hourglass-split"></i> ' + steps[stepIndex + 1].text);
 					}
-				}, 1000);
-			},
-			error: function(xhr) {
-				modal.hide();
-				let errorMsg = 'Error al conectar con el servidor';
-				if (xhr.responseJSON && xhr.responseJSON.error) {
-					errorMsg = xhr.responseJSON.error;
 				}
-				fncSweetAlert("error", 'Error al instalar la actualización: ' + errorMsg, "");
-			}
+			};
+			
+			// Simulate progress (in production, this would be real-time updates via WebSocket or polling)
+			updateProgress(0);
+			setTimeout(() => updateProgress(1), 1000);
+			setTimeout(() => updateProgress(2), 2000);
+			setTimeout(() => updateProgress(3), 3000);
+			
+			// Make actual update request
+			$.ajax({
+				url: '<?php echo $cmsBasePath; ?>/ajax/updates.ajax.php',
+				method: 'POST',
+				data: {
+					action: 'update',
+					version: version
+				},
+				dataType: 'json',
+				success: function(response) {
+					setTimeout(() => {
+						modal.hide();
+						
+						if (response.success) {
+							fncSweetAlert('success', '¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version, '');
+							setTimeout(() => {
+								location.reload();
+							}, 2000);
+						} else {
+							fncSweetAlert('error', 'Error al instalar la actualización: ' + (response.error || 'Error desconocido'), '');
+						}
+					}, 1000);
+				},
+				error: function(xhr) {
+					modal.hide();
+					let errorMsg = 'Error al conectar con el servidor';
+					if (xhr.responseJSON && xhr.responseJSON.error) {
+						errorMsg = xhr.responseJSON.error;
+					}
+					fncSweetAlert('error', 'Error al instalar la actualización: ' + errorMsg, '');
+				}
+			});
 		});
 	});
 	
