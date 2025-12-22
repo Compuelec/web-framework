@@ -68,6 +68,51 @@ class PagesAjax{
 
 	}
 
+	/*=============================================
+	Get Menu Pages
+	Get pages with type "menu" for parent page selector
+	=============================================*/ 
+
+	public $currentPageId;
+
+	public function getMenuPages(){
+
+		$url = "pages?linkTo=type_page&equalTo=menu&orderBy=title_page&orderMode=ASC&select=id_page,title_page";
+		$method = "GET";
+		$fields = array();
+
+		$menuPages = CurlController::request($url,$method,$fields);
+
+		header('Content-Type: application/json');
+
+		if($menuPages->status == 200){
+
+			$results = $menuPages->results;
+			
+			// Filter out current page if editing
+			if($this->currentPageId){
+				$results = array_filter($results, function($page) {
+					return $page->id_page != $this->currentPageId;
+				});
+				$results = array_values($results); // Re-index array
+			}
+
+			echo json_encode(array(
+				'status' => 200,
+				'results' => $results
+			));
+		
+		}else{
+
+			echo json_encode(array(
+				'status' => 200,
+				'results' => array()
+			));
+
+		}
+
+	}
+
 }
 
 if(isset($_POST["idPage"])){
@@ -87,4 +132,11 @@ if(isset($_POST["idPageDelete"])){
 	$ajax -> idPageDelete = $_POST["idPageDelete"];
 	$ajax -> token = $_POST["token"];
 	$ajax -> deletePage();
+}
+
+if(isset($_POST["getMenuPages"])){
+
+	$ajax = new PagesAjax();
+	$ajax -> currentPageId = isset($_POST["currentPageId"]) ? $_POST["currentPageId"] : null;
+	$ajax -> getMenuPages();
 }

@@ -84,8 +84,27 @@
               
               <option value="modules">Modular</option>
               <option value="custom">Personalizable</option>
+              <option value="menu">Menú</option>
               <option value="external_link">Enlace Externo</option>
               <option value="internal_link">Enlace Interno</option>
+
+            </select>
+
+            <div class="valid-feedback">Válido.</div>
+            <div class="invalid-feedback">Campo inválido.</div>
+
+          </div>
+
+          <div class="form-group mb-3" id="parent_page_group" style="display: none;">
+
+            <label for="parent_page">Página Padre</label>
+
+            <select
+            class="form-select form-select-sm rounded" 
+            name="parent_page" 
+            id="parent_page">
+              
+              <option value="0">Ninguna (Página Principal)</option>
 
             </select>
 

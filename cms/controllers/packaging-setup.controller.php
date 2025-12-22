@@ -42,6 +42,7 @@ class PackagingSetupController {
             "url_page" => "packaging",
             "icon_page" => "bi bi-box-seam",
             "type_page" => "custom",
+            "parent_page" => 0,
             "order_page" => 6,
             "date_created_page" => date("Y-m-d")
         );

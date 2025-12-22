@@ -209,10 +209,12 @@ class InstallController{
 				url_page TEXT NULL DEFAULT NULL,
 				icon_page TEXT NULL DEFAULT NULL,
 				type_page TEXT NULL DEFAULT NULL,
+				parent_page INT NULL DEFAULT '0',
 				order_page INT NULL DEFAULT '1',
 				date_created_page DATE NULL DEFAULT NULL,
 				date_updated_page TIMESTAMP on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				PRIMARY KEY (id_page))";
+				PRIMARY KEY (id_page),
+				INDEX idx_parent_page (parent_page))";
 
 			$stmtPages = InstallController::connect()->prepare($sqlPages);
 
@@ -331,7 +333,7 @@ class InstallController{
 				$maxRetries = 10;
 				$tablesReady = false;
 				$requiredTables = ['pages', 'admins'];
-				$requiredPagesColumns = ['id_page', 'title_page', 'url_page', 'icon_page', 'type_page', 'order_page', 'date_created_page'];
+				$requiredPagesColumns = ['id_page', 'title_page', 'url_page', 'icon_page', 'type_page', 'parent_page', 'order_page', 'date_created_page'];
 				
 				for($i = 0; $i < $maxRetries; $i++){
 					$delay = ($i + 1) * 500000; // 0.5s, 1s, 1.5s, 2s, 2.5s, etc.
@@ -403,6 +405,7 @@ class InstallController{
 					"url_page" => "inicio",
 					"icon_page" => "bi bi-house-door-fill",
 					"type_page" => "modules",
+					"parent_page" => 0,
 					"order_page" => 1,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -504,6 +507,7 @@ class InstallController{
 					"url_page" => "admins",
 					"icon_page" => "bi bi-person-fill-gear",
 					"type_page" => "modules",
+					"parent_page" => 0,
 					"order_page" => 2,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -642,6 +646,7 @@ class InstallController{
 					"url_page" => "archivos",
 					"icon_page" => "bi bi-file-earmark-image",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 3,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -657,6 +662,7 @@ class InstallController{
 					"url_page" => "updates",
 					"icon_page" => "bi bi-arrow-repeat",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 4,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -672,6 +678,7 @@ class InstallController{
 					"url_page" => "activity_logs",
 					"icon_page" => "bi bi-journal-text",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 5,
 					"date_created_page" => date("Y-m-d")
 				);

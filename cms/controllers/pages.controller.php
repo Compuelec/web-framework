@@ -14,7 +14,9 @@ class PagesController{
 
 				$url = "pages?id=".base64_decode($_POST["id_page"])."&nameId=id_page&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
-				$fields = "title_page=".trim($_POST["title_page"])."&url_page=".urlencode(strtolower(trim($_POST["url_page"])))."&icon_page=".trim($_POST["icon_page"])."&type_page=".$_POST["type_page"];
+				
+				$parentPage = isset($_POST["parent_page"]) && $_POST["parent_page"] != "0" ? $_POST["parent_page"] : 0;
+				$fields = "title_page=".trim($_POST["title_page"])."&url_page=".urlencode(strtolower(trim($_POST["url_page"])))."&icon_page=".trim($_POST["icon_page"])."&type_page=".$_POST["type_page"]."&parent_page=".$parentPage;
 			
 				$update = CurlController::request($url,$method,$fields);
 
@@ -71,11 +73,15 @@ class PagesController{
 
 				$url = "pages?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "POST";
+				
+				$parentPage = isset($_POST["parent_page"]) && $_POST["parent_page"] != "0" ? $_POST["parent_page"] : 0;
+				
 				$fields = array(
 					"title_page" => trim($_POST["title_page"]),
 					"url_page" => urlencode(strtolower(trim($_POST["url_page"]))),
 					"icon_page" => trim($_POST["icon_page"]),
 					"type_page" =>$_POST["type_page"],
+					"parent_page" => $parentPage,
 					"order_page" => 1000,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -83,6 +89,11 @@ class PagesController{
 				$create = CurlController::request($url,$method,$fields);
 
 				if($create->status == 200){
+
+					// Get CMS base path for proper redirects
+					require_once __DIR__ . '/template.controller.php';
+					$cmsBasePath = TemplateController::cmsBasePath();
+					$urlPage = urldecode($fields["url_page"]);
 
 					/*=============================================
 					Crear Página personalizable
@@ -94,7 +105,7 @@ class PagesController{
 						Creamos carpeta de página personalizable
 						=============================================*/
 
-						$directory = DIR."/views/pages/custom/".$fields["url_page"];
+						$directory = DIR."/views/pages/custom/".$urlPage;
 
 						if(!file_exists($directory)){
 
@@ -107,7 +118,7 @@ class PagesController{
 
 						$from = DIR."/views/pages/custom/custom.php";
 
-						if(copy($from, $directory.'/'.$fields["url_page"].'.php')){
+						if(copy($from, $directory.'/'.$urlPage.'.php')){
 
 							echo '
 
@@ -115,7 +126,7 @@ class PagesController{
 
 								fncMatPreloader("off");
 								fncFormatInputs();
-							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location="/'.$fields["url_page"].'",1250));	
+							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
 
 							</script>
 
@@ -138,15 +149,31 @@ class PagesController{
 						';
 
 
-					}else{
+					}else if($fields["type_page"] == "menu"){
 
+						// For menu pages, just reload to show in list
 						echo '
 
 						<script>
 
 							fncMatPreloader("off");
 							fncFormatInputs();
-						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location="/'.$fields["url_page"].'",1250));	
+						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>location.reload(),1250));	
+
+						</script>
+
+						';
+
+					}else{
+
+						// For modules type pages, redirect to the page
+						echo '
+
+						<script>
+
+							fncMatPreloader("off");
+							fncFormatInputs();
+						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
 
 						</script>
 

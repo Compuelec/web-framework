@@ -374,7 +374,24 @@ if($adminTable !== null && is_object($adminTable)){
 								// Check if page is not null and has valid structure
 								if($page !== null && is_object($page) && isset($page->status) && $page->status == 200 && isset($page->results) && is_array($page->results) && count($page->results) > 0 && isset($page->results[0]->type_page)){
 									
-									if($page->results[0]->type_page == "modules"){
+									// Menu pages are not navigable - redirect to first subpage or show 404
+									if($page->results[0]->type_page == "menu"){
+										
+										// Try to get first subpage
+										$url = "pages?linkTo=parent_page&equalTo=".$page->results[0]->id_page."&orderBy=order_page&orderMode=ASC&limit=1";
+										$subPageRequest = CurlController::request($url, "GET", array());
+										
+										if($subPageRequest->status == 200 && isset($subPageRequest->results) && count($subPageRequest->results) > 0){
+											// Redirect to first subpage
+											$firstSubPage = $subPageRequest->results[0];
+											header("Location: ".$cmsBasePath."/".$firstSubPage->url_page);
+											exit;
+										} else {
+											// No subpages, show 404
+											include "pages/404/404.php";
+										}
+									
+									}else if($page->results[0]->type_page == "modules"){
 
 										include "pages/dynamic/dynamic.php";
 									
