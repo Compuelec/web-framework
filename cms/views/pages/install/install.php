@@ -34,89 +34,165 @@
 
 				<!-- Section: Database Configuration Info -->
 				<?php
+				// Check if this is a package installation
+				require_once __DIR__ . '/../../../controllers/package-install.controller.php';
 				require_once __DIR__ . '/../../../controllers/install.controller.php';
-				$config = InstallController::getConfig();
-				$dbConfig = $config['database'] ?? [];
-				$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
-				?>
-				<div class="mb-4">
-					<h6 class="section-title mb-3">
-						<i class="bi bi-database me-2"></i>
-						Configuración de Base de Datos
-					</h6>
-					<?php if ($hasDbConfig): ?>
-						<div class="alert alert-success">
+				$isPackageInstall = PackageInstallController::hasDatabaseFile();
+				
+				if ($isPackageInstall): 
+					// Get database configuration from config.php (read-only)
+					$config = InstallController::getConfig();
+					$dbConfig = $config['database'] ?? [];
+					$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
+					?>
+					<!-- Package Installation: Show database config from config.php (read-only) -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-box-seam me-2"></i>
+							Instalación desde Paquete
+						</h6>
+						<div class="alert alert-info">
 							<small>
-								<i class="bi bi-check-circle me-2"></i>
-								<strong>Configuración de base de datos encontrada:</strong><br>
-								Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
-								Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
-								Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
-								<em>La configuración de base de datos se lee desde <code>config.php</code></em>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>Se detectó un archivo <code>database.sql</code> en la raíz.</strong><br>
+								Este es un paquete empaquetado. La base de datos será restaurada automáticamente durante la instalación usando la configuración de <code>config.php</code>.
 							</small>
 						</div>
-					<?php else: ?>
-						<div class="alert alert-warning">
-							<small>
-								<i class="bi bi-exclamation-triangle me-2"></i>
-								<strong>Configuración de base de datos no encontrada.</strong><br>
-								Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación.
-							</small>
-						</div>
-					<?php endif; ?>
-				</div>
+						<?php if ($hasDbConfig): ?>
+							<div class="alert alert-success">
+								<small>
+									<i class="bi bi-check-circle me-2"></i>
+									<strong>Configuración de base de datos (desde config.php):</strong><br>
+									Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
+									Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
+									Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
+									<em>La configuración se lee desde <code>config.php</code> y no puede ser modificada.</em>
+								</small>
+							</div>
+							<!-- Hidden fields to pass config to backend -->
+							<input type="hidden" name="db_host" value="<?php echo htmlspecialchars($dbConfig['host']); ?>">
+							<input type="hidden" name="db_name" value="<?php echo htmlspecialchars($dbConfig['name']); ?>">
+							<input type="hidden" name="db_user" value="<?php echo htmlspecialchars($dbConfig['user']); ?>">
+							<input type="hidden" name="db_pass" value="<?php echo htmlspecialchars($dbConfig['pass'] ?? ''); ?>">
+						<?php else: ?>
+							<div class="alert alert-danger">
+								<small>
+									<i class="bi bi-exclamation-triangle me-2"></i>
+									<strong>Error: Configuración de base de datos no encontrada.</strong><br>
+									Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación desde paquete.
+								</small>
+							</div>
+						<?php endif; ?>
+					</div>
+				<?php else: ?>
+					<!-- Clean Installation: Show config info -->
+					<?php
+					require_once __DIR__ . '/../../../controllers/install.controller.php';
+					$config = InstallController::getConfig();
+					$dbConfig = $config['database'] ?? [];
+					$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
+					?>
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-database me-2"></i>
+							Configuración de Base de Datos
+						</h6>
+						<?php if ($hasDbConfig): ?>
+							<div class="alert alert-success">
+								<small>
+									<i class="bi bi-check-circle me-2"></i>
+									<strong>Configuración de base de datos encontrada:</strong><br>
+									Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
+									Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
+									Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
+									<em>La configuración de base de datos se lee desde <code>config.php</code></em>
+								</small>
+							</div>
+						<?php else: ?>
+							<div class="alert alert-warning">
+								<small>
+									<i class="bi bi-exclamation-triangle me-2"></i>
+									<strong>Configuración de base de datos no encontrada.</strong><br>
+									Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación.
+								</small>
+							</div>
+						<?php endif; ?>
+					</div>
+				<?php endif; ?>
 
 				<!-- Section: Administrator Information -->
-				<div class="mb-4">
-					<h6 class="section-title mb-3">
-						<i class="bi bi-person-circle me-2"></i>
-						Información del Administrador
-					</h6>
-					
-					<div class="row g-3">
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="email_admin" class="form-label small">
-									Correo Administrador <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="email"
-								class="form-control"
-								id="email_admin"
-								name="email_admin"
-								placeholder="admin@ejemplo.com"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Correo inválido</div>
+				<?php if (!$isPackageInstall): ?>
+					<!-- Only show admin fields for clean installation -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-person-circle me-2"></i>
+							Información del Administrador
+						</h6>
+						
+						<div class="row g-3">
+							<div class="col-md-6">
+								<div class="form-group">
+									<label for="email_admin" class="form-label small">
+										Correo Administrador <span class="text-danger">*</span>
+									</label>
+									<input 
+									type="email"
+									class="form-control"
+									id="email_admin"
+									name="email_admin"
+									placeholder="admin@ejemplo.com"
+									required
+									>
+									<div class="valid-feedback small">✓ Válido</div>
+									<div class="invalid-feedback small">Correo inválido</div>
+								</div>
 							</div>
-						</div>
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="password_admin" class="form-label small">
-									Contraseña <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="password"
-								class="form-control"
-								id="password_admin"
-								name="password_admin"
-								placeholder="••••••••"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Requerido</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label for="password_admin" class="form-label small">
+										Contraseña <span class="text-danger">*</span>
+									</label>
+									<input 
+									type="password"
+									class="form-control"
+									id="password_admin"
+									name="password_admin"
+									placeholder="••••••••"
+									required
+									>
+									<div class="valid-feedback small">✓ Válido</div>
+									<div class="invalid-feedback small">Requerido</div>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				<?php else: ?>
+					<!-- Package installation: Admin info comes from restored database -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-person-circle me-2"></i>
+							Información del Administrador
+						</h6>
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>La información del administrador se restaurará desde la base de datos.</strong><br>
+								Los datos del administrador (correo, contraseña, etc.) están incluidos en el archivo <code>database.sql</code> y se restaurarán automáticamente.
+							</small>
+						</div>
+						<!-- Hidden field to allow form submission -->
+						<input type="hidden" name="email_admin" value="package_install">
+					</div>
+				<?php endif; ?>
 
 				<!-- Section: Dashboard Configuration -->
-				<div class="mb-4">
-					<h6 class="section-title mb-3">
-						<i class="bi bi-sliders me-2"></i>
-						Configuración del Dashboard
-					</h6>
+				<?php if (!$isPackageInstall): ?>
+					<!-- Only show dashboard config for clean installation -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-sliders me-2"></i>
+							Configuración del Dashboard
+						</h6>
 					
 					<div class="form-group mb-3">
 						<label for="title_admin" class="form-label small">
@@ -227,7 +303,23 @@
 						placeholder="URL de la imagen"
 						>
 					</div>
-				</div>
+					</div>
+				<?php else: ?>
+					<!-- Package installation: Dashboard config comes from restored database -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-sliders me-2"></i>
+							Configuración del Dashboard
+						</h6>
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>La configuración del dashboard se restaurará desde la base de datos.</strong><br>
+								Los datos del dashboard (nombre, símbolo, color, etc.) están incluidos en el archivo <code>database.sql</code> y se restaurarán automáticamente.
+							</small>
+						</div>
+					</div>
+				<?php endif; ?>
 
 				<div class="install-footer">
 					<div class="d-flex justify-content-between align-items-center mb-3">
@@ -244,10 +336,21 @@
 
 				<?php 
 				
-				require_once "controllers/install.controller.php";
-				$install = new InstallController();
-				$install -> install();
-
+				// Detect if this is a package installation (has database.sql in root)
+				require_once __DIR__ . '/../../../controllers/package-install.controller.php';
+				$isPackageInstall = PackageInstallController::hasDatabaseFile();
+				
+				if ($isPackageInstall) {
+					// Use package installer (restores database and updates URLs)
+					$install = new PackageInstallController();
+					$install->install();
+				} else {
+					// Use normal installer (clean installation)
+					require_once "controllers/install.controller.php";
+					$install = new InstallController();
+					$install->install();
+				}
+				
 				?>
 
 			</form>

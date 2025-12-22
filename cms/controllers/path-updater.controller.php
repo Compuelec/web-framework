@@ -76,13 +76,16 @@ class PathUpdaterController {
         
         // Ensure directory exists and is writable
         if (!is_dir($configDir)) {
-            if (!mkdir($configDir, 0755, true)) {
+            if (!@mkdir($configDir, 0755, true)) {
                 return ['success' => false, 'message' => 'No se pudo crear el directorio de configuración: ' . $configDir];
             }
         }
         
+        // Check if directory is writable, but don't block if it's not (try to write anyway)
         if (!is_writable($configDir)) {
-            return ['success' => false, 'message' => 'El directorio no tiene permisos de escritura: ' . $configDir . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configDir)), -4)];
+            // Try to fix permissions if we can
+            @chmod($configDir, 0755);
+            // If still not writable, try to continue anyway (file might be writable even if dir isn't)
         }
         
         // If config.php doesn't exist, create it from example
@@ -98,9 +101,15 @@ class PathUpdaterController {
             return ['success' => false, 'message' => 'No se encontró el archivo de configuración y no se pudo crear desde el ejemplo'];
         }
         
-        // Check if file is writable
+        // Check if file is writable, try to fix permissions if not
         if (!is_writable($configPath)) {
-            return ['success' => false, 'message' => 'El archivo de configuración no tiene permisos de escritura: ' . $configPath . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configPath)), -4)];
+            // Try to make file writable
+            @chmod($configPath, 0644);
+            // If still not writable, try to continue anyway (might work with directory permissions)
+            if (!is_writable($configPath)) {
+                // Try one more time with 0666
+                @chmod($configPath, 0666);
+            }
         }
         
         // Load current configuration
@@ -288,26 +297,35 @@ class PathUpdaterController {
             }
         }
         
+        // Check if directory is writable, but don't block if it's not (try to write anyway)
         if (!is_writable($configDir)) {
-            return ['success' => false, 'message' => 'El directorio de la API no tiene permisos de escritura: ' . $configDir . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configDir)), -4)];
+            // Try to fix permissions if we can
+            @chmod($configDir, 0755);
+            // If still not writable, try to continue anyway (file might be writable even if dir isn't)
         }
         
         // If config.php doesn't exist, create it from example
         if (!file_exists($configPath) && file_exists($examplePath)) {
-            if (!copy($examplePath, $configPath)) {
+            if (!@copy($examplePath, $configPath)) {
                 return ['success' => false, 'message' => 'No se pudo copiar el archivo de ejemplo de la API. Verifique permisos.'];
             }
             // Set permissions on new file
-            chmod($configPath, 0644);
+            @chmod($configPath, 0644);
         }
         
         if (!file_exists($configPath)) {
             return ['success' => false, 'message' => 'No se encontró el archivo de configuración de la API y no se pudo crear desde el ejemplo'];
         }
         
-        // Check if file is writable
+        // Check if file is writable, try to fix permissions if not
         if (!is_writable($configPath)) {
-            return ['success' => false, 'message' => 'El archivo de configuración de la API no tiene permisos de escritura: ' . $configPath . '. Permisos actuales: ' . substr(sprintf('%o', fileperms($configPath)), -4)];
+            // Try to make file writable
+            @chmod($configPath, 0644);
+            // If still not writable, try to continue anyway (might work with directory permissions)
+            if (!is_writable($configPath)) {
+                // Try one more time with 0666
+                @chmod($configPath, 0666);
+            }
         }
         
         // Load current configuration

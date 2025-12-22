@@ -49,6 +49,7 @@ class PackageInstallController {
         }
         
         try {
+            // Use PDO method for database restoration
             // Connect to database server (without specifying database)
             $link = new PDO(
                 "mysql:host=" . $dbConfig['host'] . ";charset=utf8mb4",
@@ -78,26 +79,91 @@ class PackageInstallController {
             );
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
-            // Split SQL into individual statements
-            $statements = array_filter(
-                array_map('trim', explode(';', $sqlContent)),
-                function($stmt) {
-                    return !empty($stmt) && !preg_match('/^--/', $stmt) && !preg_match('/^\/\*/', $stmt);
+            // Remove comments and clean SQL
+            $sqlContent = preg_replace('/^--.*$/m', '', $sqlContent); // Remove single-line comments
+            $sqlContent = preg_replace('/\/\*.*?\*\//s', '', $sqlContent); // Remove multi-line comments
+            
+            // Split SQL into statements more carefully
+            // Handle statements that may contain semicolons inside quotes
+            $statements = [];
+            $currentStatement = '';
+            $inQuotes = false;
+            $quoteChar = null;
+            
+            for ($i = 0; $i < strlen($sqlContent); $i++) {
+                $char = $sqlContent[$i];
+                $currentStatement .= $char;
+                
+                // Track quotes
+                if (($char === '"' || $char === "'" || $char === '`') && ($i === 0 || $sqlContent[$i-1] !== '\\')) {
+                    if (!$inQuotes) {
+                        $inQuotes = true;
+                        $quoteChar = $char;
+                    } elseif ($char === $quoteChar) {
+                        $inQuotes = false;
+                        $quoteChar = null;
+                    }
                 }
-            );
+                
+                // If we hit a semicolon and we're not in quotes, it's the end of a statement
+                if ($char === ';' && !$inQuotes) {
+                    $stmt = trim($currentStatement);
+                    if (!empty($stmt) && strlen($stmt) > 1) {
+                        $statements[] = $stmt;
+                    }
+                    $currentStatement = '';
+                }
+            }
+            
+            // Add any remaining statement
+            if (!empty(trim($currentStatement))) {
+                $statements[] = trim($currentStatement);
+            }
             
             // Execute each statement
             $executed = 0;
-            foreach ($statements as $statement) {
-                if (!empty(trim($statement))) {
-                    try {
-                        $link->exec($statement);
-                        $executed++;
-                    } catch (PDOException $e) {
-                        // Log but continue - some statements might fail (like DROP TABLE IF EXISTS on non-existent tables)
-                        error_log("SQL execution warning: " . $e->getMessage());
+            $errors = [];
+            foreach ($statements as $index => $statement) {
+                $statement = trim($statement);
+                if (empty($statement) || strlen($statement) < 3) {
+                    continue;
+                }
+                
+                // Skip empty statements or comments
+                if (preg_match('/^(SET|LOCK|UNLOCK)\s+/i', $statement)) {
+                    // These are important, execute them
+                } elseif (preg_match('/^(DROP|CREATE|INSERT|UPDATE|DELETE)\s+/i', $statement)) {
+                    // These are important, execute them
+                } else {
+                    // Skip other statements that might be empty or comments
+                    continue;
+                }
+                
+                try {
+                    $result = $link->exec($statement);
+                    $executed++;
+                    
+                    // Log INSERT statements to verify they're executing
+                    if (preg_match('/^INSERT\s+/i', $statement)) {
+                        error_log("Executed INSERT statement #$executed: " . substr($statement, 0, 150));
+                    }
+                } catch (PDOException $e) {
+                    // Log error but continue - some statements might fail (like DROP TABLE IF EXISTS on non-existent tables)
+                    $errorMsg = $e->getMessage();
+                    $errorCode = $e->getCode();
+                    
+                    // Only log if it's not a "table doesn't exist" error for DROP statements
+                    if (!preg_match('/Unknown table/i', $errorMsg) && $errorCode != '42S02') {
+                        error_log("SQL execution warning (statement #$index): " . $errorMsg . " | Statement: " . substr($statement, 0, 150));
+                        $errors[] = "Statement #$index: " . substr($statement, 0, 100) . "... Error: " . $errorMsg;
                     }
                 }
+            }
+            
+            // Log summary
+            error_log("SQL restoration completed. Executed: $executed statements. Errors: " . count($errors));
+            if (!empty($errors)) {
+                error_log("SQL restoration errors: " . implode(" | ", array_slice($errors, 0, 5)));
             }
             
             return [
@@ -113,6 +179,7 @@ class PackageInstallController {
             ];
         }
     }
+    
     
     /**
      * Update database URLs from old domain to new domain
@@ -154,24 +221,42 @@ class PackageInstallController {
      * @return void
      */
     public function install() {
-        if (!isset($_POST["email_admin"])) {
-            return;
+        // For package installation, we don't require email_admin since it comes from database
+        // But we still need to check if form was submitted
+        $isPackageInstall = self::hasDatabaseFile();
+        
+        if ($isPackageInstall) {
+            // For package installation, only check if form was submitted (email_admin is hidden field)
+            if (!isset($_POST["email_admin"])) {
+                return;
+            }
+        } else {
+            // For clean installation, require email_admin
+            if (!isset($_POST["email_admin"])) {
+                return;
+            }
         }
         
         // Detect domain and update configurations automatically
         $domainInfo = PathUpdaterController::detectDomain();
         
-        // Get database configuration from form
-        $dbConfig = [
-            'host' => $_POST['db_host'] ?? '',
-            'name' => $_POST['db_name'] ?? '',
-            'user' => $_POST['db_user'] ?? '',
-            'pass' => $_POST['db_pass'] ?? ''
-        ];
+        // Get database configuration from config.php (not from form to prevent modification)
+        $config = InstallController::getConfig();
+        $dbConfig = $config['database'] ?? [];
+        
+        // If config is incomplete, try to get from hidden form fields as fallback
+        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+            $dbConfig = [
+                'host' => $_POST['db_host'] ?? '',
+                'name' => $_POST['db_name'] ?? '',
+                'user' => $_POST['db_user'] ?? '',
+                'pass' => $_POST['db_pass'] ?? ''
+            ];
+        }
         
         // Validate database configuration
-        if (empty($dbConfig['host']) || empty($dbConfig['name']) || empty($dbConfig['user']) || !isset($dbConfig['pass'])) {
-            $errorMsgEscaped = json_encode("Todos los campos de base de datos son requeridos", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+            $errorMsgEscaped = json_encode("La configuración de la base de datos está incompleta en cms/config.php o cms/config.example.php. Por favor, configure host, name, user y pass.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
             echo '<script>
                 fncMatPreloader("off");
                 fncFormatInputs();
@@ -187,7 +272,11 @@ class PackageInstallController {
         
         // Step 1: Restore database if database.sql exists
         $dbRestored = false;
+        $databaseFilePath = null;
         if (self::hasDatabaseFile()) {
+            $rootDir = dirname(dirname(__DIR__));
+            $databaseFilePath = $rootDir . '/database.sql';
+            
             $restoreResult = self::restoreDatabase($dbConfig);
             
             if (!$restoreResult['success']) {
@@ -212,7 +301,17 @@ class PackageInstallController {
             $cmsConfigResult['password_salt'] ?? null
         );
         
-        if (!$cmsConfigResult['success'] || !$apiConfigResult['success']) {
+        // Log warnings but don't block installation if config files can't be written
+        // The database restoration is more critical
+        if (!$cmsConfigResult['success']) {
+            error_log("Warning: Could not update CMS config: " . $cmsConfigResult['message']);
+        }
+        if (!$apiConfigResult['success']) {
+            error_log("Warning: Could not update API config: " . $apiConfigResult['message']);
+        }
+        
+        // Only fail if both failed and database was not restored
+        if (!$cmsConfigResult['success'] && !$apiConfigResult['success'] && !$dbRestored) {
             $errorMsg = "Error al actualizar configuraciones:<br>";
             if (!$cmsConfigResult['success']) {
                 $errorMsg .= "- CMS: " . $cmsConfigResult['message'] . "<br>";
@@ -220,6 +319,11 @@ class PackageInstallController {
             if (!$apiConfigResult['success']) {
                 $errorMsg .= "- API: " . $apiConfigResult['message'] . "<br>";
             }
+            $errorMsg .= "<br><strong>Sugerencia:</strong> Ejecute estos comandos en la terminal para corregir los permisos:<br>";
+            $errorMsg .= "<code>chmod 755 " . dirname(__DIR__) . "</code><br>";
+            $errorMsg .= "<code>chmod 755 " . dirname(dirname(__DIR__)) . "/api</code><br>";
+            $errorMsg .= "<code>chmod 644 " . dirname(__DIR__) . "/config.php</code><br>";
+            $errorMsg .= "<code>chmod 644 " . dirname(dirname(__DIR__)) . "/api/config.php</code>";
             
             $errorMsgEscaped = json_encode($errorMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
             echo '<script>
@@ -238,8 +342,10 @@ class PackageInstallController {
             }
         }
         
-        // Step 4: Update admin configuration if provided
-        if (!empty($_POST['title_admin']) || !empty($_POST['symbol_admin']) || !empty($_POST['color_admin']) || !empty($_POST['font_admin'])) {
+        // Step 4: Skip admin configuration updates for package installation
+        // The database restoration already includes all admin information
+        // Only update dashboard configuration if explicitly provided (optional)
+        if (!empty($_POST['title_admin']) || !empty($_POST['symbol_admin']) || !empty($_POST['color_admin']) || !empty($_POST['font_admin']) || !empty($_POST['back_admin'])) {
             require_once __DIR__ . '/curl.controller.php';
             
             // Get first admin (usually superadmin)
@@ -254,6 +360,7 @@ class PackageInstallController {
                 $adminId = $adminResult->results[0]->id_admin;
                 $updateFields = array();
                 
+                // Only update dashboard appearance settings, not admin credentials
                 if (!empty($_POST['title_admin'])) {
                     $updateFields['title_admin'] = trim($_POST['title_admin']);
                 }
@@ -278,23 +385,16 @@ class PackageInstallController {
             }
         }
         
-        // Step 5: Update admin password if provided
-        if (!empty($_POST['password_admin'])) {
-            require_once __DIR__ . '/curl.controller.php';
-            
-            $url = "admins?linkTo=rol_admin&equalTo=superadmin";
-            $method = "GET";
-            $fields = array();
-            $adminResult = CurlController::request($url, $method, $fields);
-            
-            if ($adminResult && isset($adminResult->status) && $adminResult->status == 200 && 
-                isset($adminResult->results) && is_array($adminResult->results) && count($adminResult->results) > 0) {
-                
-                $adminId = $adminResult->results[0]->id_admin;
-                $url = "admins?id=" . $adminId . "&nameId=id_admin&token=no&except=id_admin,email_admin,rol_admin,permissions_admin,token_admin,token_exp_admin,status_admin,date_created_admin";
-                $method = "PUT";
-                $updateFields = array('password_admin' => trim($_POST['password_admin']));
-                CurlController::request($url, $method, $updateFields);
+        // Step 5: Skip admin password update for package installation
+        // The password is already in the restored database
+        
+        // Delete database.sql file after successful installation (before showing success message)
+        if ($dbRestored && $databaseFilePath && file_exists($databaseFilePath)) {
+            $deleteResult = @unlink($databaseFilePath);
+            if ($deleteResult) {
+                error_log("Info: Deleted database.sql file after successful installation");
+            } else {
+                error_log("Warning: Could not delete database.sql file: " . $databaseFilePath);
             }
         }
         
@@ -304,13 +404,25 @@ class PackageInstallController {
             $successMsg .= " La base de datos ha sido restaurada y las referencias actualizadas.";
         }
         
+        // Calculate redirect URL (to CMS root, which will redirect to login if not authenticated)
+        $scriptPath = $_SERVER['SCRIPT_NAME'] ?? '';
+        $cmsBasePath = '';
+        if (preg_match('#^(.*?/cms)(?:/|$)#', $scriptPath, $matches)) {
+            $cmsBasePath = $matches[1];
+        } else {
+            $cmsBasePath = dirname($scriptPath);
+        }
+        $redirectUrl = rtrim($cmsBasePath, '/') . '/';
+        
         $successMsgEscaped = json_encode($successMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+        
         echo '<script>
             fncMatPreloader("off");
             fncFormatInputs();
-            fncSweetAlert("success", "Instalación exitosa", ' . $successMsgEscaped . ', function() {
-                location.href = "../";
-            });
+            fncSweetAlert("success", "Instalación exitosa", ' . $successMsgEscaped . ', "");
+            setTimeout(function() {
+                window.location.href = "' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '";
+            }, 2000);
         </script>';
     }
 }
