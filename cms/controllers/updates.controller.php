@@ -104,9 +104,24 @@ class UpdatesController {
             if ($release && isset($release['tag_name'])) {
                 return $release;
             }
-        } else if ($httpCode === 404) {
-            // Try tags API if releases/latest doesn't exist
-            return self::checkGitHubTag($owner, $repo, $token);
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            error_log("GitHub API Error: $errorMessage");
+            self::$lastGitHubError = $errorMessage;
+            
+            if ($httpCode === 404) {
+                // Try tags API if releases/latest doesn't exist
+                return self::checkGitHubTag($owner, $repo, $token);
+            }
         }
         
         return null;
@@ -139,6 +154,7 @@ class UpdatesController {
         
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
         
         if ($httpCode === 200 && $result) {
@@ -151,9 +167,82 @@ class UpdatesController {
                     'zipball_url' => $tag['zipball_url'] ?? "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$tag['name']}.zip"
                 ];
             }
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            self::$lastGitHubError = $errorMessage;
         }
         
         return null;
+    }
+    
+    /**
+     * Check GitHub for a specific release by tag
+     * 
+     * @param string $owner GitHub repository owner
+     * @param string $repo GitHub repository name
+     * @param string $tag Tag name (e.g., "1.0.1" or "v1.0.1")
+     * @param string $token Optional GitHub token
+     * @return array|null Release information or null on error
+     */
+    private static function checkGitHubReleaseByTag($owner, $repo, $tag, $token = null) {
+        $apiUrl = "https://api.github.com/repos/{$owner}/{$repo}/releases/tags/{$tag}";
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        $headers = ['Accept: application/vnd.github.v3+json'];
+        if ($token) {
+            $headers[] = "Authorization: token {$token}";
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode === 200 && $result) {
+            $release = json_decode($result, true);
+            if ($release && isset($release['tag_name'])) {
+                return $release;
+            }
+        } else {
+            $errorMessage = "HTTP $httpCode";
+            if ($result) {
+                $decoded = json_decode($result, true);
+                if (isset($decoded['message'])) {
+                    $errorMessage .= ": " . $decoded['message'];
+                }
+            }
+            if ($curlError) {
+                $errorMessage .= " (cURL: $curlError)";
+            }
+            error_log("GitHub API Error: $errorMessage");
+            self::$lastGitHubError = $errorMessage;
+        }
+        
+        return null;
+    }
+
+    private static $lastGitHubError = null;
+    private static $lastPermissionsError = null;
+
+    public static function getLastGitHubError() {
+        return self::$lastGitHubError;
     }
     
     /**
@@ -216,6 +305,37 @@ class UpdatesController {
                                 $zipUrl = "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$release['tag_name']}.zip";
                             }
                             
+                            // Procesar el body del release para extraer los cambios
+                            $changes = [];
+                            if (isset($release['body']) && !empty($release['body'])) {
+                                $body = trim($release['body']);
+                                // Dividir por líneas y procesar
+                                $lines = explode("\n", $body);
+                                foreach ($lines as $line) {
+                                    $line = trim($line);
+                                    // Ignorar líneas vacías y encabezados markdown
+                                    if (empty($line) || preg_match('/^#+\s/', $line)) {
+                                        continue;
+                                    }
+                                    // Remover marcadores de lista markdown (-, *, +) y numeración
+                                    $line = preg_replace('/^[-*+]\s+/', '', $line);
+                                    $line = preg_replace('/^\d+\.\s+/', '', $line);
+                                    // Remover enlaces markdown [texto](url) -> texto
+                                    $line = preg_replace('/\[([^\]]+)\]\([^\)]+\)/', '$1', $line);
+                                    // Remover código markdown `código` -> código
+                                    $line = preg_replace('/`([^`]+)`/', '$1', $line);
+                                    // Remover negritas/cursivas markdown
+                                    $line = preg_replace('/\*\*([^\*]+)\*\*/', '$1', $line);
+                                    $line = preg_replace('/\*([^\*]+)\*/', '$1', $line);
+                                    $line = preg_replace('/__([^_]+)__/', '$1', $line);
+                                    $line = preg_replace('/_([^_]+)_/', '$1', $line);
+                                    
+                                    if (!empty($line)) {
+                                        $changes[] = $line;
+                                    }
+                                }
+                            }
+                            
                             $response['update_info'] = [
                                 'latest_version' => $latestVersion,
                                 'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
@@ -224,7 +344,7 @@ class UpdatesController {
                                         'version' => $latestVersion,
                                         'release_date' => isset($release['published_at']) ? date('Y-m-d', strtotime($release['published_at'])) : null,
                                         'type' => VersionManager::isMajorUpdate($currentVersion, $latestVersion) ? 'major' : 'minor',
-                                        'changes' => isset($release['body']) ? array_filter(explode("\n", $release['body'])) : [],
+                                        'changes' => $changes,
                                         'breaking_changes' => VersionManager::isMajorUpdate($currentVersion, $latestVersion),
                                         'requires_migration' => false
                                     ]
@@ -237,7 +357,129 @@ class UpdatesController {
                         }
                     }
                 } else {
-                    $response['error'] = 'Unable to fetch GitHub release information';
+                    // GitHub falló, intentar obtener información del release específico por tag
+                    // Primero intentar obtener el release por tag específico si tenemos la versión del archivo local
+                    $updateInfoFile = __DIR__ . '/../../updates/update-info.json';
+                    $releaseFromGitHub = null;
+                    
+                    // Si tenemos archivo local, intentar obtener el release específico de GitHub usando el tag
+                    if (file_exists($updateInfoFile)) {
+                        $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+                        
+                        if ($updateInfo && isset($updateInfo['latest_version'])) {
+                            $latestVersion = $updateInfo['latest_version'];
+                            
+                            // Intentar obtener el release específico de GitHub por tag
+                            $tagName = 'v' . $latestVersion; // Intentar con prefijo 'v'
+                            $releaseFromGitHub = self::checkGitHubReleaseByTag($owner, $repo, $tagName, $token);
+                            
+                            // Si no funciona con 'v', intentar sin prefijo
+                            if (!$releaseFromGitHub) {
+                                $releaseFromGitHub = self::checkGitHubReleaseByTag($owner, $repo, $latestVersion, $token);
+                            }
+                        }
+                    }
+                    
+                    // Si encontramos el release en GitHub, usar esa información
+                    if ($releaseFromGitHub) {
+                        $latestVersion = preg_replace('/^v/', '', $releaseFromGitHub['tag_name']);
+                        
+                        if (preg_match('/^\d+\.\d+\.\d+/', $latestVersion)) {
+                            $response['latest_version'] = $latestVersion;
+                            $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                            
+                            if ($response['update_available']) {
+                                // Procesar el body del release para extraer los cambios
+                                $changes = [];
+                                if (isset($releaseFromGitHub['body']) && !empty($releaseFromGitHub['body'])) {
+                                    $body = trim($releaseFromGitHub['body']);
+                                    $lines = explode("\n", $body);
+                                    foreach ($lines as $line) {
+                                        $line = trim($line);
+                                        if (empty($line) || preg_match('/^#+\s/', $line)) {
+                                            continue;
+                                        }
+                                        $line = preg_replace('/^[-*+]\s+/', '', $line);
+                                        $line = preg_replace('/^\d+\.\s+/', '', $line);
+                                        $line = preg_replace('/\[([^\]]+)\]\([^\)]+\)/', '$1', $line);
+                                        $line = preg_replace('/`([^`]+)`/', '$1', $line);
+                                        $line = preg_replace('/\*\*([^\*]+)\*\*/', '$1', $line);
+                                        $line = preg_replace('/\*([^\*]+)\*/', '$1', $line);
+                                        $line = preg_replace('/__([^_]+)__/', '$1', $line);
+                                        $line = preg_replace('/_([^_]+)_/', '$1', $line);
+                                        
+                                        if (!empty($line)) {
+                                            $changes[] = $line;
+                                        }
+                                    }
+                                }
+                                
+                                // Encontrar zipball URL
+                                $zipUrl = null;
+                                if (isset($releaseFromGitHub['zipball_url'])) {
+                                    $zipUrl = $releaseFromGitHub['zipball_url'];
+                                } else if (isset($releaseFromGitHub['assets'])) {
+                                    foreach ($releaseFromGitHub['assets'] as $asset) {
+                                        if (isset($asset['browser_download_url']) && 
+                                            pathinfo($asset['browser_download_url'], PATHINFO_EXTENSION) === 'zip') {
+                                            $zipUrl = $asset['browser_download_url'];
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (!$zipUrl) {
+                                    $zipUrl = "https://github.com/{$owner}/{$repo}/archive/refs/tags/{$releaseFromGitHub['tag_name']}.zip";
+                                }
+                                
+                                $response['update_info'] = [
+                                    'latest_version' => $latestVersion,
+                                    'release_date' => isset($releaseFromGitHub['published_at']) ? date('Y-m-d', strtotime($releaseFromGitHub['published_at'])) : null,
+                                    'changelog' => [
+                                        $latestVersion => [
+                                            'version' => $latestVersion,
+                                            'release_date' => isset($releaseFromGitHub['published_at']) ? date('Y-m-d', strtotime($releaseFromGitHub['published_at'])) : null,
+                                            'type' => VersionManager::isMajorUpdate($currentVersion, $latestVersion) ? 'major' : 'minor',
+                                            'changes' => $changes,
+                                            'breaking_changes' => VersionManager::isMajorUpdate($currentVersion, $latestVersion),
+                                            'requires_migration' => false
+                                        ]
+                                    ],
+                                    'download_url' => $zipUrl,
+                                    'source' => 'github',
+                                    'github_release' => $releaseFromGitHub
+                                ];
+                                $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                                $response['error'] = null;
+                            }
+                        }
+                    }
+                    
+                    // Si no se encontró en GitHub, usar archivo local como fallback
+                    if (!$releaseFromGitHub && file_exists($updateInfoFile)) {
+                        $updateInfo = json_decode(file_get_contents($updateInfoFile), true);
+                        
+                        if ($updateInfo && isset($updateInfo['latest_version'])) {
+                            $latestVersion = $updateInfo['latest_version'];
+                            $response['latest_version'] = $latestVersion;
+                            
+                            if (isset($updateInfo['update_available'])) {
+                                $response['update_available'] = (bool)$updateInfo['update_available'];
+                            } else {
+                                $response['update_available'] = VersionManager::isUpdateAvailable($latestVersion);
+                            }
+                            
+                            if ($response['update_available']) {
+                                $response['update_info'] = $updateInfo;
+                                $response['is_major_update'] = VersionManager::isMajorUpdate($currentVersion, $latestVersion);
+                                $response['error'] = 'Using local update information. GitHub release not found. (' . self::getLastGitHubError() . ')';
+                            }
+                        } else {
+                            $response['error'] = 'Unable to fetch GitHub release information and local update file is invalid';
+                        }
+                    } else if (!$releaseFromGitHub) {
+                        $response['error'] = 'Unable to fetch GitHub release information and local update file not found';
+                    }
                 }
             } 
             // Priority 2: Check remote server (if configured and GitHub not used)
@@ -378,51 +620,319 @@ class UpdatesController {
     }
     
     /**
+     * Normalize path to use correct directory separators
+     * 
+     * @param string $path Path to normalize
+     * @return string Normalized path
+     */
+    private static function normalizePath($path) {
+        // Reemplazar todas las barras y backslashes con el separador del sistema
+        $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
+        // Eliminar separadores duplicados
+        $path = preg_replace('/[' . preg_quote(DIRECTORY_SEPARATOR, '/') . ']+/', DIRECTORY_SEPARATOR, $path);
+        // Eliminar separador final
+        return rtrim($path, DIRECTORY_SEPARATOR);
+    }
+    
+    /**
+     * Get Project Root Path
+     */
+    private static function getRootPath() {
+        // Método manual infalible: 3 niveles arriba desde este archivo
+        $rootPath = dirname(dirname(dirname(__FILE__)));
+        // Normalizar la ruta
+        return self::normalizePath($rootPath);
+    }
+
+    /**
+     * Test if a directory is writable by actually writing a test file
+     * 
+     * @param string $dir Directory to test
+     * @return bool True if writable, false otherwise
+     */
+    private static function testDirectoryWritable($dir) {
+        if (!is_dir($dir)) {
+            return false;
+        }
+        
+        $testFile = $dir . DIRECTORY_SEPARATOR . '.write_test_' . time() . '_' . mt_rand(1000, 9999);
+        $testContent = 'test_' . time();
+        
+        $result = @file_put_contents($testFile, $testContent);
+        if ($result !== false) {
+            // Verificar que el contenido se escribió correctamente
+            $readContent = @file_get_contents($testFile);
+            @unlink($testFile);
+            return ($readContent === $testContent);
+        }
+        
+        // Si falla la escritura, capturar el último error de PHP
+        $lastError = error_get_last();
+        if ($lastError && isset($lastError['message'])) {
+            self::$lastPermissionsError = 'Failed to write test file to ' . $dir . ': ' . $lastError['message'];
+        } else {
+            self::$lastPermissionsError = 'Failed to write test file to ' . $dir . '. Unknown error.';
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get a writable directory for backups
+     * Tries backups directory first, then system temp directory as fallback
+     * 
+     * @return array Result with 'success', 'directory', and 'error' keys
+     */
+    private static function getWritableBackupDirectory() {
+        $config = self::getConfig();
+        $updateConfig = $config['updates'] ?? [];
+        $customBackupPath = $updateConfig['backup_path'] ?? null;
+
+        $directoriesToTry = [];
+        $allErrors = [];
+        
+        // 1. Intentar con la ruta de backup personalizada si está configurada
+        if (!empty($customBackupPath)) {
+            $directoriesToTry[] = [
+                'path' => $customBackupPath,
+                'is_temp' => false,
+                'create' => true,
+                'name' => 'Ruta personalizada configurada'
+            ];
+        }
+
+        // 2. Intentar el directorio backups/ del proyecto (PRIORIDAD ALTA - más confiable)
+        $rootPath = self::getRootPath();
+        $projectBackupDir = $rootPath . DIRECTORY_SEPARATOR . 'backups';
+        $directoriesToTry[] = [
+            'path' => $projectBackupDir,
+            'is_temp' => false,
+            'create' => true,
+            'name' => 'Directorio backups/ del proyecto'
+        ];
+
+        // 3. Intentar el directorio temporal del sistema con subdirectorio específico
+        $sysTempDir = sys_get_temp_dir();
+        if ($sysTempDir && is_dir($sysTempDir)) {
+            $directoriesToTry[] = [
+                'path' => $sysTempDir . DIRECTORY_SEPARATOR . 'web-framework-backups',
+                'is_temp' => true,
+                'create' => true,
+                'name' => 'Directorio temporal del sistema (con subdirectorio)',
+                'warning' => 'Usando directorio temporal del sistema. El backup se guardará en: ' . $sysTempDir . DIRECTORY_SEPARATOR . 'web-framework-backups'
+            ];
+        }
+
+        // 4. Directorio temporal del sistema directamente (sin subdirectorio) como último recurso
+        if ($sysTempDir && is_dir($sysTempDir)) {
+            $directoriesToTry[] = [
+                'path' => $sysTempDir,
+                'is_temp' => true,
+                'create' => false,
+                'name' => 'Directorio temporal del sistema (directo)',
+                'warning' => 'Usando directorio temporal del sistema directamente: ' . $sysTempDir
+            ];
+        }
+
+        foreach ($directoriesToTry as $dirInfo) {
+            $dir = $dirInfo['path'];
+            $dirName = $dirInfo['name'] ?? $dir;
+            
+            // Resetear el error antes de probar este directorio
+            self::$lastPermissionsError = null;
+            
+            // Intentar crear el directorio si no existe y está configurado para crearse
+            if ($dirInfo['create'] && !is_dir($dir)) {
+                // Intentar crear con 0755 primero, luego 0777 si falla
+                $created = false;
+                if (@mkdir($dir, 0755, true)) {
+                    $created = true;
+                    @chmod($dir, 0777); // Intentar permisos más amplios después de crear
+                } elseif (@mkdir($dir, 0777, true)) {
+                    $created = true;
+                }
+                
+                if (!$created) {
+                    $error = "No se pudo crear el directorio: {$dir}";
+                    $allErrors[] = "[{$dirName}] {$error}";
+                    error_log("Backup directory creation failed: {$dir}");
+                    continue;
+                }
+            }
+            
+            // Verificar que el directorio existe
+            if (!is_dir($dir)) {
+                $error = "El directorio no existe: {$dir}";
+                $allErrors[] = "[{$dirName}] {$error}";
+                continue;
+            }
+            
+            // Intentar cambiar permisos si no es escribible
+            if (!is_writable($dir)) {
+                // Intentar cambiar permisos (puede fallar si no tenemos permisos)
+                @chmod($dir, 0755);
+                if (!is_writable($dir)) {
+                    @chmod($dir, 0777);
+                }
+            }
+            
+            // Verificar si podemos escribir realmente (prueba real de escritura)
+            if (self::testDirectoryWritable($dir)) {
+                $result = [
+                    'success' => true,
+                    'directory' => $dir,
+                    'is_temp' => $dirInfo['is_temp']
+                ];
+                
+                if (isset($dirInfo['warning'])) {
+                    $result['warning'] = $dirInfo['warning'];
+                }
+                
+                return $result;
+            } else {
+                // Capturar el error específico de este directorio
+                $error = self::$lastPermissionsError ?? "No se pudo escribir en el directorio";
+                $allErrors[] = "[{$dirName}] {$error}";
+            }
+        }
+        
+        // Si llegamos aquí, ningún directorio funcionó
+        // Construir mensaje de error con todos los intentos
+        $finalError = 'No se pudo encontrar un directorio escribible para backups. ';
+        $finalError .= 'Se intentaron los siguientes directorios:' . PHP_EOL;
+        foreach ($allErrors as $error) {
+            $finalError .= '  - ' . $error . PHP_EOL;
+        }
+        $finalError .= PHP_EOL . 'Solución: Asegúrese de que el directorio backups/ del proyecto (' . $projectBackupDir . ') tenga permisos de escritura (chmod 755 o 777) para el usuario del servidor web.';
+
+        return [
+            'success' => false,
+            'error' => $finalError
+        ];
+    }
+
+    /**
      * Create backup before update
      */
     private static function createBackup() {
-        $backupDir = __DIR__ . '/../../backups';
+        // Obtener un directorio escribible (intenta backups primero, luego temp del sistema)
+        $writableDir = self::getWritableBackupDirectory();
         
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
-        
-        $timestamp = date('Y-m-d_H-i-s');
-        $backupPath = $backupDir . '/backup_' . $timestamp;
-        
-        if (!is_dir($backupPath)) {
-            mkdir($backupPath, 0755, true);
-        }
-        
-        // Backup database
-        $config = self::getConfig();
-        $dbConfig = $config['database'] ?? [];
-        
-        $dbName = $dbConfig['name'] ?? 'chatcenter';
-        $dbUser = $dbConfig['user'] ?? 'root';
-        $dbPass = $dbConfig['pass'] ?? '';
-        $dbHost = $dbConfig['host'] ?? 'localhost';
-        
-        $dbBackupFile = $backupPath . '/database.sql';
-        
-        // Create database backup using mysqldump
-        $command = sprintf(
-            'mysqldump -h %s -u %s%s %s > %s 2>&1',
-            escapeshellarg($dbHost),
-            escapeshellarg($dbUser),
-            !empty($dbPass) ? ' -p' . escapeshellarg($dbPass) : '',
-            escapeshellarg($dbName),
-            escapeshellarg($dbBackupFile)
-        );
-        
-        exec($command, $output, $returnCode);
-        
-        // If backup failed, return error info
-        if ($returnCode !== 0) {
+        if (!$writableDir['success']) {
             return [
                 'success' => false,
-                'backup_path' => $backupPath,
-                'error' => 'Database backup failed. Return code: ' . $returnCode . '. Output: ' . implode("\n", $output)
+                'error' => $writableDir['error']
+            ];
+        }
+        
+        $backupDir = $writableDir['directory'];
+        $timestamp = date('Y-m-d_H-i-s');
+        $backupPath = $backupDir . DIRECTORY_SEPARATOR . 'backup_' . $timestamp;
+        
+        if (!is_dir($backupPath)) {
+            if (!@mkdir($backupPath, 0755, true)) {
+                if (!@mkdir($backupPath, 0777, true)) {
+                    return [
+                        'success' => false,
+                        'error' => 'No se pudo crear el directorio de backup específico: ' . $backupPath
+                    ];
+                }
+            }
+            // Asegurar que sea 0777 después de la creación
+            if (is_dir($backupPath)) {
+                @chmod($backupPath, 0777);
+            }
+        }
+        
+        // Verificar escritura en el directorio de backup específico
+        // Si no es escribible, intentar ajustar permisos (0755, luego 0777)
+        if (!is_writable($backupPath)) {
+            @chmod($backupPath, 0755); // Intentar 0755 (más seguro)
+            if (!is_writable($backupPath)) {
+                @chmod($backupPath, 0777); // Intentar 0777 si 0755 falla
+            }
+        }
+
+        // Ahora, verificar si podemos escribir un archivo de prueba
+        $testFile = $backupPath . DIRECTORY_SEPARATOR . '.write_test_' . time();
+        if (@file_put_contents($testFile, 'test') === false) {
+            $lastError = error_get_last();
+            $errorMsg = 'El directorio de backup no tiene permisos de escritura: ' . $backupPath;
+            if ($lastError && isset($lastError['message'])) {
+                $errorMsg .= '. Error: ' . $lastError['message'];
+            }
+            return [
+                'success' => false,
+                'error' => $errorMsg
+            ];
+        }
+        @unlink($testFile);
+        
+        // No usar realpath() aquí, ya que puede fallar en entornos restrictivos
+        $dbBackupFile = $backupPath . DIRECTORY_SEPARATOR . 'database.sql';
+        
+        // Native PHP Database Backup (Agnostic to server environment)
+        try {
+            $link = self::connect();
+            $tables = [];
+            $result = $link->query('SHOW TABLES');
+            while ($row = $result->fetch(PDO::FETCH_NUM)) {
+                $tables[] = $row[0];
+            }
+            
+            $sql = "-- Framework Auto-Backup\n";
+            $sql .= "-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+            $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+            
+            foreach ($tables as $table) {
+                // Table structure
+                $res = $link->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $sql .= "\n\n-- Structure for table `$table` --\n\n";
+                $sql .= "DROP TABLE IF EXISTS `$table`;\n";
+                $sql .= $res['Create Table'] . ";\n\n";
+                
+                // Table data
+                $res = $link->query("SELECT * FROM `$table` ");
+                $sql .= "-- Data for table `$table` --\n";
+                while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
+                    $keys = array_keys($row);
+                    $values = array_values($row);
+                    $sql .= "INSERT INTO `$table` (`" . implode("`, `", $keys) . "`) VALUES (";
+                    $processedValues = [];
+                    foreach ($values as $value) {
+                        if (is_null($value)) $processedValues[] = "NULL";
+                        else $processedValues[] = $link->quote($value);
+                    }
+                    $sql .= implode(", ", $processedValues) . ");\n";
+                }
+            }
+            $sql .= "\nSET FOREIGN_KEY_CHECKS=1;";
+            
+            // Verificar permisos antes de escribir
+            if (!is_writable($backupPath)) {
+                @chmod($backupPath, 0777);
+            }
+            
+            $bytesWritten = @file_put_contents($dbBackupFile, $sql);
+            if ($bytesWritten === false) {
+                $lastError = error_get_last();
+                $errorMsg = 'No se pudo escribir el archivo de backup de la base de datos: ' . $dbBackupFile;
+                if ($lastError && isset($lastError['message'])) {
+                    $errorMsg .= '. Error: ' . $lastError['message'];
+                }
+                return [
+                    'success' => false,
+                    'error' => $errorMsg
+                ];
+            }
+            
+            // Asegurar permisos del archivo creado
+            @chmod($dbBackupFile, 0666);
+            $dbBackupSuccess = true;
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Native database backup failed: ' . $e->getMessage()
             ];
         }
         
@@ -433,19 +943,40 @@ class UpdatesController {
             'VERSION'
         ];
         
+        $backupErrors = [];
         foreach ($filesToBackup as $file) {
             $sourcePath = __DIR__ . '/../../' . $file;
             if (file_exists($sourcePath)) {
                 $destPath = $backupPath . '/' . str_replace('/', '_', $file);
-                copy($sourcePath, $destPath);
+                if (!@copy($sourcePath, $destPath)) {
+                    $backupErrors[] = "No se pudo copiar: {$file}";
+                } else {
+                    // Asegurar permisos del archivo copiado
+                    @chmod($destPath, 0666);
+                }
             }
         }
         
-        return [
-            'success' => $returnCode === 0,
+        // Si hay errores críticos al hacer backup de archivos, reportarlos
+        if (!empty($backupErrors) && !file_exists($dbBackupFile)) {
+            return [
+                'success' => false,
+                'error' => 'Error al crear backup: ' . implode(', ', $backupErrors)
+            ];
+        }
+        
+        $result = [
+            'success' => true,
             'backup_path' => $backupPath,
             'db_backup' => file_exists($dbBackupFile) ? $dbBackupFile : null
         ];
+        
+        // Incluir warning si se está usando directorio temporal
+        if (isset($writableDir['warning'])) {
+            $result['warning'] = $writableDir['warning'];
+        }
+        
+        return $result;
     }
     
     /**
@@ -457,11 +988,59 @@ class UpdatesController {
      * @return array Result with success status and file path
      */
     private static function downloadZip($url, $destination, $token = null) {
+        // Asegurarse de que el directorio destino existe y tiene permisos de escritura
+        $destinationDir = dirname($destination);
+        if (!is_dir($destinationDir)) {
+            // Intentar crear el directorio con 0755, luego 0777 si falla
+            if (!@mkdir($destinationDir, 0755, true)) {
+                if (!@mkdir($destinationDir, 0777, true)) {
+                    return [
+                        'success' => false,
+                        'error' => 'No se pudo crear el directorio para la descarga: ' . $destinationDir . '. Verifique los permisos del directorio padre.'
+                    ];
+                }
+            }
+            // Asegurar que sea 0777 después de la creación
+            if (is_dir($destinationDir)) {
+                @chmod($destinationDir, 0777);
+            }
+        }
+        
+        // Verificar escritura intentando crear un archivo de prueba
+        // Si no es escribible, intentar ajustar permisos (0755, luego 0777)
+        if (!is_writable($destinationDir)) {
+            @chmod($destinationDir, 0755); // Intentar 0755 (más seguro)
+            if (!is_writable($destinationDir)) {
+                @chmod($destinationDir, 0777); // Intentar 0777 si 0755 falla
+            }
+        }
+
+        $testFile = $destinationDir . DIRECTORY_SEPARATOR . '.write_test_' . time();
+        $canWrite = false;
+        
+        if (@file_put_contents($testFile, 'test') !== false) {
+            @unlink($testFile);
+            $canWrite = true;
+        }
+        
+        if (!$canWrite) {
+            $lastError = error_get_last();
+            $errorMsg = 'El directorio de descarga no tiene permisos de escritura: ' . $destinationDir;
+            if ($lastError && isset($lastError['message'])) {
+                $errorMsg .= '. Error: ' . $lastError['message'];
+            }
+            $errorMsg .= '. Verifique los permisos del directorio o la configuración de temp_dir en php.ini.';
+            return [
+                'success' => false,
+                'error' => $errorMsg
+            ];
+        }
+        
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Descargar a una variable, no a archivo directo
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 300); // 5 minutes timeout for large files
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Framework-Update-Checker/1.0');
         
@@ -473,31 +1052,35 @@ class UpdatesController {
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         }
         
-        $fp = fopen($destination, 'w');
-        if (!$fp) {
-            return [
-                'success' => false,
-                'error' => 'Cannot create destination file'
-            ];
-        }
-        
-        curl_setopt($ch, CURLOPT_FILE, $fp);
-        curl_exec($ch);
+        $fileData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         curl_close($ch);
-        fclose($fp);
         
-        if ($httpCode === 200 && file_exists($destination) && filesize($destination) > 0) {
-            return [
-                'success' => true,
-                'file_path' => $destination,
-                'file_size' => filesize($destination)
-            ];
-        } else {
-            if (file_exists($destination)) {
-                unlink($destination);
+        if ($httpCode === 200 && $fileData) {
+            // Usar file_put_contents (el método que sabemos que funciona en tu servidor)
+            $bytesWritten = @file_put_contents($destination, $fileData);
+            if ($bytesWritten !== false) {
+                // Asegurar permisos del archivo creado
+                @chmod($destination, 0666);
+                return [
+                    'success' => true,
+                    'file_path' => $destination,
+                    'file_size' => $bytesWritten
+                ];
+            } else {
+                $lastError = error_get_last();
+                $errorMsg = 'file_put_contents failed at: ' . $destination;
+                if ($lastError && isset($lastError['message'])) {
+                    $errorMsg .= '. Error: ' . $lastError['message'];
+                }
+                $errorMsg .= '. Verifique los permisos del directorio: ' . $destinationDir;
+                return [
+                    'success' => false,
+                    'error' => $errorMsg
+                ];
             }
+        } else {
             return [
                 'success' => false,
                 'error' => $curlError ?: "HTTP {$httpCode}: Failed to download update"
@@ -568,11 +1151,15 @@ class UpdatesController {
             'VERSION'
         ];
         
+        // Normalizar rutas para evitar problemas con barras dobles
+        $sourceDir = self::normalizePath($sourceDir);
+        $targetDir = self::normalizePath($targetDir);
+        
         // Find the actual project directory inside the extracted zip
         // GitHub zips usually have format: owner-repo-tag/
-        $dirs = glob($sourceDir . '/*', GLOB_ONLYDIR);
+        $dirs = glob($sourceDir . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
         if (count($dirs) > 0) {
-            $sourceDir = $dirs[0];
+            $sourceDir = self::normalizePath($dirs[0]);
         }
         
         $iterator = new RecursiveIteratorIterator(
@@ -584,10 +1171,14 @@ class UpdatesController {
             $sourcePath = $item->getPathname();
             $relativePath = str_replace($sourceDir . DIRECTORY_SEPARATOR, '', $sourcePath);
             
+            // Normalizar la ruta relativa
+            $relativePath = self::normalizePath($relativePath);
+            
             // Skip preserved files
             $shouldPreserve = false;
             foreach ($preservedFiles as $preserved) {
-                if (strpos($relativePath, $preserved) !== false) {
+                $normalizedPreserved = self::normalizePath($preserved);
+                if (strpos($relativePath, $normalizedPreserved) !== false) {
                     $shouldPreserve = true;
                     break;
                 }
@@ -597,22 +1188,106 @@ class UpdatesController {
                 continue;
             }
             
+            // Construir ruta destino normalizada
             $targetPath = $targetDir . DIRECTORY_SEPARATOR . $relativePath;
             
             if ($item->isDir()) {
                 if (!is_dir($targetPath)) {
-                    mkdir($targetPath, 0755, true);
+                    if (!@mkdir($targetPath, 0755, true)) {
+                        if (!@mkdir($targetPath, 0777, true)) {
+                            $errors[] = "Failed to create directory: {$relativePath}";
+                            continue;
+                        }
+                    }
+                    if (is_dir($targetPath)) {
+                        @chmod($targetPath, 0777);
+                    }
+                } else {
+                    // Si el directorio ya existe, asegurar que sea escribible
+                    if (!is_writable($targetPath)) {
+                        @chmod($targetPath, 0755);
+                        if (!is_writable($targetPath)) {
+                            @chmod($targetPath, 0777);
+                        }
+                    }
                 }
             } else {
                 $targetDirPath = dirname($targetPath);
+                
+                // Asegurar que el directorio padre existe y tiene permisos
                 if (!is_dir($targetDirPath)) {
-                    mkdir($targetDirPath, 0755, true);
+                    if (!@mkdir($targetDirPath, 0755, true)) {
+                        if (!@mkdir($targetDirPath, 0777, true)) {
+                            $errors[] = "Failed to create parent directory for file: {$relativePath}";
+                            continue;
+                        }
+                    }
+                    if (is_dir($targetDirPath)) {
+                        @chmod($targetDirPath, 0777);
+                    }
+                } else {
+                    // Si el directorio ya existe, asegurar que sea escribible
+                    if (!is_writable($targetDirPath)) {
+                        @chmod($targetDirPath, 0755);
+                        if (!is_writable($targetDirPath)) {
+                            @chmod($targetDirPath, 0777);
+                        }
+                    }
                 }
                 
-                if (copy($sourcePath, $targetPath)) {
-                    $filesCopied[] = $relativePath;
-                } else {
-                    $errors[] = "Failed to copy: {$relativePath}";
+                // Si el archivo destino ya existe, cambiar sus permisos primero
+                if (file_exists($targetPath)) {
+                    // Intentar hacer el archivo escribible
+                    @chmod($targetPath, 0666);
+                    // Si aún no es escribible, intentar 0777
+                    if (!is_writable($targetPath)) {
+                        @chmod($targetPath, 0777);
+                    }
+                }
+                
+                // Intentar copiar el archivo
+                $copySuccess = false;
+                $attempts = 0;
+                $maxAttempts = 3;
+                
+                while (!$copySuccess && $attempts < $maxAttempts) {
+                    if (@copy($sourcePath, $targetPath)) {
+                        @chmod($targetPath, 0666);
+                        $filesCopied[] = $relativePath;
+                        $copySuccess = true;
+                    } else {
+                        $attempts++;
+                        
+                        // En cada intento, mejorar permisos
+                        if (file_exists($targetPath)) {
+                            @chmod($targetPath, 0666);
+                            if (!is_writable($targetPath)) {
+                                @chmod($targetPath, 0777);
+                            }
+                        }
+                        @chmod($targetDirPath, 0777);
+                        
+                        // Si es el último intento, registrar el error
+                        if ($attempts >= $maxAttempts) {
+                            $lastError = error_get_last();
+                            $errorMsg = "Failed to copy file: {$relativePath}";
+                            if ($lastError && isset($lastError['message'])) {
+                                $errorMsg .= '. Error: ' . $lastError['message'];
+                            }
+                            // Agregar información sobre permisos
+                            $errorMsg .= '. Target path: ' . $targetPath;
+                            if (file_exists($targetPath)) {
+                                $perms = substr(sprintf('%o', fileperms($targetPath)), -4);
+                                $errorMsg .= ' (exists, perms: ' . $perms . ')';
+                            }
+                            $dirPerms = substr(sprintf('%o', fileperms($targetDirPath)), -4);
+                            $errorMsg .= '. Dir perms: ' . $dirPerms;
+                            $errors[] = $errorMsg;
+                        } else {
+                            // Pequeña pausa antes del siguiente intento
+                            usleep(100000); // 0.1 segundos
+                        }
+                    }
                 }
             }
         }
@@ -676,12 +1351,13 @@ class UpdatesController {
             $token = $updateConfig['github_token'] ?? null;
             
             // Step 3: Download update package
-            $tempDir = sys_get_temp_dir() . '/framework_update_' . time();
-            if (!is_dir($tempDir)) {
-                mkdir($tempDir, 0755, true);
+            // Usamos la misma carpeta del backup que ya sabemos que funciona 100%
+            $tempDir = $backup['backup_path'];
+            if (empty($tempDir)) {
+                $tempDir = self::getRootPath() . DIRECTORY_SEPARATOR . 'backups';
             }
+            $zipPath = $tempDir . DIRECTORY_SEPARATOR . 'update_' . time() . '.zip';
             
-            $zipPath = $tempDir . '/update.zip';
             $downloadResult = self::downloadZip($downloadUrl, $zipPath, $token);
             
             if (!$downloadResult['success']) {
@@ -704,11 +1380,17 @@ class UpdatesController {
             }
             
             // Step 5: Copy files to project (preserving config files)
-            $projectRoot = __DIR__ . '/../../';
+            // Usar getRootPath() para obtener la ruta correcta del proyecto
+            $projectRoot = self::getRootPath();
             $copyResult = self::copyUpdateFiles($extractDir, $projectRoot);
             
-            // Clean up temporary files
-            self::deleteDirectory($tempDir);
+            // Clean up temporary files (solo el directorio extracted y el ZIP, no el backup completo)
+            if (is_dir($extractDir)) {
+                self::deleteDirectory($extractDir);
+            }
+            if (file_exists($zipPath)) {
+                @unlink($zipPath);
+            }
             
             if (!$copyResult['success']) {
                 return [

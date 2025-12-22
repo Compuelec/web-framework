@@ -168,6 +168,17 @@ chmod -R 755 api/
 chmod -R 755 cms/
 ```
 
+> **⚠️ Importante para actualizaciones**: Si las actualizaciones del framework fallan, generalmente es debido a problemas de permisos. Se recomienda ejecutar los siguientes comandos para corregir los permisos:
+
+```bash
+# Ajustar propietario y permisos para XAMPP (macOS)
+sudo chown -R daemon:admin /Applications/XAMPP/xamppfiles/htdocs/chatcenter
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type d -exec chmod 775 {} +
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type f -exec chmod 664 {} +
+```
+
+> **Nota**: Ajusta la ruta según la ubicación de tu proyecto. El usuario `daemon` es el usuario que ejecuta Apache en XAMPP.
+
 ## ⚙️ Configuración
 
 ### Variables de Entorno (Alternativa)
@@ -359,6 +370,34 @@ Las contribuciones son bienvenidas. Por favor:
 ## 📄 Licencia
 
 Este proyecto está bajo una licencia propietaria. Todos los derechos reservados.
+
+## 🔧 Solución de Problemas
+
+### Actualizaciones fallan por permisos
+
+Si el proceso de actualización del framework falla, generalmente es debido a problemas de permisos de archivos. El sistema necesita permisos de escritura para:
+
+- Crear respaldos en la carpeta `backups/`
+- Descargar y extraer archivos de actualización
+- Actualizar archivos del framework
+- Ejecutar migraciones de base de datos
+
+**Solución recomendada para XAMPP (macOS):**
+
+```bash
+# Ajustar propietario y permisos
+sudo chown -R daemon:admin /Applications/XAMPP/xamppfiles/htdocs/chatcenter
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type d -exec chmod 775 {} +
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type f -exec chmod 664 {} +
+```
+
+**Solución para otros entornos:**
+
+- **Linux/Apache**: Usa el usuario del servidor web (generalmente `www-data` o `apache`)
+- **Windows/XAMPP**: Asegúrate de que el usuario que ejecuta Apache tenga permisos de escritura
+- **Nginx**: Verifica que el usuario `www-data` o `nginx` tenga permisos adecuados
+
+> **Nota**: Ajusta la ruta `/Applications/XAMPP/xamppfiles/htdocs/chatcenter` según la ubicación real de tu proyecto.
 
 ## 📞 Soporte
 

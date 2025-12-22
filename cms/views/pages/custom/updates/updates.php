@@ -51,12 +51,17 @@ $updateHistory = UpdatesController::getUpdateHistory();
 				<i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
 				<div class="flex-grow-1">
 					<h5 class="alert-heading mb-1">¡Actualización Disponible!</h5>
-					<p class="mb-0">
+						<p class="mb-0">
 						Hay una nueva versión disponible: <strong>v<?php echo htmlspecialchars($updateInfo['latest_version']); ?></strong>
 						<?php if (isset($updateInfo['is_major_update']) && $updateInfo['is_major_update']): ?>
 							<span class="badge bg-danger ms-2">Actualización Mayor</span>
 						<?php endif; ?>
 					</p>
+					<?php if (isset($updateInfo['error']) && $updateInfo['error']): ?>
+						<div class="text-danger small mt-1 mb-2">
+							<i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($updateInfo['error']); ?>
+						</div>
+					<?php endif; ?>
 					<?php if (isset($updateInfo['update_info']['changelog'][$updateInfo['latest_version']])): ?>
 						<details class="mt-2">
 							<summary class="cursor-pointer">Ver cambios</summary>
@@ -180,11 +185,11 @@ $(document).ready(function() {
 					// Reload page to show update info
 					location.reload();
 				} else {
-					alert('Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'));
+					fncSweetAlert("error", 'Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'), "");
 				}
 			},
 			error: function() {
-				alert('Error al conectar con el servidor de actualizaciones');
+				fncSweetAlert("error", 'Error al conectar con el servidor de actualizaciones', "");
 			},
 			complete: function() {
 				btn.prop('disabled', false).html(originalHtml);
@@ -193,8 +198,9 @@ $(document).ready(function() {
 	});
 	
 	// Install update button
-	$('#installUpdateBtn').on('click', function() {
-		if (!confirm('¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.')) {
+	$('#installUpdateBtn').on('click', async function() {
+		const confirmed = await fncSweetAlert("confirm", '¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.');
+		if (!confirmed) {
 			return;
 		}
 		
@@ -243,10 +249,12 @@ $(document).ready(function() {
 					modal.hide();
 					
 					if (response.success) {
-						alert('¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version);
-						location.reload();
+						fncSweetAlert("success", '¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version, "");
+						setTimeout(() => {
+							location.reload();
+						}, 2000);
 					} else {
-						alert('Error al instalar la actualización: ' + (response.error || 'Error desconocido'));
+						fncSweetAlert("error", 'Error al instalar la actualización: ' + (response.error || 'Error desconocido'), "");
 					}
 				}, 1000);
 			},
@@ -256,7 +264,7 @@ $(document).ready(function() {
 				if (xhr.responseJSON && xhr.responseJSON.error) {
 					errorMsg = xhr.responseJSON.error;
 				}
-				alert('Error al instalar la actualización: ' + errorMsg);
+				fncSweetAlert("error", 'Error al instalar la actualización: ' + errorMsg, "");
 			}
 		});
 	});
