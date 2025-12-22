@@ -774,6 +774,9 @@ class UpdatesController {
             // Step 7: Update version
             VersionManager::updateVersion($targetVersion);
             
+            // Step 7.5: Ensure required pages exist (like packaging page)
+            self::ensureRequiredPages();
+            
             // Step 8: Record update
             $status = ($migrationResult['success'] && $copyResult['success']) ? 'completed' : 'completed_with_warnings';
             $notes = [];
@@ -858,6 +861,16 @@ class UpdatesController {
         }
         
         return rmdir($dir);
+    }
+    
+    /**
+     * Ensure required pages exist after updates
+     */
+    private static function ensureRequiredPages() {
+        require_once __DIR__ . '/packaging-setup.controller.php';
+        
+        // Ensure packaging page exists
+        PackagingSetupController::ensurePackagingPage();
     }
     
     /**

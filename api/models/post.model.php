@@ -1,6 +1,6 @@
 <?php 
 
-require_once "connection.php";
+require_once __DIR__ . "/connection.php";
 
 class PostModel{
 
@@ -26,6 +26,12 @@ class PostModel{
 		$sql = "INSERT INTO $table ($columns) VALUES ($params)";
 
 		$link = Connection::connect();
+		if ($link === null) {
+			return array(
+				"comment" => "Database connection failed",
+				"error" => "Unable to connect to database"
+			);
+		}
 		$stmt = $link->prepare($sql);
 
 		foreach ($data as $key => $value) {

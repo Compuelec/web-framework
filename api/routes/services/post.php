@@ -24,7 +24,8 @@ if(isset($_POST)){
 		 	'results' => "Error: Fields in the form do not match the database"
 		);
 
-		echo json_encode($json, http_response_code($json["status"]));
+		http_response_code($json["status"]);
+		echo json_encode($json);
 
 		return;
 
@@ -70,15 +71,17 @@ if(isset($_POST)){
 					 	'results' => "Error: Fields in the form do not match the database"
 					);
 
-					echo json_encode($json, http_response_code($json["status"]));
+					http_response_code($json["status"]);
+					echo json_encode($json);
 
 					return;
 
 				}
 
 				// Request controller response to create data in any table
-
-				$response -> postData($table,$_POST);
+				// Get suffix from GET parameter if available, otherwise infer from table name
+				$suffix = $_GET["suffix"] ?? null;
+				$response -> postData($table,$_POST, $suffix);
 
 			// POST request for authorized users
 
@@ -92,8 +95,10 @@ if(isset($_POST)){
 				// Request controller response to create data in any table
 
 				if($validate == "ok"){
-		
-					$response -> postData($table,$_POST);
+					// Get suffix from GET parameter
+					$suffix = $_GET["suffix"] ?? null;
+					$response -> postData($table,$_POST, $suffix);
+					return; // Exit after processing
 
 				}
 
@@ -106,7 +111,8 @@ if(isset($_POST)){
 					 	'results' => "Error: The token has expired"
 					);
 
-					echo json_encode($json, http_response_code($json["status"]));
+					http_response_code($json["status"]);
+					echo json_encode($json);
 
 					return;
 
@@ -121,7 +127,8 @@ if(isset($_POST)){
 					 	'results' => "Error: The user is not authorized"
 					);
 
-					echo json_encode($json, http_response_code($json["status"]));
+					http_response_code($json["status"]);
+					echo json_encode($json);
 
 					return;
 
@@ -138,7 +145,8 @@ if(isset($_POST)){
 			 	'results' => "Error: Authorization required"
 			);
 
-			echo json_encode($json, http_response_code($json["status"]));
+			http_response_code($json["status"]);
+			echo json_encode($json);
 
 			return;	
 

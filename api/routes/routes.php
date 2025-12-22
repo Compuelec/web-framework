@@ -23,7 +23,8 @@ if(count($routesArray) == 0){
 
 	);
 
-	echo json_encode($json, http_response_code($json["status"]));
+	http_response_code($json["status"]);
+	echo json_encode($json);
 
 	return;
 
@@ -48,7 +49,8 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 				"results" => "You are not authorized to make this request"
 			);
 
-			echo json_encode($json, http_response_code($json["status"]));
+			http_response_code($json["status"]);
+	echo json_encode($json);
 
 			return;
 

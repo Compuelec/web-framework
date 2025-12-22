@@ -1,6 +1,6 @@
 <?php
 
-require_once "get.model.php";
+require_once __DIR__ . "/get.model.php";
 
 class Connection{
 
@@ -81,9 +81,10 @@ class Connection{
 			$link->exec("set names ".($dbConfig['charset']));
 
 		}catch(PDOException $e){
-
-			die("Error: ".$e->getMessage());
-
+			// Log error instead of die() to prevent breaking JSON response
+			error_log("Database Connection Error: " . $e->getMessage());
+			// Return null and let the calling code handle it
+			return null;
 		}
 
 		return $link;
@@ -95,8 +96,11 @@ class Connection{
 
 		$database = Connection::infoDatabase()["database"];
 
-		$validate = Connection::connect()
-		->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$validate = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
 		->fetchAll(PDO::FETCH_OBJ);
 
 		if(empty($validate)){

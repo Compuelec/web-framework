@@ -1,5 +1,7 @@
 <?php 
 
+require_once __DIR__ . '/path-updater.controller.php';
+
 class InstallController{
 
 	// Load configuration
@@ -55,18 +57,33 @@ class InstallController{
 		$config = self::getConfig();
 		$dbConfig = $config['database'] ?? [];
 		
+		// If no charset is defined, use utf8mb4 as default
+		$charset = $dbConfig['charset'] ?? 'utf8mb4';
+		
 		try{
+			// First try to connect without specifying database (to create it if it doesn't exist)
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host']).";dbname=".($dbConfig['name']),
+				"mysql:host=".($dbConfig['host']).";charset=".$charset,
 				$dbConfig['user'],
 				$dbConfig['pass']
 			);
 			
-			$link->exec("set names ".($dbConfig['charset']));
+			// Try to use the database
+			$link->exec("USE `".($dbConfig['name'])."`");
+			$link->exec("set names ".$charset);
 
 		}catch(PDOException $e){
-
-			die("Error: ".$e->getMessage());
+			// If it fails, try with the database directly
+			try {
+				$link = new PDO(
+					"mysql:host=".($dbConfig['host']).";dbname=".($dbConfig['name']).";charset=".$charset,
+					$dbConfig['user'],
+					$dbConfig['pass']
+				);
+				$link->exec("set names ".$charset);
+			} catch(PDOException $e2) {
+				die("Error: ".$e2->getMessage());
+			}
 		}
 
 		return $link;
@@ -78,6 +95,55 @@ class InstallController{
 	public function install(){
 
 		if(isset($_POST["email_admin"])){
+
+			// Detect domain and update configurations automatically
+			$domainInfo = PathUpdaterController::detectDomain();
+			
+			// Get database configuration from form if available
+			$dbConfig = [
+				'host' => $_POST['db_host'] ?? 'localhost',
+				'name' => $_POST['db_name'] ?? 'chatcenter',
+				'user' => $_POST['db_user'] ?? 'root',
+				'pass' => $_POST['db_pass'] ?? ''
+			];
+			
+			// Update configurations before continuing
+			$cmsConfigResult = PathUpdaterController::updateCmsConfig($domainInfo, $dbConfig);
+			$apiConfigResult = PathUpdaterController::updateApiConfig($dbConfig, 
+				$cmsConfigResult['api_key'] ?? null,
+				null,
+				$cmsConfigResult['password_salt'] ?? null
+			);
+			
+			// If there are errors updating configurations, show them
+			if (!$cmsConfigResult['success'] || !$apiConfigResult['success']) {
+				$errorMsg = "Error al actualizar configuraciones:<br>";
+				if (!$cmsConfigResult['success']) {
+					$errorMsg .= "- CMS: " . $cmsConfigResult['message'] . "<br>";
+				}
+				if (!$apiConfigResult['success']) {
+					$errorMsg .= "- API: " . $apiConfigResult['message'] . "<br>";
+				}
+				
+				$errorMsgEscaped = json_encode($errorMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+				echo '<script>
+					fncMatPreloader("off");
+					fncFormatInputs();
+					fncSweetAlert("error", "Error de configuración", ' . $errorMsgEscaped . ');
+				</script>';
+				return;
+			}
+
+			// Check if database already exists and has data (imported from package)
+			// Try to detect old domain from database before creating tables
+			$oldDomain = null;
+			try {
+				$oldDomain = PathUpdaterController::detectOldDomainFromDatabase($dbConfig);
+			} catch (Exception $e) {
+				// Database might not exist yet, that's okay - will check again after installation
+			}
+			
+			$newDomain = $domainInfo['base_url'];
 
 			// Check if tables already exist before starting installation
 			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files', 'activity_logs'];
@@ -584,6 +650,11 @@ class InstallController{
 					}
 				}
 
+				// Create packaging page using setup controller
+				require_once __DIR__ . '/packaging-setup.controller.php';
+				$packagingPageResult = PackagingSetupController::ensurePackagingPage();
+				$packagingPage = (object)['status' => $packagingPageResult['success'] ? 200 : 500];
+
 				// Create Breadcrumb module for admins page
 
 				$url = "modules?token=no&except=id_module";
@@ -632,6 +703,7 @@ class InstallController{
 				   $filesPage->status == 200 &&
 				   $updatesPage->status == 200 &&
 				   $activityLogsPage->status == 200 &&
+				   $packagingPage->status == 200 &&
 				   $breadcrumbModule->status == 200 &&
 				   $tableModule->status == 200 &&
 				   $serverFolder->status == 200
@@ -795,6 +867,16 @@ class InstallController{
 					}
 
 					if($countColumns == count($columns)){
+
+						// Final update: Ensure all database URLs are updated to new domain
+						// This handles cases where database was imported from package
+						if (isset($oldDomain) && $oldDomain && $oldDomain !== $newDomain) {
+							$finalDbUpdate = PathUpdaterController::updateDatabaseUrls($oldDomain, $newDomain, $dbConfig);
+							// Log but don't show error to user as installation is complete
+							if ($finalDbUpdate['success'] && $finalDbUpdate['updated_count'] > 0) {
+								error_log("Info: Updated " . $finalDbUpdate['updated_count'] . " database records with new domain URLs");
+							}
+						}
 
 						echo '<script>
 						fncMatPreloader("off");

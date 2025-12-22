@@ -28,6 +28,22 @@ require_once "controllers/curl.controller.php";
 require_once "extensions/vendor/autoload.php";
 require_once __DIR__ . "/../core/activity_log.php";
 
+// Ensure required pages exist (only if database is configured)
+if (is_array($config) && isset($config['database'])) {
+    try {
+        require_once "controllers/packaging-setup.controller.php";
+        // Run in background, don't block if it fails
+        @PackagingSetupController::ensurePackagingPage();
+        
+        // Ensure all custom pages have their files created
+        require_once "controllers/pages-setup.controller.php";
+        @PagesSetupController::ensureCustomPagesFiles();
+    } catch (Exception $e) {
+        // Silently fail - this is not critical for page load
+        error_log("Warning: Could not ensure pages: " . $e->getMessage());
+    }
+}
+
 $index = new TemplateController();
 $index -> index();
 

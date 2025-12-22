@@ -13,6 +13,106 @@
 
 				<hr class="install-divider">
 
+				<!-- Section: Domain Detection -->
+				<?php
+				require_once __DIR__ . '/../../../controllers/path-updater.controller.php';
+				$domainInfo = PathUpdaterController::detectDomain();
+				?>
+				<div class="mb-4">
+					<h6 class="section-title mb-3">
+						<i class="bi bi-globe me-2"></i>
+						Configuración del Servidor
+					</h6>
+					<div class="alert alert-info">
+						<small>
+							<strong>Dominio detectado:</strong> <?php echo htmlspecialchars($domainInfo['host']); ?><br>
+							<strong>URL Base:</strong> <?php echo htmlspecialchars($domainInfo['base_url']); ?><br>
+							<strong>URL API:</strong> <?php echo htmlspecialchars($domainInfo['api_url']); ?>
+						</small>
+					</div>
+				</div>
+
+				<!-- Section: Database Configuration -->
+				<div class="mb-4">
+					<h6 class="section-title mb-3">
+						<i class="bi bi-database me-2"></i>
+						Configuración de Base de Datos
+					</h6>
+					
+					<div class="row g-3">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="db_host" class="form-label small">
+									Servidor <span class="text-danger">*</span>
+								</label>
+								<input 
+								type="text"
+								class="form-control"
+								id="db_host"
+								name="db_host"
+								value="localhost"
+								placeholder="localhost"
+								required
+								>
+								<div class="valid-feedback small">✓ Válido</div>
+								<div class="invalid-feedback small">Requerido</div>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="db_name" class="form-label small">
+									Base de Datos <span class="text-danger">*</span>
+								</label>
+								<input 
+								type="text"
+								class="form-control"
+								id="db_name"
+								name="db_name"
+								value="chatcenter"
+								placeholder="chatcenter"
+								required
+								>
+								<div class="valid-feedback small">✓ Válido</div>
+								<div class="invalid-feedback small">Requerido</div>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="db_user" class="form-label small">
+									Usuario <span class="text-danger">*</span>
+								</label>
+								<input 
+								type="text"
+								class="form-control"
+								id="db_user"
+								name="db_user"
+								value="root"
+								placeholder="root"
+								required
+								>
+								<div class="valid-feedback small">✓ Válido</div>
+								<div class="invalid-feedback small">Requerido</div>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label for="db_pass" class="form-label small">
+									Contraseña
+								</label>
+								<input 
+								type="password"
+								class="form-control"
+								id="db_pass"
+								name="db_pass"
+								placeholder="••••••••"
+								>
+								<div class="valid-feedback small">✓ Válido</div>
+								<div class="invalid-feedback small">Opcional</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- Section: Administrator Information -->
 				<div class="mb-4">
 					<h6 class="section-title mb-3">
