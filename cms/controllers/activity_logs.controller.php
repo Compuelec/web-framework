@@ -70,6 +70,11 @@ class ActivityLogsController {
 	 * @return bool True on success, false on failure
 	 */
 	public static function log($action, $entity, $entityId = null, $description = null, $adminId = null) {
+		// Ensure session is started
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
+		
 		// Ensure table exists before logging
 		self::ensureTableExists();
 		

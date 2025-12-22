@@ -26,6 +26,7 @@ date_default_timezone_set($timezone);
 require_once "controllers/template.controller.php";
 require_once "controllers/curl.controller.php";
 require_once "extensions/vendor/autoload.php";
+require_once __DIR__ . "/../core/activity_log.php";
 
 $index = new TemplateController();
 $index -> index();

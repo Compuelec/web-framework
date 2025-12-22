@@ -51,6 +51,14 @@ class AdminsController{
 				=============================================*/
 
 				$_SESSION["admin"] = $login->results[0];
+				
+				/*=============================================
+				Log login activity
+				=============================================*/
+				
+				if (function_exists('logActivity')) {
+					logActivity('login', 'admin', $login->results[0]->id_admin, 'Successful login');
+				}
 
 				echo '<script>
 
@@ -170,6 +178,14 @@ class AdminsController{
 				=============================================*/
 
 				$_SESSION["admin"] = $admin->results[0];
+				
+				/*=============================================
+				Log login activity with security code
+				=============================================*/
+				
+				if (function_exists('logActivity')) {
+					logActivity('login', 'admin', $admin->results[0]->id_admin, 'Login with security code');
+				}
 
 				echo '<script>
 
@@ -264,6 +280,15 @@ class AdminsController{
 				if($updateAdmin->status == 200){
 
 					$_SESSION["admin"]->email_admin = $_POST["email_admin"];
+					
+					/*=============================================
+					Log profile update activity
+					=============================================*/
+					
+					if (function_exists('logActivity')) {
+						$description = !empty($_POST["password_admin"]) ? 'Profile and password update' : 'Profile update';
+						logActivity('update', 'admin', $admin->results[0]->id_admin, $description);
+					}
 
 					echo '
 

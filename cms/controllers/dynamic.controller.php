@@ -54,6 +54,15 @@ class DynamicController{
 						$update = CurlController::request($url,$method,$fields);
 
 						if($update->status == 200){
+							
+							/*=============================================
+							Log update activity
+							=============================================*/
+							
+							if (function_exists('logActivity')) {
+								$entityId = base64_decode($_POST["idItem"]);
+								logActivity('update', $module->title_module, $entityId, 'Record update in module ' . $module->title_module);
+							}
 
 							echo '
 
@@ -108,6 +117,21 @@ class DynamicController{
 						$save = CurlController::request($url,$method,$fields);
 
 						if($save->status == 200){
+							
+							/*=============================================
+							Log create activity
+							=============================================*/
+							
+							if (function_exists('logActivity')) {
+								// Try to get the created record ID from response
+								$entityId = null;
+								if (isset($save->results) && is_array($save->results) && count($save->results) > 0) {
+									$firstResult = $save->results[0];
+									$idField = 'id_' . $module->suffix_module;
+									$entityId = $firstResult->$idField ?? null;
+								}
+								logActivity('create', $module->title_module, $entityId, 'Record creation in module ' . $module->title_module);
+							}
 
 							echo '
 

@@ -2,6 +2,7 @@
 
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";
+require_once __DIR__ . "/../../core/activity_log.php";
 
 class DynamicTablesController{
 
@@ -28,6 +29,15 @@ class DynamicTablesController{
 			$deleteItem = CurlController::request($url,$method,$fields);
 
 			if($deleteItem->status == 200){
+				
+				/*=============================================
+				Log delete activity
+				=============================================*/
+				
+				if (function_exists('logActivity')) {
+					$entityId = base64_decode($value);
+					logActivity('delete', $this->tableDelete, $entityId, 'Record deletion in table ' . $this->tableDelete);
+				}
 
 				$countDelete++;
 
