@@ -54,3 +54,24 @@ Las migraciones se ejecutan automáticamente cuando:
 - El sistema detecta que hay migraciones pendientes para la versión objetivo
 
 Las migraciones se ejecutan en orden según las versiones, y solo se ejecutan una vez (se registran en la tabla `framework_migrations`).
+
+## Solución de Problemas
+
+### Error de permisos durante actualizaciones
+
+Si el proceso de actualización falla al ejecutar migraciones, generalmente es debido a problemas de permisos. El sistema necesita permisos de escritura para:
+
+- Crear respaldos
+- Actualizar archivos
+- Ejecutar las migraciones SQL
+
+**Solución recomendada para XAMPP (macOS):**
+
+```bash
+# Ajustar propietario y permisos
+sudo chown -R daemon:admin /Applications/XAMPP/xamppfiles/htdocs/chatcenter
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type d -exec chmod 775 {} +
+sudo find /Applications/XAMPP/xamppfiles/htdocs/chatcenter -type f -exec chmod 664 {} +
+```
+
+> **Nota**: Ajusta la ruta según la ubicación de tu proyecto. El usuario `daemon` es el usuario que ejecuta Apache en XAMPP.

@@ -334,8 +334,9 @@ $(document).ready(function() {
 	});
 	
 	// Clear logs button
-	$('#clearLogsBtn').on('click', function() {
-		if (!confirm('¿Estás seguro de que deseas eliminar todos los logs de actividad? Esta acción no se puede deshacer.')) {
+	$('#clearLogsBtn').on('click', async function() {
+		const confirmed = await fncSweetAlert("confirm", '¿Estás seguro de que deseas eliminar todos los logs de actividad? Esta acción no se puede deshacer.');
+		if (!confirmed) {
 			return;
 		}
 		
@@ -348,14 +349,14 @@ $(document).ready(function() {
 			dataType: 'json',
 			success: function(response) {
 				if (response.success) {
-					alert('Logs eliminados exitosamente');
+					fncSweetAlert("success", 'Logs eliminados exitosamente', "");
 					loadLogs(currentPage, currentLimit, currentFilters);
 				} else {
-					alert('Error al eliminar logs: ' + (response.error || 'Error desconocido'));
+					fncSweetAlert("error", 'Error al eliminar logs: ' + (response.error || 'Error desconocido'), "");
 				}
 			},
 			error: function() {
-				alert('Error al conectar con el servidor');
+				fncSweetAlert("error", 'Error al conectar con el servidor', "");
 			}
 		});
 	});

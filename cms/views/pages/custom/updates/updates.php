@@ -185,11 +185,11 @@ $(document).ready(function() {
 					// Reload page to show update info
 					location.reload();
 				} else {
-					alert('Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'));
+					fncSweetAlert("error", 'Error al verificar actualizaciones: ' + (response.error || 'Error desconocido'), "");
 				}
 			},
 			error: function() {
-				alert('Error al conectar con el servidor de actualizaciones');
+				fncSweetAlert("error", 'Error al conectar con el servidor de actualizaciones', "");
 			},
 			complete: function() {
 				btn.prop('disabled', false).html(originalHtml);
@@ -198,8 +198,9 @@ $(document).ready(function() {
 	});
 	
 	// Install update button
-	$('#installUpdateBtn').on('click', function() {
-		if (!confirm('¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.')) {
+	$('#installUpdateBtn').on('click', async function() {
+		const confirmed = await fncSweetAlert("confirm", '¿Estás seguro de que deseas instalar esta actualización? Se creará un respaldo automático antes de proceder.');
+		if (!confirmed) {
 			return;
 		}
 		
@@ -248,10 +249,12 @@ $(document).ready(function() {
 					modal.hide();
 					
 					if (response.success) {
-						alert('¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version);
-						location.reload();
+						fncSweetAlert("success", '¡Actualización instalada exitosamente!\n\nVersión anterior: ' + response.from_version + '\nVersión nueva: ' + response.to_version, "");
+						setTimeout(() => {
+							location.reload();
+						}, 2000);
 					} else {
-						alert('Error al instalar la actualización: ' + (response.error || 'Error desconocido'));
+						fncSweetAlert("error", 'Error al instalar la actualización: ' + (response.error || 'Error desconocido'), "");
 					}
 				}, 1000);
 			},
@@ -261,7 +264,7 @@ $(document).ready(function() {
 				if (xhr.responseJSON && xhr.responseJSON.error) {
 					errorMsg = xhr.responseJSON.error;
 				}
-				alert('Error al instalar la actualización: ' + errorMsg);
+				fncSweetAlert("error", 'Error al instalar la actualización: ' + errorMsg, "");
 			}
 		});
 	});
