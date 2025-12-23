@@ -134,11 +134,14 @@ class TemplateController{
 
 		$cmsBasePath = self::cmsBasePath();
 
+		// Build full URL from relative path stored in database
+		$fileUrl = self::buildFileUrl($value->link_file);
+
 		// Capture image thumbnail
 
 		if(explode("/",$value->type_file)[0] == "image"){
 
-			$path = '<img src="'.$value->link_file.'" class="rounded" style="width:100px; height:100px; object-fit: cover; object-position: center;">';
+			$path = '<img src="'.$fileUrl.'" class="rounded" style="width:100px; height:100px; object-fit: cover; object-position: center;">';
 
 		}
 
@@ -149,7 +152,7 @@ class TemplateController{
 			if(explode("/",$value->type_file)[1] == "mp4"){
 
 				$path = '<video class="rounded" style="width:100px; height:100px; object-fit: cover; object-position: center;">
-				<source src="'.$value->link_file.'" type="'.$value->type_file.'">
+				<source src="'.$fileUrl.'" type="'.$value->type_file.'">
 				</video>';
 
 			}else{
@@ -196,11 +199,14 @@ class TemplateController{
 
 		$cmsBasePath = self::cmsBasePath();
 
+		// Build full URL from relative path stored in database
+		$fileUrl = self::buildFileUrl($value->link_file);
+
 		// Capture image thumbnail
 
 		if(explode("/",$value->type_file)[0] == "image"){
 
-			$path = '<img src="'.$value->link_file.'" class="rounded card-img-top w-100">';
+			$path = '<img src="'.$fileUrl.'" class="rounded card-img-top w-100">';
 
 		}
 
@@ -211,7 +217,7 @@ class TemplateController{
 			if(explode("/",$value->type_file)[1] == "mp4"){
 
 				$path = '<video class="rounded card-img-top w-100">
-					<source src="'.$value->link_file.'" type="'.$value->type_file.'">
+					<source src="'.$fileUrl.'" type="'.$value->type_file.'">
 				</video>';
 
 			}else{
@@ -250,6 +256,31 @@ class TemplateController{
  		}
 	 		
 		return $path;
+	}
+
+	// Build full file URL from relative path stored in database
+	// Handles both relative paths (views/assets/files/...) and full URLs (for backward compatibility)
+	static public function buildFileUrl($linkFile){
+		// If link_file already contains http:// or https://, return as-is (backward compatibility)
+		if(strpos($linkFile, 'http://') === 0 || strpos($linkFile, 'https://') === 0){
+			return $linkFile;
+		}
+		
+		// Build full URL from relative path
+		$cmsBasePath = self::cmsBasePath();
+		$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+		$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+		
+		// Ensure link_file starts with / if it's a relative path
+		$relativePath = ltrim($linkFile, '/');
+		
+		// Build complete URL
+		$fullUrl = $protocol . '://' . $host . $cmsBasePath . '/' . $relativePath;
+		
+		// Clean double slashes (but preserve http:// or https://)
+		$fullUrl = preg_replace('#([^:])//+#', '$1/', $fullUrl);
+		
+		return $fullUrl;
 	}
 
 	// Generate random alphanumeric codes

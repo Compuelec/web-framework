@@ -605,7 +605,31 @@ function uploadFilesAjax(folder){
 			processData: false,
 			success: function(response){
 
-				if(JSON.parse(response).status == 200){
+				// Validate response is JSON before parsing
+				// jQuery may already parse JSON if Content-Type is application/json
+				var parsedResponse;
+				try {
+					// If response is already an object, use it directly
+					if(typeof response === 'object' && response !== null){
+						parsedResponse = response;
+					} else if(typeof response === 'string'){
+						// If response is a string, parse it
+						response = response.trim();
+						parsedResponse = JSON.parse(response);
+					} else {
+						// Unexpected type
+						throw new Error("Unexpected response type: " + typeof response);
+					}
+				} catch(e) {
+					fncMatPreloader("off");
+					// Log the actual response for debugging
+					var responsePreview = typeof response === 'string' ? response.substring(0, 200) : JSON.stringify(response).substring(0, 200);
+					console.error("Invalid JSON response:", responsePreview);
+					fncSweetAlert("error", "Error uploading file: Invalid server response. Please check the server logs.", "");
+					return;
+				}
+
+				if(parsedResponse.status == 200){
 
 					countFiles++;
 
@@ -615,22 +639,22 @@ function uploadFilesAjax(folder){
 					$(".columnName"+i).parent().removeClass("itemsUp");
 					$(".columnName"+i).find("input").attr("readonly", false);
 					$(".columnName"+i).find("input").addClass("changeName");
-					$(".columnName"+i).find("input").attr("idFile",JSON.parse(response).id_file);
+					$(".columnName"+i).find("input").attr("idFile",parsedResponse.id_file);
 					$(".columnName"+i).removeClass("columnName"+i);
 
-					$(".progressList"+i).html(`<a href="${JSON.parse(response).link}" target="_blank">
+					$(".progressList"+i).html(`<a href="${parsedResponse.link}" target="_blank">
 
-						${JSON.parse(response).reduce_link}
+						${parsedResponse.reduce_link}
 						<i class="bi bi-box-arrow-up-right ps-2 btn"></i>
 
 					</a>`);
 
 					$(".progressList"+i).removeClass("progressList"+i);
 
-					$(".columnAction"+i).html(`<svg class="bi bi-copy copyLink" copy="${JSON.parse(response).link}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="cursor:pointer">
+					$(".columnAction"+i).html(`<svg class="bi bi-copy copyLink" copy="${parsedResponse.link}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="cursor:pointer">
 						  <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
 						</svg>
-					  <i class="bi bi-trash ps-2 btn deleteFile" idFile="${JSON.parse(response).id_file}" idFolder="${folder.split("_")[0]}" mode="list"></i>`);
+					  <i class="bi bi-trash ps-2 btn deleteFile" idFile="${parsedResponse.id_file}" idFolder="${folder.split("_")[0]}" mode="list"></i>`);
 
 					$(".columnAction"+i).removeClass("columnAction"+i);
 
@@ -640,10 +664,10 @@ function uploadFilesAjax(folder){
 					$(".gridName"+i).parent().parent().parent().parent().removeClass("itemsUp");
 					$(".gridName"+i).find("input").attr("readonly", false);
 					$(".gridName"+i).find("input").addClass("changeName");
-					$(".gridName"+i).find("input").attr("idFile",JSON.parse(response).id_file);
+					$(".gridName"+i).find("input").attr("idFile",parsedResponse.id_file);
 					$(".gridName"+i).removeClass("gridName"+i);
 
-					$(".progressGrid"+i).html(`<a href="${JSON.parse(response).link}" target="_blank">
+					$(".progressGrid"+i).html(`<a href="${parsedResponse.link}" target="_blank">
 
 						<i class="bi bi-box-arrow-up-right ps-2 btn"></i>
 
@@ -651,10 +675,10 @@ function uploadFilesAjax(folder){
 
 					$(".progressGrid"+i).removeClass("progressGrid"+i);
 
-					$(".gridAction"+i).html(`<svg class="bi bi-copy copyLink" copy="${JSON.parse(response).link}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="cursor:pointer">
+					$(".gridAction"+i).html(`<svg class="bi bi-copy copyLink" copy="${parsedResponse.link}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="cursor:pointer">
 						  <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
 						</svg>
-					  <i class="bi bi-trash ps-2 btn deleteFile" idFile="${JSON.parse(response).id_file}" idFolder="${folder.split("_")[0]}" mode="grid"></i>`);
+					  <i class="bi bi-trash ps-2 btn deleteFile" idFile="${parsedResponse.id_file}" idFolder="${folder.split("_")[0]}" mode="grid"></i>`);
 					$(".gridAction"+i).removeClass("gridAction"+i);
 
 					/*=============================================
@@ -705,7 +729,8 @@ function uploadFilesAjax(folder){
 				}else{
 
 					fncMatPreloader("off");
-					fncToastr("error", JSON.parse(response).error);
+					var errorMessage = parsedResponse.error || "Error uploading file";
+					fncSweetAlert("error", errorMessage, "");
 
 					/*=============================================
 					Precarga individual en la lista
@@ -730,6 +755,12 @@ function uploadFilesAjax(folder){
 					files = new DataTransfer();
 				}
 			
+			},
+			error: function(xhr, status, error){
+				fncMatPreloader("off");
+				fncSweetAlert("error", "Error uploading file: " + error, "");
+				$(".progressList"+i).html('<span class="text-danger">Error</span>');
+				$(".progressGrid"+i).html('<span class="text-danger">Error</span>');
 			}
 
 		})

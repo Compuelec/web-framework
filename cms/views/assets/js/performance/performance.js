@@ -76,16 +76,30 @@ var PerformanceOptimizer = {
     setupVirtualScrolling: function() {
         // Basic virtual scrolling implementation
         // Only activates if there are more than 100 records
-        $(document).on('DOMNodeInserted', '#loadTable', function() {
-            var $table = $(this);
-            var $rows = $table.find('tr');
+        // Use MutationObserver instead of deprecated DOMNodeInserted
+        if ('MutationObserver' in window) {
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && (node.id === 'loadTable' || node.querySelector('#loadTable'))) {
+                            var $table = node.id === 'loadTable' ? $(node) : $(node).find('#loadTable');
+                            var $rows = $table.find('tr');
+                            
+                            if ($rows.length > 100) {
+                                // Implement virtual scrolling here if needed
+                                // For now, just optimize rendering
+                                $table.css('will-change', 'transform');
+                            }
+                        }
+                    });
+                });
+            });
             
-            if ($rows.length > 100) {
-                // Implement virtual scrolling here if needed
-                // For now, just optimize rendering
-                $table.css('will-change', 'transform');
-            }
-        });
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
     },
     
     setupLazyLoading: function() {
@@ -113,17 +127,34 @@ var PerformanceOptimizer = {
     
     optimizeImages: function() {
         // Convert images to lazy loading
-        $(document).on('DOMNodeInserted', 'img', function() {
-            var $img = $(this);
-            if (!$img.attr('data-src') && $img.attr('src') && !$img.closest('.modal').length) {
-                // Only for images outside initial viewport
-                var rect = this.getBoundingClientRect();
-                if (rect.bottom > window.innerHeight + 500) {
-                    $img.attr('data-src', $img.attr('src'));
-                    $img.attr('src', 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3C/svg%3E');
-                }
-            }
-        });
+        // Use MutationObserver instead of deprecated DOMNodeInserted
+        if ('MutationObserver' in window) {
+            var imageObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            var $imgs = $(node).find('img').addBack('img');
+                            $imgs.each(function() {
+                                var $img = $(this);
+                                if (!$img.attr('data-src') && $img.attr('src') && !$img.closest('.modal').length) {
+                                    // Only for images outside initial viewport
+                                    var rect = this.getBoundingClientRect();
+                                    if (rect.bottom > window.innerHeight + 500) {
+                                        $img.attr('data-src', $img.attr('src'));
+                                        $img.attr('src', 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3C/svg%3E');
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+            
+            imageObserver.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
     },
     
     clearCache: function() {
