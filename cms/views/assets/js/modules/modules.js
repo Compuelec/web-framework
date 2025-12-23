@@ -123,7 +123,10 @@ $(document).on("click",".myModule",function(){
 				$("#metricTable").val(JSON.parse(JSON.parse(item).content_module).table);
 				$("#metricColumn").val(JSON.parse(JSON.parse(item).content_module).column);
 				$("#metricConfig").val(JSON.parse(JSON.parse(item).content_module).config);
-				$("#metricIcon").val(JSON.parse(JSON.parse(item).content_module).icon);
+				var metricIcon = JSON.parse(JSON.parse(item).content_module).icon || "bi-gear";
+				$("#metricIcon").val(metricIcon);
+				// Update icon preview
+				$("#metricIconPreview").attr("class", "bi " + metricIcon);
 				$("#metricColor").val(JSON.parse(JSON.parse(item).content_module).color);
 
 				$("#content_module").val(JSON.parse(item).content_module);	      
@@ -206,18 +209,7 @@ $(document).on("click",".myModule",function(){
 						}
 					})
 
-					/*=============================================
-					Marcar el display y mt
-					=============================================*/
-
-					var display = "d-none";
-					var mt = "";
-
-					if(i == 0){
-
-						display = "d-block";
-						mt = "mt-4";
-					}
+					// Labels are always visible in the new design
 
 					/*=============================================
 					Marcar la selección de visibilidad
@@ -237,114 +229,104 @@ $(document).on("click",".myModule",function(){
 					
 					$(".listColumns").append(`
 
-						<div class="row">
+						<div class="col-12 mb-3">
+							<div class="card border">
+								<div class="card-body">
+									<div class="d-flex justify-content-between align-items-center mb-3">
+										<h6 class="card-title mb-0 text-muted">
+											<i class="bi bi-columns"></i> Columna ${i + 1}
+										</h6>
+										<button type="button" class="btn btn-sm btn-outline-danger deleteColumn" index="${i}" idItem="${e.id_column}" title="Eliminar columna">
+											<i class="bi bi-trash"></i>
+										</button>
+									</div>
 
-						    <input type="hidden" name="id_column_${i}" value="${e.id_column}">
-						    <input type="hidden" name="original_title_column_${i}" value="${e.title_column}">
+									<input type="hidden" name="id_column_${i}" value="${e.id_column}">
+									<input type="hidden" name="original_title_column_${i}" value="${e.title_column}">
 
-							<div class="col-4 mb-3">
+									<div class="row g-3">
+										<div class="col-md-4">
+											<label for="title_column_${i}" class="form-label small fw-semibold">Título<sup>*</sup></label>
+											<input
+												type="text"
+												class="form-control form-control-sm rounded"
+												id="title_column_${i}"
+												name="title_column_${i}"
+												value="${e.title_column}"
+												placeholder="Nombre de la columna"
+												required>
+											<div class="valid-feedback">Válido</div>
+											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
 
-								<label class="${display}">Título</label>
-								<input
-								type="text"
-								class="form-control rounded form-control-sm"
-								id="title_column_${i}"
-								name="title_column_${i}"
-								value="${e.title_column}"
-								required>
+										<div class="col-md-3">
+											<label for="alias_column_${i}" class="form-label small fw-semibold">Alias<sup>*</sup></label>
+											<input
+												type="text"
+												class="form-control form-control-sm rounded"
+												id="alias_column_${i}"
+												name="alias_column_${i}"
+												value="${e.alias_column}"
+												placeholder="Alias de la columna"
+												required>
+											<div class="valid-feedback">Válido</div>
+											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
 
-								<div class="valid-feedback">Válido</div>
-								<div class="invalid-feedback">Campo Inválido</div>
+										<div class="col-md-3">
+											<label for="type_column_${i}" class="form-label small fw-semibold">Tipo<sup>*</sup></label>
+											<select 
+												class="form-select form-select-sm rounded" 
+												id="type_column_${i}"
+												name="type_column_${i}"
+												required>
+												<option value="text" ${selectColumn[0]}>Texto</option>
+												<option value="textarea" ${selectColumn[1]}>Área Texto</option>
+												<option value="int" ${selectColumn[2]}>Número Entero</option>
+												<option value="double" ${selectColumn[3]}>Número Decimal</option>
+												<option value="image" ${selectColumn[4]}>Imagen</option>
+												<option value="video" ${selectColumn[5]}>Video</option>
+												<option value="file" ${selectColumn[6]}>Archivo</option>
+												<option value="boolean" ${selectColumn[7]}>Boleano</option>
+												<option value="select" ${selectColumn[8]}>Selección</option>
+												<option value="array" ${selectColumn[9]}>Arreglo</option>
+												<option value="object" ${selectColumn[10]}>Objeto</option>
+												<option value="json" ${selectColumn[11]}>JSON</option>
+												<option value="date" ${selectColumn[12]}>Fecha</option>
+												<option value="time" ${selectColumn[13]}>Hora</option>
+												<option value="datetime" ${selectColumn[14]}>Fecha y Hora</option>
+												<option value="timestamp" ${selectColumn[15]}>Fecha Automática</option>
+												<option value="code" ${selectColumn[16]}>Código</option>
+												<option value="link" ${selectColumn[17]}>Enlace</option>
+												<option value="color" ${selectColumn[18]}>Color</option>
+												<option value="money" ${selectColumn[19]}>Dinero</option>
+												<option value="password" ${selectColumn[20]}>Contraseña</option>
+												<option value="email" ${selectColumn[21]}>Email</option>
+												<option value="relations" ${selectColumn[22]}>Relaciones</option>
+												<option value="order" ${selectColumn[23]}>Ordenar</option>
+												<option value="chatgpt" ${selectColumn[24]}>ChatGPT</option>
+											</select>
+											<div class="valid-feedback">Válido</div>
+											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
 
+										<div class="col-md-2">
+											<label for="visible_column_${i}" class="form-label small fw-semibold">Visibilidad</label>
+											<select 
+												class="form-select form-select-sm rounded" 
+												name="visible_column_${i}" 
+												id="visible_column_${i}" 
+												required>
+												<option value="1" ${selectOn}>ON</option>
+												<option value="0" ${selectOff}>OFF</option>							
+											</select>
+											<div class="valid-feedback">Válido</div>
+											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
+									</div>
+								</div>
 							</div>
-
-
-							<div class="col-3 mb-3">
-
-								<label class="${display}">Alias</label>
-								<input
-								type="text"
-								class="form-control rounded form-control-sm"
-								id="alias_column_${i}"
-								name="alias_column_${i}"
-								value="${e.alias_column}"
-								required>
-
-								<div class="valid-feedback">Válido</div>
-								<div class="invalid-feedback">Campo Inválido</div>
-
-							</div>
-
-							<div class="col-2 mb-3">
-
-								<label class="${display}">Típo</label>
-								
-								<select 
-								class="form-select form-select-sm rounded" 
-								id="type_column_${i}"
-								name="type_column_${i}"
-								required>
-
-									<option value="text" ${selectColumn[0]}>Texto</option>
-									<option value="textarea" ${selectColumn[1]}>Área Texto</option>
-									<option value="int" ${selectColumn[2]}>Número Entero</option>
-									<option value="double" ${selectColumn[3]}>Número Decimal</option>
-									<option value="image" ${selectColumn[4]}>Imagen</option>
-									<option value="video" ${selectColumn[5]}>Video</option>
-									<option value="file" ${selectColumn[6]}>Archivo</option>
-									<option value="boolean" ${selectColumn[7]}>Boleano</option>
-									<option value="select" ${selectColumn[8]}>Selección</option>
-									<option value="array" ${selectColumn[9]}>Arreglo</option>
-									<option value="object" ${selectColumn[10]}>Objeto</option>
-									<option value="json" ${selectColumn[11]}>JSON</option>
-									<option value="date" ${selectColumn[12]}>Fecha</option>
-									<option value="time" ${selectColumn[13]}>Hora</option>
-									<option value="datetime" ${selectColumn[14]}>Fecha y Hora</option>
-									<option value="timestamp" ${selectColumn[15]}>Fecha Automática</option>
-									<option value="code" ${selectColumn[16]}>Código</option>
-									<option value="link" ${selectColumn[17]}>Enlace</option>
-									<option value="color" ${selectColumn[18]}>Color</option>
-									<option value="money" ${selectColumn[19]}>Dinero</option>
-									<option value="password" ${selectColumn[20]}>Contraseña</option>
-									<option value="email" ${selectColumn[21]}>Email</option>
-									<option value="relations" ${selectColumn[22]}>Relaciones</option>
-									<option value="order" ${selectColumn[23]}>Ordenar</option>
-									<option value="chatgpt" ${selectColumn[24]}>ChatGPT</option>
-
-								</select>
-
-								<div class="valid-feedback">Válido</div>
-								<div class="invalid-feedback">Campo Inválido</div>
-
-							</div>
-
-							<div class="col-2 mb-3">
-
-								<label class="${display}">Visibilidad</label>
-
-								<select 
-								class="form-select form-select-sm rounded" 
-								name="visible_column_${i}" 
-								id="visible_column_${i}" 
-								required>
-									<option value="1" ${selectOn}>ON</option>
-									<option value="0" ${selectOff}>OFF</option>							
-								</select>
-							
-								<div class="valid-feedback">Válido</div>
-								<div class="invalid-feedback">Campo Inválido</div>
-
-							</div>
-
-							<div class="col-1 mb-3">
-
-								<button type="button" class="btn btn-sm btn-default border rounded ${mt} deleteColumn" index="${i}" idItem="${e.id_column}">
-									<i class="bi bi-trash"></i>
-								</button>
-
-							</div>
-
-						</div>	
+						</div>
 
 					 `)
 
@@ -449,6 +431,12 @@ Cambio en datos de métricas
 
 $(document).on("change",".changeMetric",function(){
 
+	// Update icon preview when it changes
+	if($(this).attr("id") == "metricIcon"){
+		var iconValue = $(this).val() || "bi-gear";
+		$("#metricIconPreview").attr("class", "bi " + iconValue);
+	}
+
 	var object = `{"type":"${$("#metricType").val()}","table":"${$("#metricTable").val()}", "column":"${$("#metricColumn").val()}","config":"${$("#metricConfig").val()}","icon":"${$("#metricIcon").val()}","color":"${$("#metricColor").val()}"  }`;
 
 	$("#content_module").val(object);	           
@@ -473,123 +461,105 @@ Agregar columnas
 
 $(document).on("click",".addColumn",function(){
 
-	var display = "d-none";
-	var mt = "";
-
-	if($(".listColumns").html() == ""){
-		display = "d-block";
-		mt = "mt-4";
-	}
-
 	var indexRandom = Math.ceil(Math.random() * 10000);
 
 	$(".listColumns").append(`
 
-		<div class="row">
+		<div class="col-12 mb-3">
+			<div class="card border">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h6 class="card-title mb-0 text-muted">
+							<i class="bi bi-columns"></i> Columna ${$(".listColumns .col-12").length + 1}
+						</h6>
+						<button type="button" class="btn btn-sm btn-outline-danger deleteColumn" index="${indexRandom}" idItem="0" title="Eliminar columna">
+							<i class="bi bi-trash"></i>
+						</button>
+					</div>
 
-		 	<input type="hidden" name="id_column_${indexRandom}" value="0">
+					<input type="hidden" name="id_column_${indexRandom}" value="0">
 
-			<div class="col-4 mb-3">
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label for="title_column_${indexRandom}" class="form-label small fw-semibold">Título<sup>*</sup></label>
+							<input
+								type="text"
+								class="form-control form-control-sm rounded"
+								id="title_column_${indexRandom}"
+								name="title_column_${indexRandom}"
+								placeholder="Nombre de la columna"
+								required>
+							<div class="valid-feedback">Válido</div>
+							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
 
-				<label class="${display}">Título</label>
-				<input
-				type="text"
-				class="form-control rounded form-control-sm"
-				id="title_column_${indexRandom}"
-				name="title_column_${indexRandom}"
-				required>
+						<div class="col-md-3">
+							<label for="alias_column_${indexRandom}" class="form-label small fw-semibold">Alias<sup>*</sup></label>
+							<input
+								type="text"
+								class="form-control form-control-sm rounded"
+								id="alias_column_${indexRandom}"
+								name="alias_column_${indexRandom}"
+								placeholder="Alias de la columna"
+								required>
+							<div class="valid-feedback">Válido</div>
+							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
 
-				<div class="valid-feedback">Válido</div>
-				<div class="invalid-feedback">Campo Inválido</div>
+						<div class="col-md-3">
+							<label for="type_column_${indexRandom}" class="form-label small fw-semibold">Tipo<sup>*</sup></label>
+							<select 
+								class="form-select form-select-sm rounded" 
+								id="type_column_${indexRandom}"
+								name="type_column_${indexRandom}"
+								required>
+								<option value="text">Texto</option>
+								<option value="textarea">Área Texto</option>
+								<option value="int">Número Entero</option>
+								<option value="double">Número Decimal</option>
+								<option value="image">Imagen</option>
+								<option value="video">Video</option>
+								<option value="file">Archivo</option>
+								<option value="boolean">Boleano</option>
+								<option value="select">Selección</option>
+								<option value="array">Arreglo</option>
+								<option value="object">Objeto</option>
+								<option value="json">JSON</option>
+								<option value="date">Fecha</option>
+								<option value="time">Hora</option>
+								<option value="datetime">Fecha y Hora</option>
+								<option value="timestamp">Fecha Automática</option>
+								<option value="code">Código</option>
+								<option value="link">Enlace</option>
+								<option value="color">Color</option>
+								<option value="money">Dinero</option>
+								<option value="password">Contraseña</option>
+								<option value="email">Email</option>
+								<option value="relations">Relaciones</option>
+								<option value="order">Ordenar</option>
+								<option value="chatgpt">ChatGPT</option>
+							</select>
+							<div class="valid-feedback">Válido</div>
+							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
 
+						<div class="col-md-2">
+							<label for="visible_column_${indexRandom}" class="form-label small fw-semibold">Visibilidad</label>
+							<select 
+								class="form-select form-select-sm rounded" 
+								name="visible_column_${indexRandom}" 
+								id="visible_column_${indexRandom}" 
+								required>
+								<option value="1">ON</option>
+								<option value="0">OFF</option>							
+							</select>
+							<div class="valid-feedback">Válido</div>
+							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
+					</div>
+				</div>
 			</div>
-
-
-			<div class="col-3 mb-3">
-
-				<label class="${display}">Alias</label>
-				<input
-				type="text"
-				class="form-control rounded form-control-sm"
-				id="alias_column_${indexRandom}"
-				name="alias_column_${indexRandom}"
-				required>
-
-				<div class="valid-feedback">Válido</div>
-				<div class="invalid-feedback">Campo Inválido</div>
-
-			</div>
-
-			<div class="col-2 mb-3">
-
-				<label class="${display}">Típo</label>
-				
-				<select 
-				class="form-select form-select-sm rounded" 
-				id="type_column_${indexRandom}"
-				name="type_column_${indexRandom}"
-				required>
-
-					<option value="text">Texto</option>
-					<option value="textarea">Área Texto</option>
-					<option value="int">Número Entero</option>
-					<option value="double">Número Decimal</option>
-					<option value="image">Imagen</option>
-					<option value="video">Video</option>
-					<option value="file">Archivo</option>
-					<option value="boolean">Boleano</option>
-					<option value="select">Selección</option>
-					<option value="array">Arreglo</option>
-					<option value="object">Objeto</option>
-					<option value="json">JSON</option>
-					<option value="date">Fecha</option>
-					<option value="time">Hora</option>
-					<option value="datetime">Fecha y Hora</option>
-					<option value="timestamp">Fecha Automática</option>
-					<option value="code">Código</option>
-					<option value="link">Enlace</option>
-					<option value="color">Color</option>
-					<option value="money">Dinero</option>
-					<option value="password">Contraseña</option>
-					<option value="email">Email</option>
-					<option value="relations">Relaciones</option>
-					<option value="order">Ordenar</option>
-					<option value="chatgpt">ChatGPT</option>
-
-				</select>
-
-				<div class="valid-feedback">Válido</div>
-				<div class="invalid-feedback">Campo Inválido</div>
-
-			</div>
-
-			<div class="col-2 mb-3">
-
-				<label class="${display}">Visibilidad</label>
-
-				<select 
-				class="form-select form-select-sm rounded" 
-				name="visible_column_${indexRandom}" 
-				id="visible_column_${indexRandom}" 
-				required>
-					<option value="1">ON</option>
-					<option value="0">OFF</option>							
-				</select>
-			
-				<div class="valid-feedback">Válido</div>
-				<div class="invalid-feedback">Campo Inválido</div>
-
-			</div>
-
-			<div class="col-1 mb-3">
-
-				<button type="button" class="btn btn-sm btn-default border rounded ${mt} deleteColumn" index="${indexRandom}" idItem="0">
-					<i class="bi bi-trash"></i>
-				</button>
-
-			</div>
-
-		</div>	
+		</div>
 
 	 `)
 

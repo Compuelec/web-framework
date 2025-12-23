@@ -12,24 +12,29 @@
 				</div>
 
 				<!-- Modal body -->
-				<div class="modal-body">
+				<div class="modal-body px-4">
 
-					<div class="form-group mb-3">
-						
-						<select  
-						class="form-select rounded" 
-						id="valueSelect"
-						name="valueSelect"
-						>
+					<div class="mb-3">
+						<h6 class="text-muted mb-3">
+							<i class="bi bi-list-check"></i> Selección
+						</h6>
+					</div>
 
-						
-
-						</select>
-
-						<div class="valid-feedback">Válido.</div>
-						<div class="invalid-feedback">Campo inválido.</div>
-
-					</div>	
+					<div class="card border-0 bg-light">
+						<div class="card-body">
+							<div class="form-group">
+								<label for="valueSelect" class="form-label small fw-semibold">Seleccionar valor</label>
+								<select  
+									class="form-select form-select-sm rounded" 
+									id="valueSelect"
+									name="valueSelect"
+								>
+								</select>
+								<div class="valid-feedback">Válido.</div>
+								<div class="invalid-feedback">Campo inválido.</div>
+							</div>
+						</div>
+					</div>
 
 				</div>
 

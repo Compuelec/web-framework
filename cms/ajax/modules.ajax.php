@@ -13,7 +13,7 @@ class ModulesAjax{
 	public $token;
 
 	/*=============================================
-	Función auxiliar para eliminar directorio recursivamente
+	Helper function to recursively delete directory
 	=============================================*/
 
 	private function deleteDirectory($dir){
@@ -80,10 +80,10 @@ class ModulesAjax{
 				}else if($module->results[0]->type_module == "custom"){
 
 					/*=============================================
-					Eliminar carpeta y archivo del módulo personalizable
+					Delete custom module folder and file
 					=============================================*/
 
-					// Asegurar que DIR esté definido
+					// Ensure DIR is defined
 					if(!defined('DIR')){
 						define('DIR', dirname(__DIR__));
 					}
@@ -91,24 +91,24 @@ class ModulesAjax{
 					$moduleName = str_replace(" ","_",$module->results[0]->title_module);
 					$moduleDir = DIR."/views/pages/dynamic/custom/".$moduleName;
 
-					// Función recursiva para eliminar directorio y su contenido
+					// Recursive function to delete directory and its content
 					if(file_exists($moduleDir) && is_dir($moduleDir)){
 						
-						// Eliminar todos los archivos y subdirectorios
+						// Delete all files and subdirectories
 						$files = array_diff(@scandir($moduleDir), array('.', '..'));
 						
 						foreach($files as $file){
 							$filePath = $moduleDir.'/'.$file;
 							if(is_dir($filePath)){
-								// Eliminar subdirectorio recursivamente
+								// Delete subdirectory recursively
 								$this->deleteDirectory($filePath);
 							}else{
-								// Eliminar archivo
+								// Delete file
 								@unlink($filePath);
 							}
 						}
 						
-						// Eliminar el directorio vacío
+						// Delete empty directory
 						@rmdir($moduleDir);
 					}
 				}

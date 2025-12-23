@@ -62,32 +62,60 @@
           </div>
 
           <!--=============================================
-          Agregar sufijo al módulo de tabla
+          Add suffix field for table module
           ===============================================-->
 
-          <div class="form-group mb-3" id="suffixModule" style="display:none">
+          <div id="suffixModule" style="display:none">
+            <div class="mb-3">
+              <h6 class="text-muted mb-3">
+                <i class="bi bi-table"></i> Configuración de Tabla
+              </h6>
+            </div>
 
-            <label for="suffix_module">Sufijo<sup>*</sup></label>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-gear"></i> Configuración General
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="suffix_module" class="form-label small fw-semibold">Sufijo<sup>*</sup></label>
+                        <input 
+                          type="text"
+                          class="form-control form-control-sm rounded"
+                          id="suffix_module"
+                          name="suffix_module"
+                          placeholder="Sufijo para identificadores"
+                        >
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
 
-            <input 
-            type="text"
-            class="form-control rounded form-control-sm"
-            id="suffix_module"
-            name="suffix_module"
-            >
-            <div class="valid-feedback">Válido.</div>
-            <div class="invalid-feedback">Campo inválido.</div>
-
+                      <div class="col-md-6">
+                        <label for="editable_module" class="form-label small fw-semibold">Editable</label>
+                        <select class="form-select form-select-sm rounded" name="editable_module" id="editable_module">
+                          <option value="1">ON</option>
+                          <option value="0">OFF</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!--=============================================
-          Agregar ancho al módulo
+          Add width field for module
           ===============================================-->
 
           <div class="form-group mb-3">
-            
-            <label for="width_module">Ancho</label>
-
+            <label for="width_module" class="form-label small fw-semibold">Ancho</label>
             <select class="form-select form-select-sm rounded" name="width_module" id="width_module" required>
               <option value="25">25%</option>
               <option value="33">33%</option>
@@ -95,285 +123,303 @@
               <option value="75">75%</option>
               <option value="100" selected>100%</option>
             </select>
-
             <div class="valid-feedback">Válido.</div>
             <div class="invalid-feedback">Campo inválido.</div>
-
           </div>
 
-           <!--=============================================
-          Agregar opción editable a la info del módulo tabla
+          <!--=============================================
+          Add fields for metrics
           ===============================================-->
 
-          <div class="form-group mb-3" id="editableModule" style="display:none">
+          <div id="metricsBlock" style="display:none">
             
-            <label for="editable_module">Editable</label>
+            <div class="mb-3">
+              <h6 class="text-muted mb-3">
+                <i class="bi bi-bar-chart-line"></i> Configuración de Métrica
+              </h6>
+            </div>
 
-            <select class="form-select form-select-sm rounded" name="editable_module" id="editable_module">
-              <option value="1">ON</option>
-              <option value="0">OFF</option>
-            </select>
+            <div class="row g-3">
+              
+              <!--=============================================
+              Data Source Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-database"></i> Fuente de Datos
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label for="metricType" class="form-label small fw-semibold">Tipo de Métrica</label>
+                        <select class="form-select form-select-sm rounded changeMetric" id="metricType">
+                          <option value="total">Total</option>
+                          <option value="add">Suma</option>
+                          <option value="average">Promedio</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
 
-            <div class="valid-feedback">Válido.</div>
-            <div class="invalid-feedback">Campo inválido.</div>
+                      <div class="col-md-4">
+                        <label for="metricTable" class="form-label small fw-semibold">Tabla</label>
+                        <input type="text" class="form-control form-control-sm rounded changeMetric" id="metricTable" placeholder="Nombre de la tabla">
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label for="metricColumn" class="form-label small fw-semibold">Columna</label>
+                        <input type="text" class="form-control form-control-sm rounded changeMetric" id="metricColumn" placeholder="Nombre de la columna">
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!--=============================================
+              Display Settings Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-palette"></i> Apariencia
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label for="metricConfig" class="form-label small fw-semibold">Configuración</label>
+                        <select class="form-select form-select-sm rounded changeMetric" id="metricConfig">
+                          <option value="unit">Unidad</option>
+                          <option value="price">Precio</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label for="metricIcon" class="form-label small fw-semibold">Icono</label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text bg-white">
+                            <i class="bi" id="metricIconPreview">bi-gear</i>
+                          </span>
+                          <input 
+                            type="text" 
+                            class="form-control form-control-sm rounded changeMetric cleanIcon" 
+                            id="metricIcon"
+                            placeholder="Seleccionar icono"
+                            readonly
+                          >
+                          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#iconSelectorModalModule" title="Seleccionar icono">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                          </button>
+                        </div>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label for="metricColor" class="form-label small fw-semibold">Color</label>
+                        <select class="form-select form-select-sm rounded changeMetric" id="metricColor">
+                          <option class="bg-primary" value="108, 95, 252">Primary</option>
+                          <option class="bg-secondary" value="5, 195, 251">Secondary</option>
+                          <option class="bg-warning" value="247, 183, 49">Warning</option>
+                          <option class="bg-info" value="247, 183, 49">Info</option>
+                          <option class="bg-success" value="9, 173, 149">Success</option>
+                          <option class="bg-danger" value="232, 38, 70">Danger</option>
+                          <option class="bg-light" value="246, 246, 251">Light</option>
+                          <option class="bg-dark" value="52, 58, 64">Dark</option>
+                          <option class="bg-blue" value="43, 62, 101">Blue</option>
+                          <option class="bg-indigo" value="77, 93, 219">Indigo</option>
+                          <option class="bg-purple" value="137, 39, 236">Purple</option>
+                          <option class="bg-pink" value="236, 130, 239">Pink</option>
+                          <option class="bg-red" value="208, 61, 70">Red</option>
+                          <option class="bg-maroon" value="128, 0, 0">Maroon</option>
+                          <option class="bg-orange" value="252, 115, 3">Orange</option>
+                          <option class="bg-yellow" value="255, 193, 2">Yellow</option>
+                          <option class="bg-green" value="29, 216, 113">Green</option>
+                          <option class="bg-teal" value="28, 175, 159">Teal</option>
+                          <option class="bg-cyan" value="0, 209, 209">Cyan</option>
+                          <option class="bg-gray" value="134, 153, 163">Gray</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
 
           </div>
 
           <!--=============================================
-          Agregar campos para métricas
+          Add fields for graphics
           ===============================================-->
 
-          <div id="metricsBlock" class="row row-cols-1 row-cols-md-3 row-cols-lg-6" style="display:none">
-
-            <!--=============================================
-            Elegir el tipo de métrica
-            ===============================================-->
+          <div id="graphicsBlock" style="display:none">
             
-            <div class="col mb-3">
-              
-              <label>Tipo</label>
-
-              <select class="form-select form-select-sm rounded changeMetric" id="metricType">
-                <option value="total">Total</option>
-                <option value="add">Suma</option>
-                <option value="average">Promedio</option>
-              </select>
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
+            <div class="mb-3">
+              <h6 class="text-muted mb-3">
+                <i class="bi bi-graph-up"></i> Configuración de Gráfico
+              </h6>
             </div>
 
-            <!--=============================================
-            Elegir la tabla 
-            ===============================================-->
-
-            <div class="col mb-3">
+            <div class="row g-3">
               
-              <label>Tabla</label>
-
-              <input type="text" class="form-control rounded form-control-sm changeMetric" id="metricTable">
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir la columna
-            ===============================================-->
-
-            <div class="col mb-3">
+              <!--=============================================
+              Chart Configuration Section
+              ===============================================-->
               
-              <label>Columna</label>
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-sliders"></i> Configuración del Gráfico
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="graphicType" class="form-label small fw-semibold">Tipo de Gráfico</label>
+                        <select class="form-select form-select-sm rounded changeGraphic" id="graphicType">
+                          <option value="line">Línea</option>
+                          <option value="bar">Barra</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
 
-              <input type="text" class="form-control rounded form-control-sm changeMetric" id="metricColumn">
+                      <div class="col-md-6">
+                        <label for="graphicColor" class="form-label small fw-semibold">Color</label>
+                        <select class="form-select form-select-sm rounded changeGraphic" id="graphicColor">
+                          <option class="bg-primary" value="108, 95, 252">Primary</option>
+                          <option class="bg-secondary" value="5, 195, 251">Secondary</option>
+                          <option class="bg-warning" value="247, 183, 49">Warning</option>
+                          <option class="bg-info" value="247, 183, 49">Info</option>
+                          <option class="bg-success" value="9, 173, 149">Success</option>
+                          <option class="bg-danger" value="232, 38, 70">Danger</option>
+                          <option class="bg-light" value="246, 246, 251">Light</option>
+                          <option class="bg-dark" value="52, 58, 64">Dark</option>
+                          <option class="bg-blue" value="43, 62, 101">Blue</option>
+                          <option class="bg-indigo" value="77, 93, 219">Indigo</option>
+                          <option class="bg-purple" value="137, 39, 236">Purple</option>
+                          <option class="bg-pink" value="236, 130, 239">Pink</option>
+                          <option class="bg-red" value="208, 61, 70">Red</option>
+                          <option class="bg-maroon" value="128, 0, 0">Maroon</option>
+                          <option class="bg-orange" value="252, 115, 3">Orange</option>
+                          <option class="bg-yellow" value="255, 193, 2">Yellow</option>
+                          <option class="bg-green" value="29, 216, 113">Green</option>
+                          <option class="bg-teal" value="28, 175, 159">Teal</option>
+                          <option class="bg-cyan" value="0, 209, 209">Cyan</option>
+                          <option class="bg-gray" value="134, 153, 163">Gray</option>
+                        </select>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir la configuración
-            ===============================================-->
-
-            <div class="col mb-3">
+              <!--=============================================
+              Data Source Section
+              ===============================================-->
               
-              <label>Config</label>
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-database"></i> Fuente de Datos
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label for="graphicTable" class="form-label small fw-semibold">Tabla</label>
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm rounded changeGraphic" 
+                          id="graphicTable"
+                          placeholder="Nombre de la tabla"
+                        >
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
 
-              <select class="form-select form-select-sm rounded changeMetric" id="metricConfig">
-                <option value="unit">Unidad</option>
-                <option value="price">Precio</option>
-              </select>
+                      <div class="col-md-4">
+                        <label for="graphicX" class="form-label small fw-semibold">Eje X</label>
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm rounded changeGraphic" 
+                          id="graphicX"
+                          placeholder="Columna para eje X"
+                        >
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
 
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir el ícono
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label for="">Icono</label>
-              <input type="text" class="form-control rounded form-control-sm changeMetric  cleanIcon" 
-              id="metricIcon">
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir el color
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label for="">Color</label>
-              <select class="form-select form-select-sm rounded changeMetric" id="metricColor">
-                <option class="bg-primary" value="108, 95, 252">Primary</option>
-                <option class="bg-secondary" value="5, 195, 251">Secondary</option>
-                <option class="bg-warning" value="247, 183, 49">Warning</option>
-                <option class="bg-info" value="247, 183, 49">Info</option>
-                <option class="bg-success" value="9, 173, 149">Success</option>
-                <option class="bg-danger" value="232, 38, 70">Danger</option>
-                <option class="bg-light" value="246, 246, 251">Light</option>
-                <option class="bg-dark" value="52, 58, 64">Dark</option>
-                <option class="bg-blue" value="43, 62, 101">Blue</option>
-                <option class="bg-indigo" value="77, 93, 219">Indigo</option>
-                <option class="bg-purple" value="137, 39, 236">Purple</option>
-                <option class="bg-pink" value="236, 130, 239">Pink</option>
-                <option class="bg-red" value="208, 61, 70">Red</option>
-                <option class="bg-maroon" value="128, 0, 0">Maroon</option>
-                <option class="bg-orange" value="252, 115, 3">Orange</option>
-                <option class="bg-yellow" value="255, 193, 2">Yellow</option>
-                <option class="bg-green" value="29, 216, 113">Green</option>
-                <option class="bg-teal" value="28, 175, 159">Teal</option>
-                <option class="bg-cyan" value="0, 209, 209">Cyan</option>
-                <option class="bg-gray" value="134, 153, 163">Gray</option>
-              </select>
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-          </div>
-
-          <!--=============================================
-          Agregar campos para gráficos
-          ===============================================-->
-
-          <div id="graphicsBlock" class="row row-cols-1 row-cols-md-3 row-cols-lg-5" style="display:none">
-
-            <!--=============================================
-            Elegir el tipo de gráfico
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label>Tipo</label>
-              
-              <select class="form-select form-select-sm rounded changeGraphic" id="graphicType">
-                <option value="line">Línea</option>
-                <option value="bar">Barra</option>
-              </select>
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir la tabla
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label>Tabla</label>
-              <input 
-              type="text" 
-              class="form-control rounded form-control-sm changeGraphic" 
-              id="graphicTable">
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir la columna que va en el eje X
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label>Eje X</label>
-              <input 
-              type="text" 
-              class="form-control rounded form-control-sm changeGraphic" 
-              id="graphicX">
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir la columna que va en el eje Y
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label>Eje Y</label>
-              <input 
-              type="text" 
-              class="form-control rounded form-control-sm changeGraphic" 
-              id="graphicY">
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
-            </div>
-
-            <!--=============================================
-            Elegir el color
-            ===============================================-->
-
-            <div class="col mb-3">
-              
-              <label for="">Color</label>
-              <select class="form-select form-select-sm rounded changeGraphic" id="graphicColor">
-                <option class="bg-primary" value="108, 95, 252">Primary</option>
-                <option class="bg-secondary" value="5, 195, 251">Secondary</option>
-                <option class="bg-warning" value="247, 183, 49">Warning</option>
-                <option class="bg-info" value="247, 183, 49">Info</option>
-                <option class="bg-success" value="9, 173, 149">Success</option>
-                <option class="bg-danger" value="232, 38, 70">Danger</option>
-                <option class="bg-light" value="246, 246, 251">Light</option>
-                <option class="bg-dark" value="52, 58, 64">Dark</option>
-                <option class="bg-blue" value="43, 62, 101">Blue</option>
-                <option class="bg-indigo" value="77, 93, 219">Indigo</option>
-                <option class="bg-purple" value="137, 39, 236">Purple</option>
-                <option class="bg-pink" value="236, 130, 239">Pink</option>
-                <option class="bg-red" value="208, 61, 70">Red</option>
-                <option class="bg-maroon" value="128, 0, 0">Maroon</option>
-                <option class="bg-orange" value="252, 115, 3">Orange</option>
-                <option class="bg-yellow" value="255, 193, 2">Yellow</option>
-                <option class="bg-green" value="29, 216, 113">Green</option>
-                <option class="bg-teal" value="28, 175, 159">Teal</option>
-                <option class="bg-cyan" value="0, 209, 209">Cyan</option>
-                <option class="bg-gray" value="134, 153, 163">Gray</option>
-              </select>
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
+                      <div class="col-md-4">
+                        <label for="graphicY" class="form-label small fw-semibold">Eje Y</label>
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm rounded changeGraphic" 
+                          id="graphicY"
+                          placeholder="Columna para eje Y"
+                        >
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
             </div>
 
           </div>
 
           <!--=============================================
-          Agregar campos para tablas y columnas
+          Add fields for tables and columns
           ===============================================-->
 
           <div id="columnsBlock" style="display:none">
             
-            <div class="mb-3">Columnas</div>
-            
-            <hr>
+            <div class="mb-3">
+              <h6 class="text-muted mb-3">
+                <i class="bi bi-list-columns"></i> Columnas de la Tabla
+              </h6>
+            </div>
 
-            <input type="hidden" id="indexColumns" name="indexColumns" value='[]'>
-            <input type="hidden" id="deleteColumns" name="deleteColumns" value='[]'>
+            <div class="card border-0 bg-light">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="card-title text-muted mb-0">
+                    <i class="bi bi-database"></i> Gestión de Columnas
+                  </h6>
+                  <button type="button" class="btn btn-sm btn-default border rounded addColumn">
+                    <i class="bi bi-plus-circle"></i> Agregar Columna
+                  </button>
+                </div>
 
-            <div class="row listColumns"></div>
+                <input type="hidden" id="indexColumns" name="indexColumns" value='[]'>
+                <input type="hidden" id="deleteColumns" name="deleteColumns" value='[]'>
 
-            <button type="button" class="btn btn-sm btn-default border rounded my-3 addColumn">
-              Agregar Columnas
-            </button>
+                <div class="row g-3 listColumns">
+                  <!-- Columns will be added here dynamically -->
+                </div>
+
+                <div class="mt-3 text-muted small">
+                  <i class="bi bi-info-circle"></i> Las columnas definidas aquí se crearán en la base de datos cuando se guarde el módulo.
+                </div>
+              </div>
+            </div>
 
           </div>
 
@@ -394,3 +440,67 @@
     </div>
   </div>
 </div>
+
+<!--=============================================
+Icon Selector Modal for Modules - Reusable Component
+===============================================-->
+<div class="modal fade" id="iconSelectorModalModule" tabindex="-1" aria-labelledby="iconSelectorModalModuleLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-xl">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="iconSelectorModalModuleLabel">
+					<i class="bi bi-palette"></i> Seleccionar Icono
+				</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<input type="text" class="form-control" id="iconSearchModule" placeholder="Buscar icono...">
+				</div>
+				<div class="icon-grid" id="iconGridModule" style="max-height: 500px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">
+					<!-- Icons will be loaded dynamically -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!--=============================================
+Initialize Icon Selector for Modules
+===============================================-->
+<?php
+// Get CMS base path
+require_once __DIR__ . '/../../../controllers/template.controller.php';
+$cmsBasePath = TemplateController::cmsBasePath();
+?>
+<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/selectors/selectors.css">
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/selectors/icon-selector.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	// Initialize icon selector for modules
+	if (typeof initIconSelector === 'function') {
+		initIconSelector({
+			inputId: 'metricIcon',
+			previewId: 'metricIconPreview',
+			modalId: 'iconSelectorModalModule',
+			gridId: 'iconGridModule',
+			searchId: 'iconSearchModule'
+		});
+	}
+	
+	// Update preview when input value changes (in case it's loaded from code)
+	$('#metricIcon').on('input change', function() {
+		var iconValue = $(this).val() || 'bi-gear';
+		$('#metricIconPreview').attr('class', 'bi ' + iconValue);
+	});
+	
+	// Update initial preview if there's a value
+	if ($('#metricIcon').val()) {
+		var iconValue = $('#metricIcon').val();
+		$('#metricIconPreview').attr('class', 'bi ' + iconValue);
+	}
+});
+</script>

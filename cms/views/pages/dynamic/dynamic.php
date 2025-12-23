@@ -85,12 +85,12 @@ if($modules->status == 200){
                         $modulePath = __DIR__."/custom/".$moduleName."/".$moduleName.".php";
                         $includePath = "custom/".$moduleName."/".$moduleName.".php";
                         
-                        // Incluir el archivo solo si existe
+                        // Include file only if it exists
                         if(file_exists($modulePath)){
                             include $includePath;
                         }else{
-                            // Si el archivo no existe, mostrar un mensaje informativo
-                            // El archivo debería haberse creado cuando se creó el módulo
+                            // If file doesn't exist, show informative message
+                            // File should have been created when module was created
                             echo '<div class="alert alert-warning">
                                 <strong>Módulo no encontrado:</strong> El archivo del módulo "'.$module->title_module.'" no existe. 
                                 Por favor, recree el módulo desde el panel de administración.

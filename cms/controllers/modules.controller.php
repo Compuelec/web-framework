@@ -435,7 +435,7 @@ class ModulesController{
 					Creamos carpeta de módulo personalizable
 					=============================================*/
 
-					// Asegurar que DIR esté definido (usar __DIR__ si no está definido)
+					// Ensure DIR is defined (use __DIR__ if not defined)
 					if(!defined('DIR')){
 						define('DIR', dirname(__DIR__));
 					}
@@ -444,7 +444,7 @@ class ModulesController{
 					$baseDir = DIR."/views/pages/dynamic/custom";
 					$directory = $baseDir."/".$moduleName;
 
-					// Verificar que el directorio base existe y es escribible
+					// Check if base directory exists and is writable
 					if(!file_exists($baseDir)){
 						if(!@mkdir($baseDir, 0777, true)){
 							echo '
@@ -455,11 +455,11 @@ class ModulesController{
 							</script>';
 							exit;
 						}
-						// Intentar hacer el directorio escribible
+						// Try to make directory writable
 						@chmod($baseDir, 0777);
 					}
 
-					// Verificar que el directorio base sea escribible
+					// Verify base directory is writable
 					if(!is_writable($baseDir)){
 						@chmod($baseDir, 0777);
 						if(!is_writable($baseDir)){
@@ -473,10 +473,10 @@ class ModulesController{
 						}
 					}
 
-					// Crear directorio del módulo si no existe (con permisos recursivos)
+					// Create module directory if it doesn't exist (with recursive permissions)
 					if(!file_exists($directory)){
 						if(!@mkdir($directory, 0777, true)){
-							// Si falla, intentar con chmod después
+							// If it fails, try with chmod afterwards
 							if(!file_exists($directory)){
 								echo '
 								<script>
@@ -487,32 +487,32 @@ class ModulesController{
 								exit;
 							}
 						}
-						// Intentar hacer el directorio escribible
+						// Try to make directory writable
 						@chmod($directory, 0777);
 					}
 
 					/*=============================================
-					Copiamos o creamos el archivo custom con el nuevo nombre
+					Copy or create custom file with new name
 					=============================================*/	
 
 					$from = $baseDir."/custom.php";
 					$to = $directory.'/'.$moduleName.'.php';
 					
-					// Contenido del archivo (usar el template si existe, sino crear uno básico)
+					// File content (use template if exists, otherwise create basic one)
 					$fileContent = '';
 					
 					if(file_exists($from)){
-						// Intentar leer el contenido del archivo template
+						// Try to read template file content
 						$fileContent = @file_get_contents($from);
 					}
 					
-					// Si no se pudo leer el template, usar contenido básico
+					// If template couldn't be read, use basic content
 					if(empty($fileContent)){
 						$fileContent = '<?php
 /**
- * Módulo Personalizable: '.$fields["title_module"].'
+ * Custom Module: '.$fields["title_module"].'
  * 
- * Este es un módulo personalizable. Puede editar este archivo para personalizar su contenido.
+ * This is a custom module. You can edit this file to customize its content.
  */
 ?>
 
@@ -521,12 +521,12 @@ class ModulesController{
 		<h3 class="card-title">'.$fields["title_module"].'</h3>
 	</div>
 	<div class="card-body">
-		<p>Módulo personalizable. Edite este archivo para personalizar su contenido.</p>
+		<p>Custom module. Edit this file to customize its content.</p>
 	</div>
 </div>';
 					}
 
-					// Intentar crear el archivo directamente (más confiable que copy)
+					// Try to create file directly (more reliable than copy)
 					$fileCreated = @file_put_contents($to, $fileContent);
 					
 					if($fileCreated !== false){
