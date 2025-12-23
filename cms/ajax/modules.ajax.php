@@ -133,6 +133,127 @@ class ModulesAjax{
 
 	}
 
+	/*=============================================
+	Get database tables
+	=============================================*/
+
+	public function getTables(){
+
+		$link = InstallController::connect();
+
+		if($link === null){
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 500,
+				'results' => []
+			]);
+			return;
+
+		}
+
+		try{
+
+			// Get only table names (not views)
+			$database = InstallController::infoDatabase()["database"];
+			$tables = $link->query("SHOW TABLES FROM `$database`")->fetchAll(PDO::FETCH_COLUMN);
+
+			if(!empty($tables)){
+
+				// Filter out system tables if needed
+				$filteredTables = array_filter($tables, function($table) {
+					// Exclude system tables (you can customize this filter)
+					return !in_array($table, ['information_schema', 'performance_schema', 'mysql', 'sys']);
+				});
+
+				header('Content-Type: application/json');
+				echo json_encode([
+					'status' => 200,
+					'results' => array_values($filteredTables)
+				]);
+
+			}else{
+
+				header('Content-Type: application/json');
+				echo json_encode([
+					'status' => 404,
+					'results' => []
+				]);
+
+			}
+
+		}catch(PDOException $e){
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 500,
+				'results' => []
+			]);
+
+		}
+
+	}
+
+	/*=============================================
+	Get columns from a table
+	=============================================*/
+
+	public $tableName;
+
+	public function getTableColumns(){
+
+		if(empty($this->tableName)){
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 400,
+				'results' => []
+			]);
+			return;
+
+		}
+
+		$link = InstallController::connect();
+
+		if($link === null){
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 500,
+				'results' => []
+			]);
+			return;
+
+		}
+
+		try{
+
+			$database = InstallController::infoDatabase()["database"];
+			$columns = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '".$this->tableName."' ORDER BY ORDINAL_POSITION")
+				->fetchAll(PDO::FETCH_OBJ);
+
+			$columnNames = array_map(function($col) {
+				return $col->item;
+			}, $columns);
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 200,
+				'results' => $columnNames
+			]);
+
+		}catch(PDOException $e){
+
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 500,
+				'results' => []
+			]);
+
+		}
+
+	}
+
 }
 
 if(isset($_POST["idModuleDelete"])){
@@ -141,4 +262,16 @@ if(isset($_POST["idModuleDelete"])){
 	$ajax -> idModuleDelete = $_POST["idModuleDelete"];
 	$ajax -> token = $_POST["token"];
 	$ajax -> deleteModule();
+
+}else if(isset($_GET["action"]) && $_GET["action"] == "getTables"){
+
+	$ajax = new ModulesAjax();
+	$ajax -> getTables();
+
+}else if(isset($_POST["action"]) && $_POST["action"] == "getTableColumns"){
+
+	$ajax = new ModulesAjax();
+	$ajax -> tableName = $_POST["tableName"] ?? "";
+	$ajax -> getTableColumns();
+
 }

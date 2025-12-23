@@ -4,6 +4,116 @@ Abrir ventana modal de páginas
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
 
+/*=============================================
+Load tables for metrics module (available globally)
+=============================================*/
+
+function loadTablesForEdit(savedTable, savedColumn) {
+	console.log("Loading tables for edit. Saved table:", savedTable, "Saved column:", savedColumn);
+	
+	$.ajax({
+		url: CMS_AJAX_PATH + "/modules.ajax.php?action=getTables",
+		method: 'GET',
+		dataType: 'json',
+		success: function(response) {
+			console.log("Tables response:", response);
+			if (response.status === 200 && response.results.length > 0) {
+				var options = '<option value="">Seleccionar tabla...</option>';
+				response.results.forEach(function(table) {
+					// Use strict comparison and trim to ensure match
+					var tableValue = String(table).trim();
+					var savedTableValue = String(savedTable).trim();
+					var selected = (tableValue === savedTableValue) ? 'selected' : '';
+					options += '<option value="' + table + '" ' + selected + '>' + table + '</option>';
+				});
+				$("#metricTable").html(options);
+				
+				// If a table was saved, load its columns
+				if (savedTable && savedTable !== "") {
+					console.log("Loading columns for table:", savedTable);
+					// Set the table value explicitly
+					$("#metricTable").val(savedTable);
+					// Load columns directly
+					loadTableColumnsForEdit(savedTable, savedColumn);
+				} else {
+					$("#metricColumn").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+				}
+			} else {
+				$("#metricTable").html('<option value="">No hay tablas disponibles</option>');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error("Error loading tables:", error, xhr);
+			$("#metricTable").html('<option value="">Error al cargar tablas</option>');
+		}
+	});
+}
+
+/*=============================================
+Load columns from a table for metrics module (available globally)
+=============================================*/
+
+function loadTableColumnsForEdit(tableName, savedColumn) {
+	if (!tableName || tableName === "") {
+		$("#metricColumn").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+		return;
+	}
+	
+	console.log("Loading columns for table:", tableName, "Saved column:", savedColumn);
+	
+	$("#metricColumn").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
+	
+	$.ajax({
+		url: CMS_AJAX_PATH + "/modules.ajax.php",
+		method: 'POST',
+		data: {
+			action: 'getTableColumns',
+			tableName: tableName
+		},
+		dataType: 'json',
+		success: function(response) {
+			console.log("Columns response:", response);
+			if (response.status === 200 && response.results.length > 0) {
+				var options = '<option value="">Seleccionar columna...</option>';
+				response.results.forEach(function(column) {
+					// Use strict comparison and trim to ensure match
+					var columnValue = String(column).trim();
+					var savedColumnValue = String(savedColumn).trim();
+					var selected = (columnValue === savedColumnValue) ? 'selected' : '';
+					options += '<option value="' + column + '" ' + selected + '>' + column + '</option>';
+				});
+				$("#metricColumn").html(options).prop("disabled", false);
+				
+				// Set the column value explicitly if it was saved
+				if (savedColumn && savedColumn !== "") {
+					$("#metricColumn").val(savedColumn);
+				}
+				
+				// Update content_module after column is loaded using JSON.stringify
+				var iconValue = $("#metricIcon").val() || "bi-gear";
+				var metricData = {
+					type: $("#metricType").val() || "total",
+					table: tableName,
+					column: $("#metricColumn").val() || savedColumn || "",
+					config: $("#metricConfig").val() || "unit",
+					icon: iconValue,
+					color: $("#metricColor").val() || "108, 95, 252"
+				};
+				$("#content_module").val(JSON.stringify(metricData));
+				
+				// Trigger change event to ensure all handlers are called
+				$("#metricColumn").trigger('change');
+			} else {
+				$("#metricColumn").html('<option value="">No hay columnas disponibles</option>').prop("disabled", true);
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error("Error loading columns:", error, xhr);
+			$("#metricColumn").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+		}
+	});
+}
+
 $(document).on("click",".myModule",function(){
 
 	var idPage = $(this).attr("idPage");
@@ -54,6 +164,12 @@ $(document).on("click",".myModule",function(){
 			if($(this).val() == "metrics"){
 
 				$("#metricsBlock").show();
+
+				// Initialize icon with default value if empty
+				if(!$("#metricIcon").val()){
+					$("#metricIcon").val("bi-gear");
+					$("#metricIconPreview").attr("class", "bi bi-gear");
+				}
 
 			}
 
@@ -119,17 +235,56 @@ $(document).on("click",".myModule",function(){
 			
 				$("#metricsBlock").show();
 
-				$("#metricType").val(JSON.parse(JSON.parse(item).content_module).type);
-				$("#metricTable").val(JSON.parse(JSON.parse(item).content_module).table);
-				$("#metricColumn").val(JSON.parse(JSON.parse(item).content_module).column);
-				$("#metricConfig").val(JSON.parse(JSON.parse(item).content_module).config);
-				var metricIcon = JSON.parse(JSON.parse(item).content_module).icon || "bi-gear";
-				$("#metricIcon").val(metricIcon);
-				// Update icon preview
-				$("#metricIconPreview").attr("class", "bi " + metricIcon);
-				$("#metricColor").val(JSON.parse(JSON.parse(item).content_module).color);
+				// Parse content_module - handle both string and already parsed cases
+				var moduleData = JSON.parse(item);
+				var contentModuleStr = moduleData.content_module;
+				var contentData;
+				
+				try {
+					// Try to parse if it's a string
+					if (typeof contentModuleStr === 'string') {
+						contentData = JSON.parse(contentModuleStr);
+					} else {
+						// Already an object
+						contentData = contentModuleStr;
+					}
+				} catch(e) {
+					console.error("Error parsing content_module:", e);
+					contentData = {};
+				}
 
-				$("#content_module").val(JSON.parse(item).content_module);	      
+				var savedTable = contentData.table || "";
+				var savedColumn = contentData.column || "";
+
+				$("#metricType").val(contentData.type || "total");
+				$("#metricConfig").val(contentData.config || "unit");
+				var metricIcon = contentData.icon || "bi-gear";
+				
+				// Set icon value and update preview
+				$("#metricIcon").val(metricIcon);
+				// Update preview immediately
+				$("#metricIconPreview").attr("class", "bi " + metricIcon);
+				// Trigger change event to ensure all listeners are notified
+				$("#metricIcon").trigger('change');
+				
+				$("#metricColor").val(contentData.color || "108, 95, 252");
+
+				// Initialize content_module with current values using JSON.stringify
+				var metricData = {
+					type: contentData.type || "total",
+					table: savedTable,
+					column: savedColumn,
+					config: contentData.config || "unit",
+					icon: metricIcon,
+					color: contentData.color || "108, 95, 252"
+				};
+				$("#content_module").val(JSON.stringify(metricData));
+
+				// Load tables first, then set the saved table and column
+				// Use setTimeout to ensure modal is fully rendered
+				setTimeout(function() {
+					loadTablesForEdit(savedTable, savedColumn);
+				}, 300);
 
 			}
 
@@ -429,17 +584,72 @@ $(document).on("click",".deleteModule",function(){
 Cambio en datos de métricas
 =============================================*/
 
-$(document).on("change",".changeMetric",function(){
+$(document).on("change",".changeMetric",function(e){
 
+	// Get the current element that triggered the change
+	var $currentElement = $(this);
+	var isIconField = $currentElement.attr("id") == "metricIcon";
+	
 	// Update icon preview when it changes
-	if($(this).attr("id") == "metricIcon"){
-		var iconValue = $(this).val() || "bi-gear";
+	if(isIconField){
+		// Get value from the custom event if available, otherwise from the element
+		var iconValue = (e.originalEvent && e.originalEvent.iconValue) || $currentElement.val() || "bi-gear";
+		
+		// Clean the value if it has quotes
+		if (iconValue && iconValue.indexOf('"') !== -1) {
+			var parts = iconValue.split('"');
+			iconValue = parts.length > 1 ? parts[1] : parts[0];
+		}
+		
+		// Ensure the value is set correctly
+		if (iconValue && iconValue !== $currentElement.val()) {
+			$currentElement.val(iconValue);
+		}
+		
+		// Update preview
 		$("#metricIconPreview").attr("class", "bi " + iconValue);
+		console.log('Icon changed in changeMetric listener (from element):', iconValue, 'Element value:', $currentElement.val());
 	}
 
-	var object = `{"type":"${$("#metricType").val()}","table":"${$("#metricTable").val()}", "column":"${$("#metricColumn").val()}","config":"${$("#metricConfig").val()}","icon":"${$("#metricIcon").val()}","color":"${$("#metricColor").val()}"  }`;
+	// Get icon value - use the element that triggered if it's the icon field, otherwise get from DOM
+	var iconValue;
+	if(isIconField){
+		// Use the value from the element that triggered the event, or from custom event
+		iconValue = (e.originalEvent && e.originalEvent.iconValue) || $currentElement.val() || "bi-gear";
+	} else {
+		// Get from DOM
+		iconValue = $("#metricIcon").val() || "bi-gear";
+	}
+	
+	// Clean the value if it has quotes
+	if (iconValue && iconValue.indexOf('"') !== -1) {
+		var parts = iconValue.split('"');
+		iconValue = parts.length > 1 ? parts[1] : parts[0];
+		$("#metricIcon").val(iconValue);
+	}
+	
+	// Double-check the value from the DOM element directly
+	var domValue = document.getElementById("metricIcon") ? document.getElementById("metricIcon").value : iconValue;
+	if (domValue && domValue !== iconValue && isIconField) {
+		iconValue = domValue;
+		console.log('Using DOM value instead:', iconValue);
+	}
+	
+	console.log('Final icon value for content_module:', iconValue);
+	
+	// Use JSON.stringify to properly escape and format the JSON
+	var metricData = {
+		type: $("#metricType").val() || "total",
+		table: $("#metricTable").val() || "",
+		column: $("#metricColumn").val() || "",
+		config: $("#metricConfig").val() || "unit",
+		icon: iconValue,
+		color: $("#metricColor").val() || "108, 95, 252"
+	};
 
-	$("#content_module").val(object);	           
+	var contentModuleValue = JSON.stringify(metricData);
+	$("#content_module").val(contentModuleValue);
+	console.log('content_module updated:', contentModuleValue);
 
 })
 
@@ -611,5 +821,7 @@ $(document).on("click",".deleteColumn",function(){
 		}
 
 	})
+
+	// Functions loadTablesForEdit and loadTableColumnsForEdit are now defined globally at the top of this file
 
 })

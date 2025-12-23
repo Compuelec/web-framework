@@ -166,14 +166,18 @@
 
                       <div class="col-md-4">
                         <label for="metricTable" class="form-label small fw-semibold">Tabla</label>
-                        <input type="text" class="form-control form-control-sm rounded changeMetric" id="metricTable" placeholder="Nombre de la tabla">
+                        <select class="form-select form-select-sm rounded changeMetric" id="metricTable">
+                          <option value="">Seleccionar tabla...</option>
+                        </select>
                         <div class="valid-feedback">Válido.</div>
                         <div class="invalid-feedback">Campo inválido.</div>
                       </div>
 
                       <div class="col-md-4">
                         <label for="metricColumn" class="form-label small fw-semibold">Columna</label>
-                        <input type="text" class="form-control form-control-sm rounded changeMetric" id="metricColumn" placeholder="Nombre de la columna">
+                        <select class="form-select form-select-sm rounded changeMetric" id="metricColumn" disabled>
+                          <option value="">Seleccione primero una tabla</option>
+                        </select>
                         <div class="valid-feedback">Válido.</div>
                         <div class="invalid-feedback">Campo inválido.</div>
                       </div>
@@ -214,6 +218,7 @@
                             type="text" 
                             class="form-control form-control-sm rounded changeMetric cleanIcon" 
                             id="metricIcon"
+                            value="bi-gear"
                             placeholder="Seleccionar icono"
                             readonly
                           >
@@ -491,16 +496,156 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 	}
 	
-	// Update preview when input value changes (in case it's loaded from code)
-	$('#metricIcon').on('input change', function() {
+	// Update preview when input value changes
+	// Use event delegation to ensure it works even when modal is opened dynamically
+	$(document).off('input change', '#metricIcon').on('input change', '#metricIcon', function(e) {
 		var iconValue = $(this).val() || 'bi-gear';
+		
+		// Clean the value if it has quotes (from cleanIcon listener)
+		if (iconValue.indexOf('"') !== -1) {
+			var parts = iconValue.split('"');
+			iconValue = parts.length > 1 ? parts[1] : parts[0];
+			$(this).val(iconValue);
+		}
+		
+		// Update preview
 		$('#metricIconPreview').attr('class', 'bi ' + iconValue);
 	});
 	
-	// Update initial preview if there's a value
-	if ($('#metricIcon').val()) {
-		var iconValue = $('#metricIcon').val();
-		$('#metricIconPreview').attr('class', 'bi ' + iconValue);
+	// Also listen for when modal is shown to update preview
+	$('#myModule').on('shown.bs.modal', function() {
+		if ($('#metricIcon').length && $('#metricIcon').val()) {
+			var iconValue = $('#metricIcon').val();
+			// Clean the value if it has quotes
+			if (iconValue.indexOf('"') !== -1) {
+				var parts = iconValue.split('"');
+				iconValue = parts.length > 1 ? parts[1] : parts[0];
+				$('#metricIcon').val(iconValue);
+			}
+			$('#metricIconPreview').attr('class', 'bi ' + iconValue);
+		}
+	});
+	
+	// Listen for when icon selector modal closes to ensure value is updated
+	$('#iconSelectorModalModule').on('hidden.bs.modal', function() {
+		setTimeout(function() {
+			var iconValue = $('#metricIcon').val() || 'bi-gear';
+			// Clean the value if it has quotes
+			if (iconValue.indexOf('"') !== -1) {
+				var parts = iconValue.split('"');
+				iconValue = parts.length > 1 ? parts[1] : parts[0];
+				$('#metricIcon').val(iconValue);
+			}
+			$('#metricIconPreview').attr('class', 'bi ' + iconValue);
+			// Update content_module directly without triggering change to avoid loops
+			if (typeof updateMetricContent === 'function') {
+				updateMetricContent();
+			}
+		}, 100);
+	});
+
+	// Load tables when metrics block is shown
+	$('#myModule').on('shown.bs.modal', function() {
+		if ($('#type_module').val() === 'metrics') {
+			loadTables();
+		}
+	});
+
+	// Load tables when type changes to metrics
+	$('#type_module').on('change', function() {
+		if ($(this).val() === 'metrics') {
+			loadTables();
+		} else {
+			// Reset selects when switching away from metrics
+			$('#metricTable').val('').trigger('change');
+			$('#metricColumn').val('').prop('disabled', true);
+		}
+	});
+
+	// Load columns when table is selected
+	$('#metricTable').on('change', function() {
+		var tableName = $(this).val();
+		if (tableName) {
+			loadTableColumns(tableName);
+			// Update content_module when table changes
+			updateMetricContent();
+		} else {
+			$('#metricColumn').html('<option value="">Seleccione primero una tabla</option>').prop('disabled', true);
+			// Update content_module when table is cleared
+			updateMetricContent();
+		}
+	});
+
+	// Update content_module when column changes
+	$('#metricColumn').on('change', function() {
+		updateMetricContent();
+	});
+
+	// Function to update content_module with current metric values
+	function updateMetricContent() {
+		var iconValue = $('#metricIcon').val() || 'bi-gear';
+		// Use JSON.stringify to properly escape and format the JSON
+		var metricData = {
+			type: $('#metricType').val() || 'total',
+			table: $('#metricTable').val() || '',
+			column: $('#metricColumn').val() || '',
+			config: $('#metricConfig').val() || 'unit',
+			icon: iconValue,
+			color: $('#metricColor').val() || '108, 95, 252'
+		};
+		$('#content_module').val(JSON.stringify(metricData));
+	}
+
+	// Function to load tables
+	function loadTables() {
+		$.ajax({
+			url: '<?php echo $cmsBasePath ?>/ajax/modules.ajax.php?action=getTables',
+			method: 'GET',
+			dataType: 'json',
+			success: function(response) {
+				if (response.status === 200 && response.results.length > 0) {
+					var options = '<option value="">Seleccionar tabla...</option>';
+					response.results.forEach(function(table) {
+						options += '<option value="' + table + '">' + table + '</option>';
+					});
+					$('#metricTable').html(options);
+				} else {
+					$('#metricTable').html('<option value="">No hay tablas disponibles</option>');
+				}
+			},
+			error: function() {
+				$('#metricTable').html('<option value="">Error al cargar tablas</option>');
+			}
+		});
+	}
+
+	// Function to load columns from a table
+	function loadTableColumns(tableName) {
+		$('#metricColumn').prop('disabled', true).html('<option value="">Cargando columnas...</option>');
+		
+		$.ajax({
+			url: '<?php echo $cmsBasePath ?>/ajax/modules.ajax.php',
+			method: 'POST',
+			data: {
+				action: 'getTableColumns',
+				tableName: tableName
+			},
+			dataType: 'json',
+			success: function(response) {
+				if (response.status === 200 && response.results.length > 0) {
+					var options = '<option value="">Seleccionar columna...</option>';
+					response.results.forEach(function(column) {
+						options += '<option value="' + column + '">' + column + '</option>';
+					});
+					$('#metricColumn').html(options).prop('disabled', false);
+				} else {
+					$('#metricColumn').html('<option value="">No hay columnas disponibles</option>').prop('disabled', true);
+				}
+			},
+			error: function() {
+				$('#metricColumn').html('<option value="">Error al cargar columnas</option>').prop('disabled', true);
+			}
+		});
 	}
 });
 </script>
