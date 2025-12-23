@@ -1,0 +1,15 @@
+# Allow access to ZIP files for download
+<FilesMatch "\.zip$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Security: prevent execution of PHP files
+<FilesMatch "\.php$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+

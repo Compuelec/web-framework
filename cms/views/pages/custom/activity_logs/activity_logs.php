@@ -7,9 +7,13 @@
  */
 
 require_once __DIR__ . '/../../../../controllers/activity_logs.controller.php';
+require_once __DIR__ . '/../../../../controllers/template.controller.php';
+
+// Get CMS base path
+$cmsBasePath = TemplateController::cmsBasePath();
 
 // Get initial logs (table and page are auto-created by template.php on every page load)
-$initialLogs = ActivityLogsController::getLogs([], 50, 0);
+$initialLogs = ActivityLogsController::getLogs([], 10, 0);
 
 ?>
 
@@ -164,9 +168,19 @@ $initialLogs = ActivityLogsController::getLogs([], 50, 0);
 			</div>
 			
 			<!-- Pagination -->
-			<div class="d-flex justify-content-between align-items-center mt-3" id="paginationContainer" style="display: none !important;">
-				<div>
+			<div class="d-flex justify-content-between align-items-center mt-3" id="paginationContainer">
+				<div class="d-flex align-items-center gap-3">
 					<small class="text-muted">Mostrando <span id="showingFrom">0</span> - <span id="showingTo">0</span> de <span id="totalLogs">0</span> registros</small>
+					<div class="d-flex align-items-center gap-2">
+						<label class="form-label mb-0 small">Registros por página:</label>
+						<select class="form-select form-select-sm" id="limitSelect" style="width: auto;">
+							<option value="10" selected>10</option>
+							<option value="25">25</option>
+							<option value="50">50</option>
+							<option value="100">100</option>
+							<option value="200">200</option>
+						</select>
+					</div>
 				</div>
 				<nav>
 					<ul class="pagination pagination-sm mb-0" id="pagination">
@@ -202,11 +216,11 @@ $initialLogs = ActivityLogsController::getLogs([], 50, 0);
 <script>
 $(document).ready(function() {
 	let currentPage = 0;
-	let currentLimit = 50;
+	let currentLimit = 10;
 	let currentFilters = {};
 	
 	// Load logs function
-	function loadLogs(page = 0, limit = 50, filters = {}) {
+	function loadLogs(page = 0, limit = 10, filters = {}) {
 		$.ajax({
 			url: '<?php echo $cmsBasePath; ?>/ajax/activity_logs.ajax.php',
 			method: 'GET',
@@ -221,15 +235,25 @@ $(document).ready(function() {
 				$('#logsTableBody').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></td></tr>');
 			},
 			success: function(response) {
-				if (response.success && response.data) {
-					displayLogs(response.data);
-					updatePagination(response.total || response.data.length, page, limit);
+				if (response && response.success && response.data !== undefined) {
+					// Handle empty array case
+					const logsArray = Array.isArray(response.data) ? response.data : [];
+					displayLogs(logsArray);
+					const total = response.total || 0;
+					updatePagination(total, page, limit);
+					$('#logsCount').text(total + ' registros');
 				} else {
-					$('#logsTableBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Error al cargar los logs: ' + (response.error || 'Error desconocido') + '</td></tr>');
+					const errorMsg = (response && response.error) ? response.error : 'Error desconocido';
+					$('#logsTableBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Error al cargar los logs: ' + errorMsg + '</td></tr>');
+					$('#logsCount').text('0 registros');
+					$('#paginationContainer').hide();
 				}
 			},
-			error: function() {
-				$('#logsTableBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Error al conectar con el servidor</td></tr>');
+			error: function(xhr, status, error) {
+				console.error('Error loading logs:', status, error, xhr.responseText);
+				$('#logsTableBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Error al conectar con el servidor: ' + error + '</td></tr>');
+				$('#logsCount').text('0 registros');
+				$('#paginationContainer').hide();
 			}
 		});
 	}
@@ -276,15 +300,98 @@ $(document).ready(function() {
 		});
 		
 		$('#logsTableBody').html(html);
-		$('#logsCount').text(logs.length + ' registros');
+		// Note: logsCount will be updated by updatePagination with total count
 	}
 	
 	// Update pagination
 	function updatePagination(total, page, limit) {
-		// Simple pagination - can be enhanced later
-		$('#showingFrom').text(page * limit + 1);
-		$('#showingTo').text(Math.min((page + 1) * limit, total));
+		const totalPages = Math.ceil(total / limit);
+		const showingFrom = total > 0 ? page * limit + 1 : 0;
+		const showingTo = Math.min((page + 1) * limit, total);
+		
+		$('#showingFrom').text(showingFrom);
+		$('#showingTo').text(showingTo);
 		$('#totalLogs').text(total);
+		
+		// Generate pagination buttons
+		let paginationHtml = '';
+		
+		if (totalPages <= 1) {
+			$('#pagination').html('');
+			$('#paginationContainer').hide();
+			return;
+		}
+		
+		$('#paginationContainer').show();
+		
+		// Previous button
+		paginationHtml += '<li class="page-item' + (page === 0 ? ' disabled' : '') + '">';
+		paginationHtml += '<a class="page-link" href="javascript:void(0);" data-page="' + (page - 1) + '">';
+		paginationHtml += '<i class="bi bi-chevron-left"></i>';
+		paginationHtml += '</a></li>';
+		
+		// Page numbers
+		const maxVisiblePages = 7;
+		let startPage = Math.max(0, page - Math.floor(maxVisiblePages / 2));
+		let endPage = Math.min(totalPages - 1, startPage + maxVisiblePages - 1);
+		
+		// Adjust start if we're near the end
+		if (endPage - startPage < maxVisiblePages - 1) {
+			startPage = Math.max(0, endPage - maxVisiblePages + 1);
+		}
+		
+		// First page
+		if (startPage > 0) {
+			paginationHtml += '<li class="page-item"><a class="page-link" href="javascript:void(0);" data-page="0">1</a></li>';
+			if (startPage > 1) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+		}
+		
+		// Page range
+		for (let i = startPage; i <= endPage; i++) {
+			paginationHtml += '<li class="page-item' + (i === page ? ' active' : '') + '">';
+			paginationHtml += '<a class="page-link" href="javascript:void(0);" data-page="' + i + '">' + (i + 1) + '</a>';
+			paginationHtml += '</li>';
+		}
+		
+		// Last page
+		if (endPage < totalPages - 1) {
+			if (endPage < totalPages - 2) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+			paginationHtml += '<li class="page-item"><a class="page-link" href="javascript:void(0);" data-page="' + (totalPages - 1) + '">' + totalPages + '</a></li>';
+		}
+		
+		// Next button
+		paginationHtml += '<li class="page-item' + (page >= totalPages - 1 ? ' disabled' : '') + '">';
+		paginationHtml += '<a class="page-link" href="javascript:void(0);" data-page="' + (page + 1) + '">';
+		paginationHtml += '<i class="bi bi-chevron-right"></i>';
+		paginationHtml += '</a></li>';
+		
+		$('#pagination').html(paginationHtml);
+		
+		// Attach click handlers to pagination links after HTML is updated
+		$('#pagination .page-link').off('click.pagination').on('click.pagination', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			if ($(this).parent().hasClass('disabled')) {
+				return false;
+			}
+			
+			const newPage = parseInt($(this).data('page'));
+			
+			if (!isNaN(newPage) && newPage >= 0 && newPage !== currentPage) {
+				currentPage = newPage;
+				loadLogs(currentPage, currentLimit, currentFilters);
+				// Scroll to top of table
+				$('html, body').animate({
+					scrollTop: $('#logsTable').offset().top - 100
+				}, 300);
+			}
+			return false;
+		});
 	}
 	
 	// Escape HTML
@@ -314,7 +421,8 @@ $(document).ready(function() {
 		const dateFrom = $('#filterDateFrom').val();
 		const dateTo = $('#filterDateTo').val();
 		
-		if (action) currentFilters.action = action;
+		// Use 'filter_action' to avoid conflict with AJAX 'action' parameter
+		if (action) currentFilters.filter_action = action;
 		if (entity) currentFilters.entity = entity;
 		if (dateFrom) currentFilters.date_from = dateFrom;
 		if (dateTo) currentFilters.date_to = dateTo;
@@ -329,6 +437,13 @@ $(document).ready(function() {
 		$('#filterDateFrom').val('');
 		$('#filterDateTo').val('');
 		currentFilters = {};
+		currentPage = 0;
+		loadLogs(currentPage, currentLimit, currentFilters);
+	});
+	
+	// Limit selector change
+	$('#limitSelect').on('change', function() {
+		currentLimit = parseInt($(this).val());
 		currentPage = 0;
 		loadLogs(currentPage, currentLimit, currentFilters);
 	});
@@ -348,27 +463,28 @@ $(document).ready(function() {
             if (!result.isConfirmed) {
                 return;
             }
-        })
-		
-		$.ajax({
-			url: '<?php echo $cmsBasePath; ?>/ajax/activity_logs.ajax.php',
-			method: 'POST',
-			data: {
-				action: 'clear'
-			},
-			dataType: 'json',
-			success: function(response) {
-				if (response.success) {
-					Swal.fire('Logs eliminados exitosamente', '', 'success');
-					loadLogs(currentPage, currentLimit, currentFilters);
-				} else {
-					Swal.fire('Error', 'Error al eliminar logs: ' + (response.error || 'Error desconocido'), 'error');
+            
+			$.ajax({
+				url: '<?php echo $cmsBasePath; ?>/ajax/activity_logs.ajax.php',
+				method: 'POST',
+				data: {
+					action: 'clear'
+				},
+				dataType: 'json',
+				success: function(response) {
+					if (response.success) {
+						Swal.fire('Logs eliminados exitosamente', '', 'success');
+						currentPage = 0;
+						loadLogs(currentPage, currentLimit, currentFilters);
+					} else {
+						Swal.fire('Error', 'Error al eliminar logs: ' + (response.error || 'Error desconocido'), 'error');
+					}
+				},
+				error: function() {
+					Swal.fire('Error', 'Error al conectar con el servidor', 'error');
 				}
-			},
-			error: function() {
-				Swal.fire('Error', 'Error al conectar con el servidor', 'error');
-			}
-		});
+			});
+        });
 	});
 	
 	// Auto-refresh every 30 seconds

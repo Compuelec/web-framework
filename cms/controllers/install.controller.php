@@ -1,9 +1,11 @@
 <?php 
 
+require_once __DIR__ . '/path-updater.controller.php';
+
 class InstallController{
 
 	// Load configuration
-	private static function getConfig(){
+	public static function getConfig(){
 		// Try CMS config first
 		$configPath = __DIR__ . '/../config.php';
 		if(file_exists($configPath)){
@@ -55,18 +57,33 @@ class InstallController{
 		$config = self::getConfig();
 		$dbConfig = $config['database'] ?? [];
 		
+		// If no charset is defined, use utf8mb4 as default
+		$charset = $dbConfig['charset'] ?? 'utf8mb4';
+		
 		try{
+			// First try to connect without specifying database (to create it if it doesn't exist)
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host']).";dbname=".($dbConfig['name']),
+				"mysql:host=".($dbConfig['host']).";charset=".$charset,
 				$dbConfig['user'],
 				$dbConfig['pass']
 			);
 			
-			$link->exec("set names ".($dbConfig['charset']));
+			// Try to use the database
+			$link->exec("USE `".($dbConfig['name'])."`");
+			$link->exec("set names ".$charset);
 
 		}catch(PDOException $e){
-
-			die("Error: ".$e->getMessage());
+			// If it fails, try with the database directly
+			try {
+				$link = new PDO(
+					"mysql:host=".($dbConfig['host']).";dbname=".($dbConfig['name']).";charset=".$charset,
+					$dbConfig['user'],
+					$dbConfig['pass']
+				);
+				$link->exec("set names ".$charset);
+			} catch(PDOException $e2) {
+				die("Error: ".$e2->getMessage());
+			}
 		}
 
 		return $link;
@@ -78,6 +95,51 @@ class InstallController{
 	public function install(){
 
 		if(isset($_POST["email_admin"])){
+
+			// Get database configuration from config files (not from form)
+			$config = self::getConfig();
+			$dbConfig = $config['database'] ?? [];
+			
+			// Validate that database configuration exists
+			if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+				$errorMsgEscaped = json_encode("La configuración de base de datos no está completa en config.php. Por favor, configure la base de datos en cms/config.php o cms/config.example.php antes de instalar.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+				echo '<script>
+					fncMatPreloader("off");
+					fncFormatInputs();
+					fncSweetAlert("error", "Error de configuración", ' . $errorMsgEscaped . ');
+				</script>';
+				return;
+			}
+			
+			// Detect domain (for information purposes)
+			$domainInfo = PathUpdaterController::detectDomain();
+			
+			// Try to update API URLs only if files are writable (non-blocking)
+			// If files are not writable, we continue anyway - user can update URLs manually
+			$cmsConfigResult = PathUpdaterController::updateCmsConfigUrlsOnly($domainInfo);
+			$apiConfigResult = PathUpdaterController::updateApiConfigUrlsOnly($domainInfo);
+			
+			// Log warnings if URLs couldn't be updated, but don't stop installation
+			if (!$cmsConfigResult['success']) {
+				error_log("Warning: Could not update CMS URLs: " . $cmsConfigResult['message']);
+			}
+			if (!$apiConfigResult['success']) {
+				error_log("Warning: Could not update API URLs: " . $apiConfigResult['message']);
+			}
+			
+			// Clear any cached config by forcing a reload
+			clearstatcache();
+
+			// Check if database already exists and has data (imported from package)
+			// Try to detect old domain from database before creating tables
+			$oldDomain = null;
+			try {
+				$oldDomain = PathUpdaterController::detectOldDomainFromDatabase($dbConfig);
+			} catch (Exception $e) {
+				// Database might not exist yet, that's okay - will check again after installation
+			}
+			
+			$newDomain = $domainInfo['base_url'];
 
 			// Check if tables already exist before starting installation
 			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files', 'activity_logs'];
@@ -147,10 +209,12 @@ class InstallController{
 				url_page TEXT NULL DEFAULT NULL,
 				icon_page TEXT NULL DEFAULT NULL,
 				type_page TEXT NULL DEFAULT NULL,
+				parent_page INT NULL DEFAULT '0',
 				order_page INT NULL DEFAULT '1',
 				date_created_page DATE NULL DEFAULT NULL,
 				date_updated_page TIMESTAMP on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				PRIMARY KEY (id_page))";
+				PRIMARY KEY (id_page),
+				INDEX idx_parent_page (parent_page))";
 
 			$stmtPages = InstallController::connect()->prepare($sqlPages);
 
@@ -269,7 +333,7 @@ class InstallController{
 				$maxRetries = 10;
 				$tablesReady = false;
 				$requiredTables = ['pages', 'admins'];
-				$requiredPagesColumns = ['id_page', 'title_page', 'url_page', 'icon_page', 'type_page', 'order_page', 'date_created_page'];
+				$requiredPagesColumns = ['id_page', 'title_page', 'url_page', 'icon_page', 'type_page', 'parent_page', 'order_page', 'date_created_page'];
 				
 				for($i = 0; $i < $maxRetries; $i++){
 					$delay = ($i + 1) * 500000; // 0.5s, 1s, 1.5s, 2s, 2.5s, etc.
@@ -341,15 +405,17 @@ class InstallController{
 					"url_page" => "inicio",
 					"icon_page" => "bi bi-house-door-fill",
 					"type_page" => "modules",
+					"parent_page" => 0,
 					"order_page" => 1,
 					"date_created_page" => date("Y-m-d")
 				);
 
 				$homePage = CurlController::request($url,$method,$fields);
 				
-				// Get API config for error message
+				// Get API config for error message (force reload)
+				clearstatcache();
 				$apiConfig = self::getConfig();
-				$apiBaseUrl = $apiConfig['api']['base_url'];
+				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
 				
 				// Debug: Log full response for troubleshooting (escape for HTML/JS)
 				$fullResponse = json_encode($homePage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -377,7 +443,32 @@ class InstallController{
 						}
 					}
 				} else {
-					// Success case - no error
+					// Success case - check if we can extract the page ID
+					$homePageId = null;
+					if(isset($homePage->results)){
+						if(is_object($homePage->results) && isset($homePage->results->lastId)){
+							$homePageId = $homePage->results->lastId;
+						} elseif(is_object($homePage->results) && isset($homePage->results->id_page)){
+							$homePageId = $homePage->results->id_page;
+						} elseif(is_array($homePage->results) && isset($homePage->results[0])){
+							if(is_object($homePage->results[0]) && isset($homePage->results[0]->lastId)){
+								$homePageId = $homePage->results[0]->lastId;
+							} elseif(is_object($homePage->results[0]) && isset($homePage->results[0]->id_page)){
+								$homePageId = $homePage->results[0]->id_page;
+							} elseif(is_array($homePage->results[0]) && isset($homePage->results[0]['lastId'])){
+								$homePageId = $homePage->results[0]['lastId'];
+							} elseif(is_array($homePage->results[0]) && isset($homePage->results[0]['id_page'])){
+								$homePageId = $homePage->results[0]['id_page'];
+							}
+						}
+					}
+					
+					// If we couldn't extract ID but status is 200, it's still a success
+					// The page was created even if we can't get the ID
+					if($homePageId === null){
+						error_log("Warning: Home page created but couldn't extract ID from response");
+					}
+					
 					$errorDetails = '';
 				}
 				
@@ -416,6 +507,7 @@ class InstallController{
 					"url_page" => "admins",
 					"icon_page" => "bi bi-person-fill-gear",
 					"type_page" => "modules",
+					"parent_page" => 0,
 					"order_page" => 2,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -425,9 +517,10 @@ class InstallController{
 				$adminPageId = null;
 				$errorDetails = '';
 
-				// Get API config for error message
+				// Get API config for error message (force reload)
+				clearstatcache();
 				$apiConfig = self::getConfig();
-				$apiBaseUrl = $apiConfig['api']['base_url'];
+				$apiBaseUrl = $apiConfig['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
 
 				// Debug: Log full response for troubleshooting (escape for HTML/JS)
 				$fullResponse = json_encode($adminPage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -452,29 +545,53 @@ class InstallController{
 				} elseif(!isset($adminPage->results)){
 					$errorDetails = 'La respuesta no tiene el campo "results". Estructura completa: ' . json_encode($adminPage, JSON_PRETTY_PRINT);
 				} else {
-					// Try multiple ways to extract lastId
+					// Try multiple ways to extract lastId or id_page
 					if(is_object($adminPage->results)){
-						// Direct access
+						// Direct access to lastId
 						if(isset($adminPage->results->lastId)){
 							$adminPageId = $adminPage->results->lastId;
+						} elseif(isset($adminPage->results->id_page)){
+							// Sometimes the API returns the created record directly
+							$adminPageId = $adminPage->results->id_page;
 						} else {
 							// Try as array
 							$resultsArray = (array)$adminPage->results;
 							if(isset($resultsArray['lastId'])){
 								$adminPageId = $resultsArray['lastId'];
+							} elseif(isset($resultsArray['id_page'])){
+								$adminPageId = $resultsArray['id_page'];
 							}
 						}
 					} elseif(is_array($adminPage->results)){
 						// Check if it's a PDO error array (numeric keys)
-						if(isset($adminPage->results[0]) && isset($adminPage->results[2])){
+						if(isset($adminPage->results[0]) && isset($adminPage->results[2]) && is_numeric($adminPage->results[0])){
 							$errorDetails = 'Error de base de datos: ' . $adminPage->results[2] . ' (Código: ' . $adminPage->results[0] . ')';
 						} elseif(isset($adminPage->results['lastId'])){
 							// Array with lastId key
 							$adminPageId = $adminPage->results['lastId'];
-						} elseif(isset($adminPage->results[0]) && is_object($adminPage->results[0]) && isset($adminPage->results[0]->lastId)){
-							// Array of objects, first element
-							$adminPageId = $adminPage->results[0]->lastId;
-						} else {
+						} elseif(isset($adminPage->results['id_page'])){
+							// Array with id_page key
+							$adminPageId = $adminPage->results['id_page'];
+						} elseif(isset($adminPage->results[0])){
+							// Array with first element
+							if(is_object($adminPage->results[0])){
+								// Try lastId first
+								if(isset($adminPage->results[0]->lastId)){
+									$adminPageId = $adminPage->results[0]->lastId;
+								} elseif(isset($adminPage->results[0]->id_page)){
+									$adminPageId = $adminPage->results[0]->id_page;
+								}
+							} elseif(is_array($adminPage->results[0])){
+								if(isset($adminPage->results[0]['lastId'])){
+									$adminPageId = $adminPage->results[0]['lastId'];
+								} elseif(isset($adminPage->results[0]['id_page'])){
+									$adminPageId = $adminPage->results[0]['id_page'];
+								}
+							}
+						}
+						
+						// If still no ID found, create error
+						if($adminPageId === null && empty($errorDetails)){
 							$errorDetails = 'El campo "results" es un array inesperado: ' . json_encode($adminPage->results, JSON_PRETTY_PRINT);
 						}
 					} else {
@@ -487,7 +604,7 @@ class InstallController{
 					// If we still don't have lastId, create detailed error
 					if($adminPageId === null && empty($errorDetails)){
 						$availableFields = is_object($adminPage->results) ? implode(', ', array_keys((array)$adminPage->results)) : (is_array($adminPage->results) ? implode(', ', array_keys($adminPage->results)) : 'N/A');
-						$errorDetails = 'No se pudo extraer "lastId" de la respuesta. Campos disponibles en "results": ' . $availableFields;
+						$errorDetails = 'No se pudo extraer "lastId" o "id_page" de la respuesta. Campos disponibles en "results": ' . $availableFields;
 						if(is_object($adminPage->results) && isset($adminPage->results->comment)){
 							$errorDetails .= '. Comentario: ' . $adminPage->results->comment;
 						}
@@ -529,6 +646,7 @@ class InstallController{
 					"url_page" => "archivos",
 					"icon_page" => "bi bi-file-earmark-image",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 3,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -544,6 +662,7 @@ class InstallController{
 					"url_page" => "updates",
 					"icon_page" => "bi bi-arrow-repeat",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 4,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -559,6 +678,7 @@ class InstallController{
 					"url_page" => "activity_logs",
 					"icon_page" => "bi bi-journal-text",
 					"type_page" => "custom",
+					"parent_page" => 0,
 					"order_page" => 5,
 					"date_created_page" => date("Y-m-d")
 				);
@@ -583,6 +703,11 @@ class InstallController{
 						error_log("Warning: activity_logs.php file not found at: " . $activityLogsFile);
 					}
 				}
+
+				// Create packaging page using setup controller
+				require_once __DIR__ . '/packaging-setup.controller.php';
+				$packagingPageResult = PackagingSetupController::ensurePackagingPage();
+				$packagingPage = (object)['status' => $packagingPageResult['success'] ? 200 : 500];
 
 				// Create Breadcrumb module for admins page
 
@@ -632,6 +757,7 @@ class InstallController{
 				   $filesPage->status == 200 &&
 				   $updatesPage->status == 200 &&
 				   $activityLogsPage->status == 200 &&
+				   $packagingPage->status == 200 &&
 				   $breadcrumbModule->status == 200 &&
 				   $tableModule->status == 200 &&
 				   $serverFolder->status == 200
@@ -795,6 +921,16 @@ class InstallController{
 					}
 
 					if($countColumns == count($columns)){
+
+						// Final update: Ensure all database URLs are updated to new domain
+						// This handles cases where database was imported from package
+						if (isset($oldDomain) && $oldDomain && $oldDomain !== $newDomain) {
+							$finalDbUpdate = PathUpdaterController::updateDatabaseUrls($oldDomain, $newDomain, $dbConfig);
+							// Log but don't show error to user as installation is complete
+							if ($finalDbUpdate['success'] && $finalDbUpdate['updated_count'] > 0) {
+								error_log("Info: Updated " . $finalDbUpdate['updated_count'] . " database records with new domain URLs");
+							}
+						}
 
 						echo '<script>
 						fncMatPreloader("off");

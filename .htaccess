@@ -13,6 +13,19 @@ Options All -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+    # Redirect root to /cms (backup - index.php handles this primarily)
+    # Only redirect if accessing the exact root and index.php doesn't exist
+    RewriteCond %{REQUEST_URI} ^/chatcenter/?$ [OR]
+    RewriteCond %{REQUEST_URI} ^/?$
+    RewriteCond %{REQUEST_URI} !^/chatcenter/cms
+    RewriteCond %{REQUEST_URI} !^/cms
+    RewriteCond %{REQUEST_URI} !^/chatcenter/api
+    RewriteCond %{REQUEST_URI} !^/api
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Use relative path so it works in subdirectories too
+    RewriteRule ^(.*)$ cms/ [R=301,L]
+    
     # Block access to sensitive directories
     RewriteRule ^(backups|migrations|\.cursor|\.git|vendor|node_modules|\.vscode|\.idea)/ - [F,L]
     

@@ -2,6 +2,7 @@
 
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";
+require_once __DIR__ . "/../../core/activity_log.php";
 
 class DynamicTablesController{
 
@@ -28,6 +29,15 @@ class DynamicTablesController{
 			$deleteItem = CurlController::request($url,$method,$fields);
 
 			if($deleteItem->status == 200){
+				
+				/*=============================================
+				Log delete activity
+				=============================================*/
+				
+				if (function_exists('logActivity')) {
+					$entityId = base64_decode($value);
+					logActivity('delete', $this->tableDelete, $entityId, 'Record deletion in table ' . $this->tableDelete);
+				}
 
 				$countDelete++;
 
@@ -62,7 +72,10 @@ class DynamicTablesController{
 		$cmsBasePath = TemplateController::cmsBasePath();
 
 		$module = (json_decode($this->contentModule));
-		$startAt = ($this->page-1)*$this->limit;
+		// Ensure page and limit are integers
+		$page = (int)($this->page ?? 1);
+		$limit = (int)($this->limit ?? 10);
+		$startAt = ($page - 1) * $limit;
 		$table = array(); 
 		$totalPages = 0;
 		$totalData = 0;
@@ -107,7 +120,7 @@ class DynamicTablesController{
 			=============================================*/
 			foreach ($linkTo as $key => $value) {
 
-				$url = $module->title_module."?linkTo=".$value."&search=".str_replace(" ", "_", $this->search)."&orderBy=".$this->orderBy."&orderMode=".$this->orderMode."&startAt=".$startAt."&endAt=".$this->limit;
+				$url = $module->title_module."?linkTo=".$value."&search=".str_replace(" ", "_", $this->search)."&orderBy=".$this->orderBy."&orderMode=".$this->orderMode."&startAt=".$startAt."&endAt=".$limit;
 				$method = "GET";
 				$fields = array();
 
@@ -123,7 +136,7 @@ class DynamicTablesController{
 					
 					$url = $module->title_module."?linkTo=".$value."&search=".str_replace(" ", "_", $this->search)."&select=id_".$module->suffix_module;
 					$totalData = CurlController::request($url,$method,$fields)->total;
-					$totalPages = ceil($totalData/$this->limit);
+					$totalPages = ceil($totalData/$limit);
 
 					break;
 					
@@ -136,7 +149,7 @@ class DynamicTablesController{
 			
 		}else{
 
-			$url = $module->title_module."?linkTo=date_created_".$module->suffix_module."&between1=".$this->between1."&between2=".$this->between2."&orderBy=".$this->orderBy."&orderMode=".$this->orderMode."&startAt=".$startAt."&endAt=".$this->limit;
+			$url = $module->title_module."?linkTo=date_created_".$module->suffix_module."&between1=".$this->between1."&between2=".$this->between2."&orderBy=".$this->orderBy."&orderMode=".$this->orderMode."&startAt=".$startAt."&endAt=".$limit;
 
 			$method = "GET";
 			$fields = array();

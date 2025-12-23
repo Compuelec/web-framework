@@ -1,7 +1,7 @@
 <?php 
 
 require_once "connection.php";
-require_once "get.model.php";
+require_once __DIR__ . "/get.model.php";
 
 class PutModel{
 
@@ -33,6 +33,12 @@ class PutModel{
 		$sql = "UPDATE $table SET $set WHERE $nameId = :$nameId";
 
 		$link = Connection::connect();
+		if ($link === null) {
+			return array(
+				"comment" => "Database connection failed",
+				"error" => "Unable to connect to database"
+			);
+		}
 		$stmt = $link->prepare($sql);
 
 		foreach ($data as $key => $value) {

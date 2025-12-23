@@ -1,12 +1,15 @@
 <?php
 
-require_once "get.model.php";
+require_once __DIR__ . "/get.model.php";
 
 class Connection{
 
 	// Load configuration
 	static public function getConfig(){
 		$configPath = __DIR__ . '/../config.php';
+		// Clear cache to ensure we read the latest config
+		clearstatcache(true, $configPath);
+		
 		if(file_exists($configPath)){
 			$config = require $configPath;
 			if(is_array($config)){
@@ -15,6 +18,7 @@ class Connection{
 		}
 		// Fallback to example if config doesn't exist
 		$examplePath = __DIR__ . '/../config.example.php';
+		clearstatcache(true, $examplePath);
 		if(file_exists($examplePath)){
 			$config = require $examplePath;
 			if(is_array($config)){
@@ -71,19 +75,26 @@ class Connection{
 		$config = self::getConfig();
 		$dbConfig = $config['database'] ?? [];
 		
+		// Validate required database configuration
+		if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+			error_log("Database Connection Error: Missing required database configuration");
+			return null;
+		}
+		
 		try{
 			$link = new PDO(
-				"mysql:host=".($dbConfig['host'] ?? 'localhost').";dbname=".($dbConfig['name']),
+				"mysql:host=".$dbConfig['host'].";dbname=".$dbConfig['name'],
 				$dbConfig['user'], 
 				$dbConfig['pass']
 			);
 
-			$link->exec("set names ".($dbConfig['charset']));
+			$link->exec("set names ".($dbConfig['charset'] ?? 'utf8mb4'));
 
 		}catch(PDOException $e){
-
-			die("Error: ".$e->getMessage());
-
+			// Log error instead of die() to prevent breaking JSON response
+			error_log("Database Connection Error: " . $e->getMessage());
+			// Return null and let the calling code handle it
+			return null;
 		}
 
 		return $link;
@@ -95,8 +106,11 @@ class Connection{
 
 		$database = Connection::infoDatabase()["database"];
 
-		$validate = Connection::connect()
-		->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$validate = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
 		->fetchAll(PDO::FETCH_OBJ);
 
 		if(empty($validate)){

@@ -44,7 +44,8 @@ class PutController{
 
 		}
 
-		echo json_encode($json, http_response_code($json["status"]));
+		http_response_code($json["status"]);
+		echo json_encode($json);
 
 	}
 

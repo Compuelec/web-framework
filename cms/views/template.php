@@ -374,13 +374,52 @@ if($adminTable !== null && is_object($adminTable)){
 								// Check if page is not null and has valid structure
 								if($page !== null && is_object($page) && isset($page->status) && $page->status == 200 && isset($page->results) && is_array($page->results) && count($page->results) > 0 && isset($page->results[0]->type_page)){
 									
-									if($page->results[0]->type_page == "modules"){
+									// Menu pages are not navigable - redirect to first subpage or show 404
+									if($page->results[0]->type_page == "menu"){
+										
+										// Try to get first subpage
+										$url = "pages?linkTo=parent_page&equalTo=".$page->results[0]->id_page."&orderBy=order_page&orderMode=ASC&limit=1";
+										$subPageRequest = CurlController::request($url, "GET", array());
+										
+										if($subPageRequest->status == 200 && isset($subPageRequest->results) && count($subPageRequest->results) > 0){
+											// Redirect to first subpage
+											$firstSubPage = $subPageRequest->results[0];
+											header("Location: ".$cmsBasePath."/".$firstSubPage->url_page);
+											exit;
+										} else {
+											// No subpages, show 404
+											include "pages/404/404.php";
+										}
+									
+									}else if($page->results[0]->type_page == "modules"){
 
 										include "pages/dynamic/dynamic.php";
 									
 									}else if($page->results[0]->type_page == "custom"){
 
-										include "pages/custom/".$routesArray[0]."/".$routesArray[0].".php";
+										// Check if custom page file exists, try to create it if it doesn't
+										$customPagePath = "pages/custom/".$routesArray[0]."/".$routesArray[0].".php";
+										$customPageFullPath = __DIR__ . "/" . $customPagePath;
+										
+										if (!file_exists($customPageFullPath)) {
+											// Try to create using PagesSetupController
+											require_once __DIR__ . "/../controllers/pages-setup.controller.php";
+											PagesSetupController::ensureCustomPageFile($routesArray[0]);
+										}
+										
+										// Only include if file exists
+										if (file_exists($customPageFullPath)) {
+											include $customPagePath;
+										} else {
+											// Show friendly error message
+											echo '<div class="container-fluid p-4">';
+											echo '<div class="alert alert-warning">';
+											echo '<h4>Página no disponible</h4>';
+											echo '<p>La página "' . htmlspecialchars($page->results[0]->title_page ?? $routesArray[0]) . '" existe en la base de datos pero el archivo no se pudo crear.</p>';
+											echo '<p class="mb-0"><small>Por favor, verifica los permisos del directorio <code>cms/views/pages/custom/</code> o crea el archivo manualmente.</small></p>';
+											echo '</div>';
+											echo '</div>';
+										}
 									
 									}else{
 
@@ -431,7 +470,29 @@ if($adminTable !== null && is_object($adminTable)){
 							
 							}else if($page->status == 200 && $page->results[0]->type_page == "custom"){
 
-								include "pages/custom/".$page->results[0]->url_page."/".$page->results[0]->url_page.".php";
+								// Check if custom page file exists, try to create it if it doesn't
+								$customPagePath = "pages/custom/".$page->results[0]->url_page."/".$page->results[0]->url_page.".php";
+								$customPageFullPath = __DIR__ . "/" . $customPagePath;
+								
+								if (!file_exists($customPageFullPath)) {
+									// Try to create using PagesSetupController
+									require_once __DIR__ . "/../controllers/pages-setup.controller.php";
+									PagesSetupController::ensureCustomPageFile($page->results[0]->url_page);
+								}
+								
+								// Only include if file exists
+								if (file_exists($customPageFullPath)) {
+									include $customPagePath;
+								} else {
+									// Show friendly error message
+									echo '<div class="container-fluid p-4">';
+									echo '<div class="alert alert-warning">';
+									echo '<h4>Página no disponible</h4>';
+									echo '<p>La página "' . htmlspecialchars($page->results[0]->title_page ?? $page->results[0]->url_page) . '" existe en la base de datos pero el archivo no se pudo crear.</p>';
+									echo '<p class="mb-0"><small>Por favor, verifica los permisos del directorio <code>cms/views/pages/custom/</code> o crea el archivo manualmente.</small></p>';
+									echo '</div>';
+									echo '</div>';
+								}
 							
 							}else{
 
@@ -465,7 +526,29 @@ if($adminTable !== null && is_object($adminTable)){
 								
 								}else if($page->status == 200 && $page->results[0]->type_page == "custom"){
 
-									include "pages/custom/".$page->results[0]->url_page."/".$page->results[0]->url_page.".php";
+									// Check if custom page file exists, try to create it if it doesn't
+									$customPagePath = "pages/custom/".$page->results[0]->url_page."/".$page->results[0]->url_page.".php";
+									$customPageFullPath = __DIR__ . "/" . $customPagePath;
+									
+									if (!file_exists($customPageFullPath)) {
+										// Try to create using PagesSetupController
+										require_once __DIR__ . "/../controllers/pages-setup.controller.php";
+										PagesSetupController::ensureCustomPageFile($page->results[0]->url_page);
+									}
+									
+									// Only include if file exists
+									if (file_exists($customPageFullPath)) {
+										include $customPagePath;
+									} else {
+										// Show friendly error message
+										echo '<div class="container-fluid p-4">';
+										echo '<div class="alert alert-warning">';
+										echo '<h4>Página no disponible</h4>';
+										echo '<p>La página "' . htmlspecialchars($page->results[0]->title_page ?? $page->results[0]->url_page) . '" existe en la base de datos pero el archivo no se pudo crear.</p>';
+										echo '<p class="mb-0"><small>Por favor, verifica los permisos del directorio <code>cms/views/pages/custom/</code> o crea el archivo manualmente.</small></p>';
+										echo '</div>';
+										echo '</div>';
+									}
 								
 								}else{
 

@@ -1,6 +1,6 @@
 <?php
 
-require_once "connection.php";
+require_once __DIR__ . "/connection.php";
 
 class GetModel{
 
@@ -37,7 +37,11 @@ class GetModel{
 
 		}
 
-		$stmt = Connection::connect()->prepare($sql);
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 	
 
 		try{
@@ -110,7 +114,11 @@ class GetModel{
 
 		}
 
-		$stmt = Connection::connect()->prepare($sql);
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 		foreach ($linkToArray as $key => $value) {
 			
@@ -187,7 +195,11 @@ class GetModel{
 
 			}
 
-			$stmt = Connection::connect()->prepare($sql);
+			$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 			try{
 
@@ -280,7 +292,11 @@ class GetModel{
 
 			}
 
-			$stmt = Connection::connect()->prepare($sql);
+			$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 			foreach ($linkToArray as $key => $value) {
 			
@@ -380,7 +396,11 @@ class GetModel{
 
 		}
 
-		$stmt = Connection::connect()->prepare($sql);
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 		foreach ($linkToArray as $key => $value) {
 
@@ -479,7 +499,11 @@ class GetModel{
 
 			}
 
-			$stmt = Connection::connect()->prepare($sql);
+			$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 			foreach ($linkToArray as $key => $value) {
 
@@ -586,7 +610,11 @@ class GetModel{
 
 		}
 
-		$stmt = Connection::connect()->prepare($sql);
+		$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 		try{
 
@@ -671,7 +699,11 @@ class GetModel{
 
 			}
 
-			$stmt = Connection::connect()->prepare($sql);
+			$link = Connection::connect();
+		if ($link === null) {
+			return null;
+		}
+		$stmt = $link->prepare($sql);
 
 			try{
 

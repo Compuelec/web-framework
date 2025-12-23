@@ -13,57 +13,186 @@
 
 				<hr class="install-divider">
 
-				<!-- Section: Administrator Information -->
+				<!-- Section: Domain Detection -->
+				<?php
+				require_once __DIR__ . '/../../../controllers/path-updater.controller.php';
+				$domainInfo = PathUpdaterController::detectDomain();
+				?>
 				<div class="mb-4">
 					<h6 class="section-title mb-3">
-						<i class="bi bi-person-circle me-2"></i>
-						Información del Administrador
+						<i class="bi bi-globe me-2"></i>
+						Configuración del Servidor
 					</h6>
-					
-					<div class="row g-3">
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="email_admin" class="form-label small">
-									Correo Administrador <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="email"
-								class="form-control"
-								id="email_admin"
-								name="email_admin"
-								placeholder="admin@ejemplo.com"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Correo inválido</div>
-							</div>
-						</div>
-						<div class="col-md-6">
-							<div class="form-group">
-								<label for="password_admin" class="form-label small">
-									Contraseña <span class="text-danger">*</span>
-								</label>
-								<input 
-								type="password"
-								class="form-control"
-								id="password_admin"
-								name="password_admin"
-								placeholder="••••••••"
-								required
-								>
-								<div class="valid-feedback small">✓ Válido</div>
-								<div class="invalid-feedback small">Requerido</div>
-							</div>
-						</div>
+					<div class="alert alert-info">
+						<small>
+							<strong>Dominio detectado:</strong> <?php echo htmlspecialchars($domainInfo['host']); ?><br>
+							<strong>URL Base:</strong> <?php echo htmlspecialchars($domainInfo['base_url']); ?><br>
+							<strong>URL API:</strong> <?php echo htmlspecialchars($domainInfo['api_url']); ?>
+						</small>
 					</div>
 				</div>
 
+				<!-- Section: Database Configuration Info -->
+				<?php
+				// Check if this is a package installation
+				require_once __DIR__ . '/../../../controllers/package-install.controller.php';
+				require_once __DIR__ . '/../../../controllers/install.controller.php';
+				$isPackageInstall = PackageInstallController::hasDatabaseFile();
+				
+				if ($isPackageInstall): 
+					// Get database configuration from config.php (read-only)
+					$config = InstallController::getConfig();
+					$dbConfig = $config['database'] ?? [];
+					$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
+					?>
+					<!-- Package Installation: Show database config from config.php (read-only) -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-box-seam me-2"></i>
+							Instalación desde Paquete
+						</h6>
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>Se detectó un archivo <code>database.sql</code> en la raíz.</strong><br>
+								Este es un paquete empaquetado. La base de datos será restaurada automáticamente durante la instalación usando la configuración de <code>config.php</code>.
+							</small>
+						</div>
+						<?php if ($hasDbConfig): ?>
+							<div class="alert alert-success">
+								<small>
+									<i class="bi bi-check-circle me-2"></i>
+									<strong>Configuración de base de datos (desde config.php):</strong><br>
+									Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
+									Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
+									Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
+									<em>La configuración se lee desde <code>config.php</code> y no puede ser modificada.</em>
+								</small>
+							</div>
+							<!-- Hidden fields to pass config to backend -->
+							<input type="hidden" name="db_host" value="<?php echo htmlspecialchars($dbConfig['host']); ?>">
+							<input type="hidden" name="db_name" value="<?php echo htmlspecialchars($dbConfig['name']); ?>">
+							<input type="hidden" name="db_user" value="<?php echo htmlspecialchars($dbConfig['user']); ?>">
+							<input type="hidden" name="db_pass" value="<?php echo htmlspecialchars($dbConfig['pass'] ?? ''); ?>">
+						<?php else: ?>
+							<div class="alert alert-danger">
+								<small>
+									<i class="bi bi-exclamation-triangle me-2"></i>
+									<strong>Error: Configuración de base de datos no encontrada.</strong><br>
+									Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación desde paquete.
+								</small>
+							</div>
+						<?php endif; ?>
+					</div>
+				<?php else: ?>
+					<!-- Clean Installation: Show config info -->
+					<?php
+					require_once __DIR__ . '/../../../controllers/install.controller.php';
+					$config = InstallController::getConfig();
+					$dbConfig = $config['database'] ?? [];
+					$hasDbConfig = !empty($dbConfig['host']) && !empty($dbConfig['name']) && isset($dbConfig['user']) && isset($dbConfig['pass']);
+					?>
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-database me-2"></i>
+							Configuración de Base de Datos
+						</h6>
+						<?php if ($hasDbConfig): ?>
+							<div class="alert alert-success">
+								<small>
+									<i class="bi bi-check-circle me-2"></i>
+									<strong>Configuración de base de datos encontrada:</strong><br>
+									Servidor: <code><?php echo htmlspecialchars($dbConfig['host']); ?></code><br>
+									Base de datos: <code><?php echo htmlspecialchars($dbConfig['name']); ?></code><br>
+									Usuario: <code><?php echo htmlspecialchars($dbConfig['user']); ?></code><br>
+									<em>La configuración de base de datos se lee desde <code>config.php</code></em>
+								</small>
+							</div>
+						<?php else: ?>
+							<div class="alert alert-warning">
+								<small>
+									<i class="bi bi-exclamation-triangle me-2"></i>
+									<strong>Configuración de base de datos no encontrada.</strong><br>
+									Por favor, configure la base de datos en <code>cms/config.php</code> o <code>cms/config.example.php</code> antes de continuar con la instalación.
+								</small>
+							</div>
+						<?php endif; ?>
+					</div>
+				<?php endif; ?>
+
+				<!-- Section: Administrator Information -->
+				<?php if (!$isPackageInstall): ?>
+					<!-- Only show admin fields for clean installation -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-person-circle me-2"></i>
+							Información del Administrador
+						</h6>
+						
+						<div class="row g-3">
+							<div class="col-md-6">
+								<div class="form-group">
+									<label for="email_admin" class="form-label small">
+										Correo Administrador <span class="text-danger">*</span>
+									</label>
+									<input 
+									type="email"
+									class="form-control"
+									id="email_admin"
+									name="email_admin"
+									placeholder="admin@ejemplo.com"
+									required
+									>
+									<div class="valid-feedback small">✓ Válido</div>
+									<div class="invalid-feedback small">Correo inválido</div>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label for="password_admin" class="form-label small">
+										Contraseña <span class="text-danger">*</span>
+									</label>
+									<input 
+									type="password"
+									class="form-control"
+									id="password_admin"
+									name="password_admin"
+									placeholder="••••••••"
+									required
+									>
+									<div class="valid-feedback small">✓ Válido</div>
+									<div class="invalid-feedback small">Requerido</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				<?php else: ?>
+					<!-- Package installation: Admin info comes from restored database -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-person-circle me-2"></i>
+							Información del Administrador
+						</h6>
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>La información del administrador se restaurará desde la base de datos.</strong><br>
+								Los datos del administrador (correo, contraseña, etc.) están incluidos en el archivo <code>database.sql</code> y se restaurarán automáticamente.
+							</small>
+						</div>
+						<!-- Hidden field to allow form submission -->
+						<input type="hidden" name="email_admin" value="package_install">
+					</div>
+				<?php endif; ?>
+
 				<!-- Section: Dashboard Configuration -->
-				<div class="mb-4">
-					<h6 class="section-title mb-3">
-						<i class="bi bi-sliders me-2"></i>
-						Configuración del Dashboard
-					</h6>
+				<?php if (!$isPackageInstall): ?>
+					<!-- Only show dashboard config for clean installation -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-sliders me-2"></i>
+							Configuración del Dashboard
+						</h6>
 					
 					<div class="form-group mb-3">
 						<label for="title_admin" class="form-label small">
@@ -174,7 +303,23 @@
 						placeholder="URL de la imagen"
 						>
 					</div>
-				</div>
+					</div>
+				<?php else: ?>
+					<!-- Package installation: Dashboard config comes from restored database -->
+					<div class="mb-4">
+						<h6 class="section-title mb-3">
+							<i class="bi bi-sliders me-2"></i>
+							Configuración del Dashboard
+						</h6>
+						<div class="alert alert-info">
+							<small>
+								<i class="bi bi-info-circle me-2"></i>
+								<strong>La configuración del dashboard se restaurará desde la base de datos.</strong><br>
+								Los datos del dashboard (nombre, símbolo, color, etc.) están incluidos en el archivo <code>database.sql</code> y se restaurarán automáticamente.
+							</small>
+						</div>
+					</div>
+				<?php endif; ?>
 
 				<div class="install-footer">
 					<div class="d-flex justify-content-between align-items-center mb-3">
@@ -191,10 +336,21 @@
 
 				<?php 
 				
-				require_once "controllers/install.controller.php";
-				$install = new InstallController();
-				$install -> install();
-
+				// Detect if this is a package installation (has database.sql in root)
+				require_once __DIR__ . '/../../../controllers/package-install.controller.php';
+				$isPackageInstall = PackageInstallController::hasDatabaseFile();
+				
+				if ($isPackageInstall) {
+					// Use package installer (restores database and updates URLs)
+					$install = new PackageInstallController();
+					$install->install();
+				} else {
+					// Use normal installer (clean installation)
+					require_once "controllers/install.controller.php";
+					$install = new InstallController();
+					$install->install();
+				}
+				
 				?>
 
 			</form>
@@ -206,58 +362,14 @@
 </div>
 
 <!--=============================================
-Icon Selector Modal
+Icon Selector Modal - Reusable Component
 ===============================================-->
-<div class="modal fade" id="iconSelectorModal" tabindex="-1" aria-labelledby="iconSelectorModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered modal-xl">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="iconSelectorModalLabel">
-					<i class="bi bi-palette"></i> Seleccionar Icono
-				</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<input type="text" class="form-control" id="iconSearch" placeholder="Buscar icono...">
-				</div>
-				<div class="icon-grid" id="iconGrid" style="max-height: 500px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">
-					<!-- Icons will be loaded dynamically -->
-				</div>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-			</div>
-		</div>
-	</div>
-</div>
+<?php require_once __DIR__ . '/../../modules/selectors/icon-selector.php'; ?>
 
 <!--=============================================
-Font Selector Modal
+Font Selector Modal - Reusable Component
 ===============================================-->
-<div class="modal fade" id="fontSelectorModal" tabindex="-1" aria-labelledby="fontSelectorModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="fontSelectorModalLabel">
-					<i class="bi bi-type"></i> Seleccionar Tipografía
-				</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<input type="text" class="form-control" id="fontSearch" placeholder="Buscar fuente...">
-				</div>
-				<div class="font-list" id="fontList" style="max-height: 500px; overflow-y: auto;">
-					<!-- Fonts will be loaded dynamically -->
-				</div>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-			</div>
-		</div>
-	</div>
-</div>
+<?php require_once __DIR__ . '/../../modules/selectors/font-selector.php'; ?>
 
 <!--=============================================
 Installation Form Styles
@@ -459,321 +571,35 @@ Installation Form Styles
 </style>
 
 <!--=============================================
-Selector Styles
+Selector Styles - Reusable Component
 ===============================================-->
-<style>
-	.icon-item {
-		padding: 15px;
-		text-align: center;
-		border: 2px solid #e0e0e0;
-		border-radius: 8px;
-		cursor: pointer;
-		transition: all 0.3s ease;
-		background: #fff;
-	}
-	
-	.icon-item:hover {
-		border-color: #007bff;
-		background: #f0f8ff;
-		transform: scale(1.05);
-	}
-	
-	.icon-item.selected {
-		border-color: #007bff;
-		background: #e7f3ff;
-	}
-	
-	.icon-item i {
-		font-size: 2rem;
-		display: block;
-		margin-bottom: 5px;
-	}
-	
-	.icon-item span {
-		font-size: 0.75rem;
-		color: #666;
-		display: block;
-		word-break: break-word;
-	}
-	
-	.icon-preview {
-		display: inline-flex;
-		align-items: center;
-		font-size: 1.5rem;
-		color: #007bff;
-	}
-	
-	.font-item {
-		padding: 15px;
-		border: 2px solid #e0e0e0;
-		border-radius: 8px;
-		margin-bottom: 10px;
-		cursor: pointer;
-		transition: all 0.3s ease;
-		background: #fff;
-	}
-	
-	.font-item:hover {
-		border-color: #007bff;
-		background: #f0f8ff;
-	}
-	
-	.font-item.selected {
-		border-color: #007bff;
-		background: #e7f3ff;
-	}
-	
-	.font-item-name {
-		font-size: 1.2rem;
-		font-weight: bold;
-		margin-bottom: 5px;
-	}
-	
-	.font-item-preview {
-		font-size: 1rem;
-		color: #666;
-	}
-</style>
+<?php
+// Get CMS base path
+require_once __DIR__ . '/../../../controllers/template.controller.php';
+$cmsBasePath = TemplateController::cmsBasePath();
+?>
+<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/selectors/selectors.css">
 
 <!--=============================================
-Selector Scripts
+Selector Scripts - Reusable Components
 ===============================================-->
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/selectors/icon-selector.js"></script>
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/selectors/font-selector.js"></script>
 <script>
-// List of popular Bootstrap Icons
-const bootstrapIcons = [
-	'bi-house', 'bi-house-door', 'bi-building', 'bi-briefcase', 'bi-briefcase-fill',
-	'bi-graph-up', 'bi-graph-down', 'bi-bar-chart', 'bi-pie-chart', 'bi-speedometer',
-	'bi-people', 'bi-person', 'bi-person-circle', 'bi-person-square', 'bi-people-fill',
-	'bi-envelope', 'bi-envelope-fill', 'bi-envelope-open', 'bi-chat', 'bi-chat-dots',
-	'bi-gear', 'bi-gear-fill', 'bi-sliders', 'bi-tools', 'bi-wrench',
-	'bi-folder', 'bi-folder-fill', 'bi-file-earmark', 'bi-file-earmark-text', 'bi-file-earmark-code',
-	'bi-image', 'bi-image-fill', 'bi-camera', 'bi-camera-fill', 'bi-palette',
-	'bi-heart', 'bi-heart-fill', 'bi-star', 'bi-star-fill', 'bi-bookmark',
-	'bi-shield', 'bi-shield-fill', 'bi-lock', 'bi-lock-fill', 'bi-key',
-	'bi-bell', 'bi-bell-fill', 'bi-megaphone', 'bi-bullhorn', 'bi-volume-up',
-	'bi-calendar', 'bi-calendar-event', 'bi-clock', 'bi-clock-history', 'bi-stopwatch',
-	'bi-search', 'bi-funnel', 'bi-filter', 'bi-sort-down', 'bi-sort-up',
-	'bi-plus', 'bi-plus-circle', 'bi-dash', 'bi-x', 'bi-check',
-	'bi-arrow-left', 'bi-arrow-right', 'bi-arrow-up', 'bi-arrow-down', 'bi-arrows-move',
-	'bi-grid', 'bi-grid-3x3', 'bi-list', 'bi-list-ul', 'bi-menu-button',
-	'bi-download', 'bi-upload', 'bi-share', 'bi-link', 'bi-link-45deg',
-	'bi-printer', 'bi-save', 'bi-trash', 'bi-pencil', 'bi-pencil-square',
-	'bi-eye', 'bi-eye-slash', 'bi-info-circle', 'bi-question-circle', 'bi-exclamation-circle',
-	'bi-check-circle', 'bi-x-circle', 'bi-flag', 'bi-flag-fill', 'bi-bookmark-star',
-	'bi-trophy', 'bi-award', 'bi-gift', 'bi-cart', 'bi-bag',
-	'bi-credit-card', 'bi-wallet', 'bi-cash', 'bi-currency-dollar', 'bi-currency-euro',
-	'bi-globe', 'bi-geo-alt', 'bi-map', 'bi-compass', 'bi-navigation',
-	'bi-wifi', 'bi-bluetooth', 'bi-battery', 'bi-lightning', 'bi-lightning-fill',
-	'bi-sun', 'bi-moon', 'bi-cloud', 'bi-cloud-rain', 'bi-cloud-sun',
-	'bi-music-note', 'bi-play', 'bi-pause', 'bi-stop', 'bi-skip-forward',
-	'bi-film', 'bi-camera-video', 'bi-mic', 'bi-mic-mute', 'bi-headphones',
-	'bi-laptop', 'bi-phone', 'bi-tablet', 'bi-display', 'bi-tv',
-	'bi-database', 'bi-server', 'bi-hdd', 'bi-usb', 'bi-usb-drive',
-	'bi-box', 'bi-archive', 'bi-inbox', 'bi-outbox', 'bi-send',
-	'bi-recycle', 'bi-trash2', 'bi-trash3', 'bi-x-octagon', 'bi-shield-exclamation',
-	'bi-activity', 'bi-pulse', 'bi-heart-pulse', 'bi-thermometer', 'bi-droplet',
-	'bi-flower1', 'bi-flower2', 'bi-tree', 'bi-bug', 'bi-bug-fill',
-	'bi-robot', 'bi-cpu', 'bi-motherboard', 'bi-memory', 'bi-hdd-stack'
-];
-
-// List of popular Google Fonts
-const googleFonts = [
-	{ name: 'Roboto', family: 'Roboto', category: 'Sans Serif' },
-	{ name: 'Open Sans', family: 'Open Sans', category: 'Sans Serif' },
-	{ name: 'Lato', family: 'Lato', category: 'Sans Serif' },
-	{ name: 'Montserrat', family: 'Montserrat', category: 'Sans Serif' },
-	{ name: 'Poppins', family: 'Poppins', category: 'Sans Serif' },
-	{ name: 'Raleway', family: 'Raleway', category: 'Sans Serif' },
-	{ name: 'Ubuntu', family: 'Ubuntu', category: 'Sans Serif' },
-	{ name: 'Nunito', family: 'Nunito', category: 'Sans Serif' },
-	{ name: 'Source Sans Pro', family: 'Source Sans Pro', category: 'Sans Serif' },
-	{ name: 'Inter', family: 'Inter', category: 'Sans Serif' },
-	{ name: 'Playfair Display', family: 'Playfair Display', category: 'Serif' },
-	{ name: 'Merriweather', family: 'Merriweather', category: 'Serif' },
-	{ name: 'Lora', family: 'Lora', category: 'Serif' },
-	{ name: 'PT Serif', family: 'PT Serif', category: 'Serif' },
-	{ name: 'Crimson Text', family: 'Crimson Text', category: 'Serif' },
-	{ name: 'Roboto Slab', family: 'Roboto Slab', category: 'Serif' },
-	{ name: 'Dancing Script', family: 'Dancing Script', category: 'Handwriting' },
-	{ name: 'Pacifico', family: 'Pacifico', category: 'Handwriting' },
-	{ name: 'Caveat', family: 'Caveat', category: 'Handwriting' },
-	{ name: 'Kalam', family: 'Kalam', category: 'Handwriting' },
-	{ name: 'Permanent Marker', family: 'Permanent Marker', category: 'Handwriting' },
-	{ name: 'Oswald', family: 'Oswald', category: 'Display' },
-	{ name: 'Bebas Neue', family: 'Bebas Neue', category: 'Display' },
-	{ name: 'Righteous', family: 'Righteous', category: 'Display' },
-	{ name: 'Bangers', family: 'Bangers', category: 'Display' },
-	{ name: 'Anton', family: 'Anton', category: 'Display' }
-];
-
-// Load icons in the modal
-function loadIcons() {
-	const iconGrid = document.getElementById('iconGrid');
-	iconGrid.innerHTML = '';
-	
-	bootstrapIcons.forEach(iconClass => {
-		const iconItem = document.createElement('div');
-		iconItem.className = 'icon-item';
-		iconItem.innerHTML = `
-			<i class="bi ${iconClass}"></i>
-			<span>${iconClass.replace('bi-', '')}</span>
-		`;
-		iconItem.addEventListener('click', () => {
-			// Remove previous selection
-			document.querySelectorAll('.icon-item').forEach(item => item.classList.remove('selected'));
-			// Add selection
-			iconItem.classList.add('selected');
-			// Update input with icon name
-			const iconInput = document.getElementById('symbol_admin');
-			iconInput.value = iconClass;
-			// Update icon preview in input-group-text
-			const iconPreviewPlaceholder = document.getElementById('iconPreviewPlaceholder');
-			if (iconPreviewPlaceholder) {
-				iconPreviewPlaceholder.className = `bi ${iconClass}`;
-			}
-			// Mark field as valid
-			iconInput.classList.remove('is-invalid');
-			iconInput.classList.add('is-valid');
-			// Close modal after a brief delay
-			setTimeout(() => {
-				const modalElement = document.getElementById('iconSelectorModal');
-				const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-				modal.hide();
-			}, 300);
-		});
-		iconGrid.appendChild(iconItem);
-	});
-}
-
-// Load fonts in the modal
-function loadFonts() {
-	const fontList = document.getElementById('fontList');
-	fontList.innerHTML = '';
-	
-	// Load Google Fonts
-	googleFonts.forEach(font => {
-		const fontItem = document.createElement('div');
-		fontItem.className = 'font-item';
-		fontItem.style.fontFamily = `"${font.family}", sans-serif`;
-		fontItem.innerHTML = `
-			<div class="font-item-name">${font.name}</div>
-			<div class="font-item-preview">The quick brown fox jumps over the lazy dog</div>
-			<small class="text-muted">${font.category}</small>
-		`;
-		fontItem.addEventListener('click', () => {
-			// Remove previous selection
-			document.querySelectorAll('.font-item').forEach(item => item.classList.remove('selected'));
-			// Add selection
-			fontItem.classList.add('selected');
-			// Update textarea with Google Fonts code
-			const fontInput = document.getElementById('font_admin');
-			const fontUrl = `@import url('https://fonts.googleapis.com/css2?family=${font.family.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap');`;
-			const fontCss = `font-family: '${font.family}', sans-serif;`;
-			fontInput.value = `${fontUrl}\n\n${fontCss}`;
-			
-			// Mark field as valid
-			fontInput.classList.remove('is-invalid');
-			fontInput.classList.add('is-valid');
-			
-			// Update preview
-			const preview = document.getElementById('fontPreview');
-			const previewText = document.getElementById('fontPreviewText');
-			preview.style.display = 'block';
-			previewText.style.fontFamily = `"${font.family}", sans-serif`;
-			
-			// Load font dynamically
-			const link = document.createElement('link');
-			link.href = `https://fonts.googleapis.com/css2?family=${font.family.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
-			link.rel = 'stylesheet';
-			document.head.appendChild(link);
-			
-			// Close modal after a brief delay
-			setTimeout(() => {
-				const modalElement = document.getElementById('fontSelectorModal');
-				const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-				modal.hide();
-			}, 300);
-		});
-		fontList.appendChild(fontItem);
-	});
-}
-
-// Icon search
 document.addEventListener('DOMContentLoaded', function() {
-	// Load icons when modal opens
-	const iconModal = document.getElementById('iconSelectorModal');
-	if (iconModal) {
-		iconModal.addEventListener('show.bs.modal', function() {
-			loadIcons();
-			// Clear search
-			const iconSearch = document.getElementById('iconSearch');
-			if (iconSearch) iconSearch.value = '';
-		});
-		
-		// Icon search
-		const iconSearch = document.getElementById('iconSearch');
-		if (iconSearch) {
-			iconSearch.addEventListener('input', function(e) {
-				const searchTerm = e.target.value.toLowerCase();
-				const iconItems = document.querySelectorAll('.icon-item');
-				iconItems.forEach(item => {
-					const iconText = item.textContent.toLowerCase();
-					if (iconText.includes(searchTerm)) {
-						item.style.display = 'block';
-					} else {
-						item.style.display = 'none';
-					}
-				});
-			});
-		}
-	}
-	
-	// Load fonts when modal opens
-	const fontModal = document.getElementById('fontSelectorModal');
-	if (fontModal) {
-		fontModal.addEventListener('show.bs.modal', function() {
-			loadFonts();
-			// Clear search
-			const fontSearch = document.getElementById('fontSearch');
-			if (fontSearch) fontSearch.value = '';
-		});
-		
-		// Font search
-		const fontSearch = document.getElementById('fontSearch');
-		if (fontSearch) {
-			fontSearch.addEventListener('input', function(e) {
-				const searchTerm = e.target.value.toLowerCase();
-				const fontItems = document.querySelectorAll('.font-item');
-				fontItems.forEach(item => {
-					const fontText = item.textContent.toLowerCase();
-					if (fontText.includes(searchTerm)) {
-						item.style.display = 'block';
-					} else {
-						item.style.display = 'none';
-					}
-				});
-			});
-		}
-	}
-	
-	// Allow clicking input to open icon modal
-	const symbolInput = document.getElementById('symbol_admin');
-	if (symbolInput) {
-		symbolInput.addEventListener('click', function() {
-			const modal = new bootstrap.Modal(document.getElementById('iconSelectorModal'));
-			modal.show();
-		});
-	}
-	
-	// Allow clicking textarea to open font modal
-	const fontInput = document.getElementById('font_admin');
-	if (fontInput) {
-		fontInput.addEventListener('click', function() {
-			const modal = new bootstrap.Modal(document.getElementById('fontSelectorModal'));
-			modal.show();
-		});
-	}
-	
+	// Initialize icon selector
+	initIconSelector({
+		inputId: 'symbol_admin',
+		previewId: 'iconPreviewPlaceholder'
+	});
+
+	// Initialize font selector
+	initFontSelector({
+		inputId: 'font_admin',
+		previewId: 'fontPreview',
+		previewTextId: 'fontPreviewText'
+	});
+
 	// Sync color picker with text field
 	const colorPicker = document.getElementById('color_admin');
 	const colorText = document.getElementById('color_admin_text');

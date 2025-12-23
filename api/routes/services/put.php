@@ -34,7 +34,8 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 		 	'results' => "Error: Fields in the form do not match the database"
 		);
 
-		echo json_encode($json, http_response_code($json["status"]));
+		http_response_code($json["status"]);
+		echo json_encode($json);
 
 		return;
 
@@ -59,7 +60,8 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 				 	'results' => "Error: Fields in the form do not match the database"
 				);
 
-				echo json_encode($json, http_response_code($json["status"]));
+				http_response_code($json["status"]);
+		echo json_encode($json);
 
 				return;
 
@@ -97,7 +99,8 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 				 	'results' => "Error: The token has expired"
 				);
 
-				echo json_encode($json, http_response_code($json["status"]));
+				http_response_code($json["status"]);
+		echo json_encode($json);
 
 				return;
 
@@ -112,7 +115,8 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 				 	'results' => "Error: The user is not authorized"
 				);
 
-				echo json_encode($json, http_response_code($json["status"]));
+				http_response_code($json["status"]);
+		echo json_encode($json);
 
 				return;
 
@@ -129,7 +133,8 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 		 	'results' => "Error: Authorization required"
 		);
 
-		echo json_encode($json, http_response_code($json["status"]));
+		http_response_code($json["status"]);
+		echo json_encode($json);
 
 		return;	
 
