@@ -181,6 +181,11 @@ $(document).on("click",".myModule",function(){
 
 				$("#graphicsBlock").show();
 
+				// Load tables when graphics block is shown
+				if (typeof loadTablesForGraphic === 'function') {
+					loadTablesForGraphic();
+				}
+
 			}
 
 			/*=============================================
@@ -302,14 +307,46 @@ $(document).on("click",".myModule",function(){
 			
 				$("#graphicsBlock").show();
 
-				$("#graphicType").val(JSON.parse(JSON.parse(item).content_module).type);
-				$("#graphicTable").val(JSON.parse(JSON.parse(item).content_module).table);
-				$("#graphicX").val(JSON.parse(JSON.parse(item).content_module).xAxis);
-				$("#graphicY").val(JSON.parse(JSON.parse(item).content_module).yAxis);
-				$("#graphicColor").val(JSON.parse(JSON.parse(item).content_module).color);
-
-				$("#content_module").val(JSON.parse(item).content_module);	      
+				// Parse content_module - handle both string and already parsed cases
+				var moduleData = JSON.parse(item);
+				var contentModuleStr = moduleData.content_module;
+				var contentData;
 				
+				try {
+					// Try to parse if it's a string
+					if (typeof contentModuleStr === 'string') {
+						contentData = JSON.parse(contentModuleStr);
+					} else {
+						// Already an object
+						contentData = contentModuleStr;
+					}
+				} catch(e) {
+					console.error("Error parsing content_module:", e);
+					contentData = {};
+				}
+
+				var savedTable = contentData.table || "";
+				var savedXAxis = contentData.xAxis || "";
+				var savedYAxis = contentData.yAxis || "";
+
+				$("#graphicType").val(contentData.type || "line");
+				$("#graphicColor").val(contentData.color || "108, 95, 252");
+
+				// Initialize content_module with current values using JSON.stringify
+				var graphicData = {
+					type: contentData.type || "line",
+					table: savedTable,
+					xAxis: savedXAxis,
+					yAxis: savedYAxis,
+					color: contentData.color || "108, 95, 252"
+				};
+				$("#content_module").val(JSON.stringify(graphicData));
+
+				// Load tables first, then set the saved table and columns
+				// Use setTimeout to ensure modal is fully rendered
+				setTimeout(function() {
+					loadTablesForEditGraphic(savedTable, savedXAxis, savedYAxis);
+				}, 300);
 
 			}
 
@@ -659,9 +696,16 @@ Cambio en datos de gráficos
 
 $(document).on("change",".changeGraphic",function(){
 
-	var object = `{"type":"${$("#graphicType").val()}","table":"${$("#graphicTable").val()}","xAxis":"${$("#graphicX").val()}","yAxis":"${$("#graphicY").val()}","color":"${$("#graphicColor").val()}"}`;
+	// Use JSON.stringify to properly escape and format the JSON
+	var graphicData = {
+		type: $("#graphicType").val() || "line",
+		table: $("#graphicTable").val() || "",
+		xAxis: $("#graphicX").val() || "",
+		yAxis: $("#graphicY").val() || "",
+		color: $("#graphicColor").val() || "108, 95, 252"
+	};
 
-	$("#content_module").val(object);	           
+	$("#content_module").val(JSON.stringify(graphicData));	           
 
 })
 
@@ -825,3 +869,157 @@ $(document).on("click",".deleteColumn",function(){
 	// Functions loadTablesForEdit and loadTableColumnsForEdit are now defined globally at the top of this file
 
 })
+
+/*=============================================
+Load tables for graphics module (available globally)
+=============================================*/
+
+function loadTablesForGraphic() {
+	$.ajax({
+		url: CMS_AJAX_PATH + "/modules.ajax.php?action=getTables",
+		method: 'GET',
+		dataType: 'json',
+		success: function(response) {
+			if (response.status === 200 && response.results.length > 0) {
+				var options = '<option value="">Seleccionar tabla...</option>';
+				response.results.forEach(function(table) {
+					options += '<option value="' + table + '">' + table + '</option>';
+				});
+				$("#graphicTable").html(options);
+			} else {
+				$("#graphicTable").html('<option value="">No hay tablas disponibles</option>');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error("Error loading tables for graphics:", error, xhr);
+			$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
+		}
+	});
+}
+
+/*=============================================
+Load tables for graphics module when editing (available globally)
+=============================================*/
+
+function loadTablesForEditGraphic(savedTable, savedXAxis, savedYAxis) {
+	console.log("Loading tables for edit graphic. Saved table:", savedTable, "Saved X:", savedXAxis, "Saved Y:", savedYAxis);
+	
+	$.ajax({
+		url: CMS_AJAX_PATH + "/modules.ajax.php?action=getTables",
+		method: 'GET',
+		dataType: 'json',
+		success: function(response) {
+			console.log("Tables response for graphics:", response);
+			if (response.status === 200 && response.results.length > 0) {
+				var options = '<option value="">Seleccionar tabla...</option>';
+				response.results.forEach(function(table) {
+					// Use strict comparison and trim to ensure match
+					var tableValue = String(table).trim();
+					var savedTableValue = String(savedTable).trim();
+					var selected = (tableValue === savedTableValue) ? 'selected' : '';
+					options += '<option value="' + table + '" ' + selected + '>' + table + '</option>';
+				});
+				$("#graphicTable").html(options);
+				
+				// If a table was saved, load its columns
+				if (savedTable && savedTable !== "") {
+					console.log("Loading columns for graphic table:", savedTable);
+					// Set the table value explicitly
+					$("#graphicTable").val(savedTable);
+					// Load columns directly
+					loadTableColumnsForEditGraphic(savedTable, savedXAxis, savedYAxis);
+				} else {
+					$("#graphicX").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+					$("#graphicY").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+				}
+			} else {
+				$("#graphicTable").html('<option value="">No hay tablas disponibles</option>');
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error("Error loading tables for graphics:", error, xhr);
+			$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
+		}
+	});
+}
+
+/*=============================================
+Load columns from a table for graphics module (available globally)
+=============================================*/
+
+function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
+	if (!tableName || tableName === "") {
+		$("#graphicX").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+		$("#graphicY").html('<option value="">Seleccione primero una tabla</option>').prop("disabled", true);
+		return;
+	}
+	
+	console.log("Loading columns for graphic table:", tableName, "Saved X:", savedXAxis, "Saved Y:", savedYAxis);
+	
+	$("#graphicX").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
+	$("#graphicY").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
+	
+	$.ajax({
+		url: CMS_AJAX_PATH + "/modules.ajax.php",
+		method: 'POST',
+		data: {
+			action: 'getTableColumns',
+			tableName: tableName
+		},
+		dataType: 'json',
+		success: function(response) {
+			console.log("Columns response for graphics:", response);
+			if (response.status === 200 && response.results.length > 0) {
+				// Build options for X axis
+				var optionsX = '<option value="">Seleccionar columna...</option>';
+				response.results.forEach(function(column) {
+					var columnValue = String(column).trim();
+					var savedXValue = String(savedXAxis).trim();
+					var selected = (columnValue === savedXValue) ? 'selected' : '';
+					optionsX += '<option value="' + column + '" ' + selected + '>' + column + '</option>';
+				});
+				$("#graphicX").html(optionsX).prop("disabled", false);
+				
+				// Build options for Y axis
+				var optionsY = '<option value="">Seleccionar columna...</option>';
+				response.results.forEach(function(column) {
+					var columnValue = String(column).trim();
+					var savedYValue = String(savedYAxis).trim();
+					var selected = (columnValue === savedYValue) ? 'selected' : '';
+					optionsY += '<option value="' + column + '" ' + selected + '>' + column + '</option>';
+				});
+				$("#graphicY").html(optionsY).prop("disabled", false);
+				
+				// Set the values explicitly if they were saved
+				if (savedXAxis && savedXAxis !== "") {
+					$("#graphicX").val(savedXAxis);
+				}
+				if (savedYAxis && savedYAxis !== "") {
+					$("#graphicY").val(savedYAxis);
+				}
+				
+				// Update content_module after columns are loaded using JSON.stringify
+				var graphicData = {
+					type: $("#graphicType").val() || "line",
+					table: tableName,
+					xAxis: $("#graphicX").val() || savedXAxis || "",
+					yAxis: $("#graphicY").val() || savedYAxis || "",
+					color: $("#graphicColor").val() || "108, 95, 252"
+				};
+				$("#content_module").val(JSON.stringify(graphicData));
+				
+				// Trigger change events to ensure all handlers are called
+				$("#graphicX").trigger('change');
+				$("#graphicY").trigger('change');
+			} else {
+				$("#graphicX").html('<option value="">No hay columnas disponibles</option>').prop("disabled", true);
+				$("#graphicY").html('<option value="">No hay columnas disponibles</option>').prop("disabled", true);
+			}
+		},
+		error: function(xhr, status, error) {
+			console.error("Error loading columns for graphics:", error, xhr);
+			$("#graphicX").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+			$("#graphicY").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+		}
+	});
+}

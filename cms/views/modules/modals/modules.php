@@ -348,36 +348,27 @@
                     <div class="row g-3">
                       <div class="col-md-4">
                         <label for="graphicTable" class="form-label small fw-semibold">Tabla</label>
-                        <input 
-                          type="text" 
-                          class="form-control form-control-sm rounded changeGraphic" 
-                          id="graphicTable"
-                          placeholder="Nombre de la tabla"
-                        >
+                        <select class="form-select form-select-sm rounded changeGraphic" id="graphicTable">
+                          <option value="">Seleccionar tabla...</option>
+                        </select>
                         <div class="valid-feedback">Válido.</div>
                         <div class="invalid-feedback">Campo inválido.</div>
                       </div>
 
                       <div class="col-md-4">
                         <label for="graphicX" class="form-label small fw-semibold">Eje X</label>
-                        <input 
-                          type="text" 
-                          class="form-control form-control-sm rounded changeGraphic" 
-                          id="graphicX"
-                          placeholder="Columna para eje X"
-                        >
+                        <select class="form-select form-select-sm rounded changeGraphic" id="graphicX" disabled>
+                          <option value="">Seleccione primero una tabla</option>
+                        </select>
                         <div class="valid-feedback">Válido.</div>
                         <div class="invalid-feedback">Campo inválido.</div>
                       </div>
 
                       <div class="col-md-4">
                         <label for="graphicY" class="form-label small fw-semibold">Eje Y</label>
-                        <input 
-                          type="text" 
-                          class="form-control form-control-sm rounded changeGraphic" 
-                          id="graphicY"
-                          placeholder="Columna para eje Y"
-                        >
+                        <select class="form-select form-select-sm rounded changeGraphic" id="graphicY" disabled>
+                          <option value="">Seleccione primero una tabla</option>
+                        </select>
                         <div class="valid-feedback">Válido.</div>
                         <div class="invalid-feedback">Campo inválido.</div>
                       </div>
@@ -548,6 +539,10 @@ document.addEventListener('DOMContentLoaded', function() {
 	$('#myModule').on('shown.bs.modal', function() {
 		if ($('#type_module').val() === 'metrics') {
 			loadTables();
+		} else if ($('#type_module').val() === 'graphics') {
+			if (typeof loadTablesForGraphic === 'function') {
+				loadTablesForGraphic();
+			}
 		}
 	});
 
@@ -555,10 +550,19 @@ document.addEventListener('DOMContentLoaded', function() {
 	$('#type_module').on('change', function() {
 		if ($(this).val() === 'metrics') {
 			loadTables();
+		} else if ($(this).val() === 'graphics') {
+			// Load tables for graphics
+			if (typeof loadTablesForGraphic === 'function') {
+				loadTablesForGraphic();
+			}
 		} else {
 			// Reset selects when switching away from metrics
 			$('#metricTable').val('').trigger('change');
 			$('#metricColumn').val('').prop('disabled', true);
+			// Reset selects when switching away from graphics
+			$('#graphicTable').val('').trigger('change');
+			$('#graphicX').val('').prop('disabled', true);
+			$('#graphicY').val('').prop('disabled', true);
 		}
 	});
 
@@ -646,6 +650,72 @@ document.addEventListener('DOMContentLoaded', function() {
 				$('#metricColumn').html('<option value="">Error al cargar columnas</option>').prop('disabled', true);
 			}
 		});
+	}
+
+	// Load columns when graphic table is selected
+	$('#graphicTable').on('change', function() {
+		var tableName = $(this).val();
+		if (tableName) {
+			loadTableColumnsForGraphic(tableName);
+			// Update content_module when table changes
+			updateGraphicContent();
+		} else {
+			$('#graphicX').html('<option value="">Seleccione primero una tabla</option>').prop('disabled', true);
+			$('#graphicY').html('<option value="">Seleccione primero una tabla</option>').prop('disabled', true);
+			// Update content_module when table is cleared
+			updateGraphicContent();
+		}
+	});
+
+	// Update content_module when X or Y axis changes
+	$('#graphicX, #graphicY').on('change', function() {
+		updateGraphicContent();
+	});
+
+	// Function to load columns for graphics
+	function loadTableColumnsForGraphic(tableName) {
+		$('#graphicX').prop('disabled', true).html('<option value="">Cargando columnas...</option>');
+		$('#graphicY').prop('disabled', true).html('<option value="">Cargando columnas...</option>');
+		
+		$.ajax({
+			url: '<?php echo $cmsBasePath ?>/ajax/modules.ajax.php',
+			method: 'POST',
+			data: {
+				action: 'getTableColumns',
+				tableName: tableName
+			},
+			dataType: 'json',
+			success: function(response) {
+				if (response.status === 200 && response.results.length > 0) {
+					var options = '<option value="">Seleccionar columna...</option>';
+					response.results.forEach(function(column) {
+						options += '<option value="' + column + '">' + column + '</option>';
+					});
+					$('#graphicX').html(options).prop('disabled', false);
+					$('#graphicY').html(options).prop('disabled', false);
+				} else {
+					$('#graphicX').html('<option value="">No hay columnas disponibles</option>').prop('disabled', true);
+					$('#graphicY').html('<option value="">No hay columnas disponibles</option>').prop('disabled', true);
+				}
+			},
+			error: function() {
+				$('#graphicX').html('<option value="">Error al cargar columnas</option>').prop('disabled', true);
+				$('#graphicY').html('<option value="">Error al cargar columnas</option>').prop('disabled', true);
+			}
+		});
+	}
+
+	// Function to update content_module with current graphic values
+	function updateGraphicContent() {
+		// Use JSON.stringify to properly escape and format the JSON
+		var graphicData = {
+			type: $('#graphicType').val() || 'line',
+			table: $('#graphicTable').val() || '',
+			xAxis: $('#graphicX').val() || '',
+			yAxis: $('#graphicY').val() || '',
+			color: $('#graphicColor').val() || '108, 95, 252'
+		};
+		$('#content_module').val(JSON.stringify(graphicData));
 	}
 });
 </script>
