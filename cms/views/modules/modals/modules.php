@@ -395,13 +395,10 @@
 
             <div class="card border-0 bg-light">
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="mb-3">
                   <h6 class="card-title text-muted mb-0">
                     <i class="bi bi-database"></i> Gestión de Columnas
                   </h6>
-                  <button type="button" class="btn btn-sm btn-default border rounded addColumn">
-                    <i class="bi bi-plus-circle"></i> Agregar Columna
-                  </button>
                 </div>
 
                 <input type="hidden" id="indexColumns" name="indexColumns" value='[]'>
@@ -409,6 +406,12 @@
 
                 <div class="row g-3 listColumns">
                   <!-- Columns will be added here dynamically -->
+                </div>
+
+                <div class="mt-3 d-flex justify-content-end">
+                  <button type="button" class="btn btn-sm btn-default border rounded addColumn">
+                    <i class="bi bi-plus-circle"></i> Agregar Columna
+                  </button>
                 </div>
 
                 <div class="mt-3 text-muted small">
