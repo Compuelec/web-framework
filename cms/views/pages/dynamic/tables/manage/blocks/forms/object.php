@@ -141,6 +141,30 @@
 
 	</div>
 
+	<?php if ($module->columns[$i]->title_column == "permissions_admin"): ?>
+		<!-- Help text for permissions field -->
+		<div class="alert alert-info border-0 bg-light mb-3 mt-3" role="alert">
+			<div class="d-flex align-items-start">
+				<i class="bi bi-info-circle me-2 mt-1"></i>
+				<div class="small">
+					<strong class="d-block mb-2">Ejemplos de uso:</strong>
+					<ul class="mb-0 ps-3">
+						<li class="mb-1">
+							<strong>Acceso a página específica:</strong><br>
+							Propiedad: <code>archivos</code> | Valor: <code>ON</code><br>
+							<small class="text-muted">El usuario solo verá la página "archivos" (el valor viene de la URL de la página al crearla).</small>
+						</li>
+						<li class="mb-0">
+							<strong>Acceso completo:</strong><br>
+							Propiedad: <code>TODO</code> | Valor: <code>ON</code><br>
+							<small class="text-muted">El usuario tendrá acceso a todas las páginas del sistema.</small>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	<?php endif ?>
+
 	<button type="button" class="btn btn-sm btn-default backColor rounded addObject"><small>Add Item</small></button>
 
 	<?php if (!empty($data)): ?>
