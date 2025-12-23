@@ -258,9 +258,6 @@ function loadIcons(gridId, inputId, previewId = null) {
 					// Mark field as valid
 					jQuery(iconInput).removeClass('is-invalid').addClass('is-valid');
 					
-					// Verify value was set
-					console.log('Icon selected:', iconClass, 'Input value:', jQuery(iconInput).val(), 'Native value:', iconInput.value);
-					
 					// Wait a bit longer to ensure value is fully set before triggering change
 					setTimeout(() => {
 						// Force set the value one more time to ensure it's correct
@@ -269,13 +266,11 @@ function loadIcons(gridId, inputId, previewId = null) {
 						
 						// Verify value is correct
 						var currentValue = jQuery(iconInput).val();
-						console.log('Before triggering change - Icon:', iconClass, 'Current value:', currentValue, 'Native value:', iconInput.value);
 						
 						if (currentValue !== iconClass) {
 							// Value was changed, force set it again
 							iconInput.value = iconClass;
 							jQuery(iconInput).val(iconClass);
-							console.log('Value was incorrect, forced reset to:', iconClass);
 						}
 						
 						// Use a custom event to pass the icon value directly
@@ -284,8 +279,6 @@ function loadIcons(gridId, inputId, previewId = null) {
 						
 						// Also trigger regular change event
 						jQuery(iconInput).trigger('change');
-						
-						console.log('Change event triggered for icon:', iconClass, 'Final value:', jQuery(iconInput).val());
 					}, 250);
 				} else {
 					// Fallback if jQuery is not available

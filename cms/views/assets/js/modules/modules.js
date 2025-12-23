@@ -9,14 +9,11 @@ Load tables for metrics module (available globally)
 =============================================*/
 
 function loadTablesForEdit(savedTable, savedColumn) {
-	console.log("Loading tables for edit. Saved table:", savedTable, "Saved column:", savedColumn);
-	
 	$.ajax({
 		url: CMS_AJAX_PATH + "/modules.ajax.php?action=getTables",
 		method: 'GET',
 		dataType: 'json',
 		success: function(response) {
-			console.log("Tables response:", response);
 			if (response.status === 200 && response.results.length > 0) {
 				var options = '<option value="">Seleccionar tabla...</option>';
 				response.results.forEach(function(table) {
@@ -30,7 +27,6 @@ function loadTablesForEdit(savedTable, savedColumn) {
 				
 				// If a table was saved, load its columns
 				if (savedTable && savedTable !== "") {
-					console.log("Loading columns for table:", savedTable);
 					// Set the table value explicitly
 					$("#metricTable").val(savedTable);
 					// Load columns directly
@@ -42,10 +38,9 @@ function loadTablesForEdit(savedTable, savedColumn) {
 				$("#metricTable").html('<option value="">No hay tablas disponibles</option>');
 			}
 		},
-		error: function(xhr, status, error) {
-			console.error("Error loading tables:", error, xhr);
-			$("#metricTable").html('<option value="">Error al cargar tablas</option>');
-		}
+			error: function(xhr, status, error) {
+				$("#metricTable").html('<option value="">Error al cargar tablas</option>');
+			}
 	});
 }
 
@@ -59,8 +54,6 @@ function loadTableColumnsForEdit(tableName, savedColumn) {
 		return;
 	}
 	
-	console.log("Loading columns for table:", tableName, "Saved column:", savedColumn);
-	
 	$("#metricColumn").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
 	
 	$.ajax({
@@ -72,7 +65,6 @@ function loadTableColumnsForEdit(tableName, savedColumn) {
 		},
 		dataType: 'json',
 		success: function(response) {
-			console.log("Columns response:", response);
 			if (response.status === 200 && response.results.length > 0) {
 				var options = '<option value="">Seleccionar columna...</option>';
 				response.results.forEach(function(column) {
@@ -107,10 +99,9 @@ function loadTableColumnsForEdit(tableName, savedColumn) {
 				$("#metricColumn").html('<option value="">No hay columnas disponibles</option>').prop("disabled", true);
 			}
 		},
-		error: function(xhr, status, error) {
-			console.error("Error loading columns:", error, xhr);
-			$("#metricColumn").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
-		}
+			error: function(xhr, status, error) {
+				$("#metricColumn").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+			}
 	});
 }
 
@@ -254,7 +245,6 @@ $(document).on("click",".myModule",function(){
 						contentData = contentModuleStr;
 					}
 				} catch(e) {
-					console.error("Error parsing content_module:", e);
 					contentData = {};
 				}
 
@@ -321,7 +311,6 @@ $(document).on("click",".myModule",function(){
 						contentData = contentModuleStr;
 					}
 				} catch(e) {
-					console.error("Error parsing content_module:", e);
 					contentData = {};
 				}
 
@@ -645,7 +634,6 @@ $(document).on("change",".changeMetric",function(e){
 		
 		// Update preview
 		$("#metricIconPreview").attr("class", "bi " + iconValue);
-		console.log('Icon changed in changeMetric listener (from element):', iconValue, 'Element value:', $currentElement.val());
 	}
 
 	// Get icon value - use the element that triggered if it's the icon field, otherwise get from DOM
@@ -669,10 +657,7 @@ $(document).on("change",".changeMetric",function(e){
 	var domValue = document.getElementById("metricIcon") ? document.getElementById("metricIcon").value : iconValue;
 	if (domValue && domValue !== iconValue && isIconField) {
 		iconValue = domValue;
-		console.log('Using DOM value instead:', iconValue);
 	}
-	
-	console.log('Final icon value for content_module:', iconValue);
 	
 	// Use JSON.stringify to properly escape and format the JSON
 	var metricData = {
@@ -686,7 +671,6 @@ $(document).on("change",".changeMetric",function(e){
 
 	var contentModuleValue = JSON.stringify(metricData);
 	$("#content_module").val(contentModuleValue);
-	console.log('content_module updated:', contentModuleValue);
 
 })
 
@@ -890,10 +874,9 @@ function loadTablesForGraphic() {
 				$("#graphicTable").html('<option value="">No hay tablas disponibles</option>');
 			}
 		},
-		error: function(xhr, status, error) {
-			console.error("Error loading tables for graphics:", error, xhr);
-			$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
-		}
+			error: function(xhr, status, error) {
+				$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
+			}
 	});
 }
 
@@ -902,14 +885,11 @@ Load tables for graphics module when editing (available globally)
 =============================================*/
 
 function loadTablesForEditGraphic(savedTable, savedXAxis, savedYAxis) {
-	console.log("Loading tables for edit graphic. Saved table:", savedTable, "Saved X:", savedXAxis, "Saved Y:", savedYAxis);
-	
 	$.ajax({
 		url: CMS_AJAX_PATH + "/modules.ajax.php?action=getTables",
 		method: 'GET',
 		dataType: 'json',
 		success: function(response) {
-			console.log("Tables response for graphics:", response);
 			if (response.status === 200 && response.results.length > 0) {
 				var options = '<option value="">Seleccionar tabla...</option>';
 				response.results.forEach(function(table) {
@@ -923,7 +903,6 @@ function loadTablesForEditGraphic(savedTable, savedXAxis, savedYAxis) {
 				
 				// If a table was saved, load its columns
 				if (savedTable && savedTable !== "") {
-					console.log("Loading columns for graphic table:", savedTable);
 					// Set the table value explicitly
 					$("#graphicTable").val(savedTable);
 					// Load columns directly
@@ -936,10 +915,9 @@ function loadTablesForEditGraphic(savedTable, savedXAxis, savedYAxis) {
 				$("#graphicTable").html('<option value="">No hay tablas disponibles</option>');
 			}
 		},
-		error: function(xhr, status, error) {
-			console.error("Error loading tables for graphics:", error, xhr);
-			$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
-		}
+			error: function(xhr, status, error) {
+				$("#graphicTable").html('<option value="">Error al cargar tablas</option>');
+			}
 	});
 }
 
@@ -954,8 +932,6 @@ function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
 		return;
 	}
 	
-	console.log("Loading columns for graphic table:", tableName, "Saved X:", savedXAxis, "Saved Y:", savedYAxis);
-	
 	$("#graphicX").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
 	$("#graphicY").prop("disabled", true).html('<option value="">Cargando columnas...</option>');
 	
@@ -968,7 +944,6 @@ function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
 		},
 		dataType: 'json',
 		success: function(response) {
-			console.log("Columns response for graphics:", response);
 			if (response.status === 200 && response.results.length > 0) {
 				// Build options for X axis
 				var optionsX = '<option value="">Seleccionar columna...</option>';
@@ -1016,10 +991,9 @@ function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
 				$("#graphicY").html('<option value="">No hay columnas disponibles</option>').prop("disabled", true);
 			}
 		},
-		error: function(xhr, status, error) {
-			console.error("Error loading columns for graphics:", error, xhr);
-			$("#graphicX").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
-			$("#graphicY").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
-		}
+			error: function(xhr, status, error) {
+				$("#graphicX").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+				$("#graphicY").html('<option value="">Error al cargar columnas</option>').prop("disabled", true);
+			}
 	});
 }
