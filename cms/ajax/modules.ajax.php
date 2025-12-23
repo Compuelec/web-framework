@@ -38,97 +38,151 @@ class ModulesAjax{
 	public function deleteModule(){
 
 		/*=============================================
-		Validar columnas vinculadas al módulo
+		Traer la info del módulo para saber si es tabla
 		=============================================*/
 
-		$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+		$url = "modules?linkTo=id_module&equalTo=".base64_decode($this->idModuleDelete)."&select=type_module,title_module";
 		$method = "GET";
 		$fields = array();
 
-		$getColumn = CurlController::request($url,$method,$fields);
+		$module = CurlController::request($url,$method,$fields);
 
-		if($getColumn->status == 200){
-
+		if($module->status != 200){
 			echo "error";
-		
-		}else{
+			return;
+		}
+
+		$moduleType = $module->results[0]->type_module;
+		$moduleTitle = $module->results[0]->title_module;
+
+		/*=============================================
+		Si es módulo de tipo tabla, eliminar columnas primero
+		=============================================*/
+
+		if($moduleType == "tables"){
 
 			/*=============================================
-			Traer la info del módulo para saber si es tabla
+			Obtener todas las columnas vinculadas al módulo
 			=============================================*/
 
-			$url = "modules?linkTo=id_module&equalTo=".base64_decode($this->idModuleDelete)."&select=type_module,title_module";
+			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
 			$method = "GET";
 			$fields = array();
 
-			$module = CurlController::request($url,$method,$fields);
+			$getColumns = CurlController::request($url,$method,$fields);
 
-			if($module->status == 200){
+			if($getColumns->status == 200 && isset($getColumns->results) && is_array($getColumns->results)){
 
-				if($module->results[0]->type_module == "tables"){
+				/*=============================================
+				Eliminar todas las columnas asociadas
+				=============================================*/
 
-					/*=============================================
-					Eliminar la tabla de la BD en MySQL
-					=============================================*/
+				foreach($getColumns->results as $column){
 
-					$sqlDestroyTable = "DROP TABLE ".$module->results[0]->title_module;
+					$url = "columns?id=".$column->id_column."&nameId=id_column&token=".$this->token."&table=admins&suffix=admin";
+					$method = "DELETE";
+					$fields = array();
 
-					$stmtDestroyTable = InstallController::connect()->prepare($sqlDestroyTable);
+					$deleteColumn = CurlController::request($url,$method,$fields);
 
-					$stmtDestroyTable->execute();
-				
-				}else if($module->results[0]->type_module == "custom"){
-
-					/*=============================================
-					Delete custom module folder and file
-					=============================================*/
-
-					// Ensure DIR is defined
-					if(!defined('DIR')){
-						define('DIR', dirname(__DIR__));
-					}
-
-					$moduleName = str_replace(" ","_",$module->results[0]->title_module);
-					$moduleDir = DIR."/views/pages/dynamic/custom/".$moduleName;
-
-					// Recursive function to delete directory and its content
-					if(file_exists($moduleDir) && is_dir($moduleDir)){
-						
-						// Delete all files and subdirectories
-						$files = array_diff(@scandir($moduleDir), array('.', '..'));
-						
-						foreach($files as $file){
-							$filePath = $moduleDir.'/'.$file;
-							if(is_dir($filePath)){
-								// Delete subdirectory recursively
-								$this->deleteDirectory($filePath);
-							}else{
-								// Delete file
-								@unlink($filePath);
-							}
-						}
-						
-						// Delete empty directory
-						@rmdir($moduleDir);
-					}
+					// Continue even if some columns fail to delete
 				}
+
+				/*=============================================
+				Eliminar la tabla de la BD en MySQL
+				=============================================*/
+
+				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
+
+				$stmtDestroyTable = InstallController::connect()->prepare($sqlDestroyTable);
+
+				$stmtDestroyTable->execute();
+
+			}else{
+
+				/*=============================================
+				Si no hay columnas, solo eliminar la tabla
+				=============================================*/
+
+				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
+
+				$stmtDestroyTable = InstallController::connect()->prepare($sqlDestroyTable);
+
+				$stmtDestroyTable->execute();
+
 			}
+
+		}else if($moduleType == "custom"){
 
 			/*=============================================
-			Eliminar el módulo
+			Delete custom module folder and file
 			=============================================*/
 
-			$url = "modules?id=".base64_decode($this->idModuleDelete)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
-			$method = "DELETE";
-			$fields = array();
-
-			$deleteModule = CurlController::request($url,$method,$fields);
-
-			if($deleteModule->status == 200){
-
-				echo $deleteModule->status;
+			// Ensure DIR is defined
+			if(!defined('DIR')){
+				define('DIR', dirname(__DIR__));
 			}
 
+			$moduleName = str_replace(" ","_",$moduleTitle);
+			$moduleDir = DIR."/views/pages/dynamic/custom/".$moduleName;
+
+			// Recursive function to delete directory and its content
+			if(file_exists($moduleDir) && is_dir($moduleDir)){
+				
+				// Delete all files and subdirectories
+				$files = array_diff(@scandir($moduleDir), array('.', '..'));
+				
+				foreach($files as $file){
+					$filePath = $moduleDir.'/'.$file;
+					if(is_dir($filePath)){
+						// Delete subdirectory recursively
+						$this->deleteDirectory($filePath);
+					}else{
+						// Delete file
+						@unlink($filePath);
+					}
+				}
+				
+				// Delete empty directory
+				@rmdir($moduleDir);
+			}
+
+		}else{
+
+			/*=============================================
+			Para otros tipos de módulos, validar columnas vinculadas
+			=============================================*/
+
+			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+			$method = "GET";
+			$fields = array();
+
+			$getColumn = CurlController::request($url,$method,$fields);
+
+			if($getColumn->status == 200){
+
+				echo "error";
+				return;
+			}
+
+		}
+
+		/*=============================================
+		Eliminar el módulo
+		=============================================*/
+
+		$url = "modules?id=".base64_decode($this->idModuleDelete)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
+		$method = "DELETE";
+		$fields = array();
+
+		$deleteModule = CurlController::request($url,$method,$fields);
+
+		if($deleteModule->status == 200){
+
+			echo $deleteModule->status;
+		}else{
+
+			echo "error";
 		}
 
 	}

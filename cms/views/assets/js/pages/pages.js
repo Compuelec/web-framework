@@ -129,7 +129,7 @@ $(document).on("click",".myPage",function(){
 
 			$("#title_page").val('');
 			$("#url_page").val('');
-			$("#icon_page").val('');
+			$("#icon_page").val('bi-gear');
 			$("#type_page").val('');
 			$("#parent_page").val("0");
 			

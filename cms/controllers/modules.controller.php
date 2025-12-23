@@ -329,6 +329,56 @@ class ModulesController{
 				if($createModule->status == 200){
 
 					/*=============================================
+					Extract module ID from API response
+					=============================================*/
+					
+					$moduleId = null;
+					
+					// Try multiple ways to extract lastId or id_module
+					if(isset($createModule->results)){
+						if(is_object($createModule->results)){
+							// Direct access to lastId
+							if(isset($createModule->results->lastId)){
+								$moduleId = $createModule->results->lastId;
+							} elseif(isset($createModule->results->id_module)){
+								$moduleId = $createModule->results->id_module;
+							}
+						} elseif(is_array($createModule->results)){
+							// Check if it's an array with lastId
+							if(isset($createModule->results[0])){
+								if(is_object($createModule->results[0])){
+									if(isset($createModule->results[0]->lastId)){
+										$moduleId = $createModule->results[0]->lastId;
+									} elseif(isset($createModule->results[0]->id_module)){
+										$moduleId = $createModule->results[0]->id_module;
+									}
+								} elseif(is_array($createModule->results[0])){
+									if(isset($createModule->results[0]['lastId'])){
+										$moduleId = $createModule->results[0]['lastId'];
+									} elseif(isset($createModule->results[0]['id_module'])){
+										$moduleId = $createModule->results[0]['id_module'];
+									}
+								}
+							} elseif(isset($createModule->results['lastId'])){
+								$moduleId = $createModule->results['lastId'];
+							} elseif(isset($createModule->results['id_module'])){
+								$moduleId = $createModule->results['id_module'];
+							}
+						}
+					}
+					
+					// If we still don't have moduleId, log error
+					if($moduleId === null){
+						error_log("Modules API Response Structure: " . json_encode($createModule, JSON_PRETTY_PRINT));
+						echo '<script>
+							fncMatPreloader("off");
+							fncFormatInputs();
+							fncToastr("error", "Error: No se pudo obtener el ID del módulo creado");
+						</script>';
+						return;
+					}
+
+					/*=============================================
 					El módulo que se creó es tabla
 					=============================================*/
 
@@ -366,7 +416,7 @@ class ModulesController{
 										$url = "columns?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "POST";
 										$data = array(
-											"id_module_column" => $createModule->results->lastId,
+											"id_module_column" => $moduleId,
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],

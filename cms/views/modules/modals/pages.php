@@ -89,6 +89,7 @@
                           class="form-control form-control-sm rounded cleanIcon"
                           id="icon_page"
                           name="icon_page"
+                          value="bi-gear"
                           placeholder="Seleccionar icono"
                           readonly
                           required
