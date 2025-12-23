@@ -431,24 +431,122 @@ class ModulesController{
 
 					}else if($_POST["type_module"] == "custom"){
 
-						/*=============================================
-						Creamos carpeta de módulo personalizable
-						=============================================*/
+					/*=============================================
+					Creamos carpeta de módulo personalizable
+					=============================================*/
 
-						$directory = DIR."/views/pages/dynamic/custom/".str_replace(" ","_",$fields["title_module"]);
+					// Asegurar que DIR esté definido (usar __DIR__ si no está definido)
+					if(!defined('DIR')){
+						define('DIR', dirname(__DIR__));
+					}
 
-						if(!file_exists($directory)){
+					$moduleName = str_replace(" ","_",$fields["title_module"]);
+					$baseDir = DIR."/views/pages/dynamic/custom";
+					$directory = $baseDir."/".$moduleName;
 
-							mkdir($directory, 0755);
+					// Verificar que el directorio base existe y es escribible
+					if(!file_exists($baseDir)){
+						if(!@mkdir($baseDir, 0777, true)){
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","Error al crear el directorio base. Verifique los permisos de escritura en: '.$baseDir.'", "");		
+							</script>';
+							exit;
 						}
+						// Intentar hacer el directorio escribible
+						@chmod($baseDir, 0777);
+					}
 
-						/*=============================================
-						Copiamos el archivo custom con el nuevo nombre
-						=============================================*/	
+					// Verificar que el directorio base sea escribible
+					if(!is_writable($baseDir)){
+						@chmod($baseDir, 0777);
+						if(!is_writable($baseDir)){
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","El directorio base no es escribible. Verifique los permisos en: '.$baseDir.'", "");		
+							</script>';
+							exit;
+						}
+					}
 
-						$from = DIR."/views/pages/dynamic/custom/custom.php";
+					// Crear directorio del módulo si no existe (con permisos recursivos)
+					if(!file_exists($directory)){
+						if(!@mkdir($directory, 0777, true)){
+							// Si falla, intentar con chmod después
+							if(!file_exists($directory)){
+								echo '
+								<script>
+									fncMatPreloader("off");
+									fncFormatInputs();
+								    fncSweetAlert("error","Error al crear el directorio del módulo. Verifique los permisos de escritura en: '.$directory.'", "");		
+								</script>';
+								exit;
+							}
+						}
+						// Intentar hacer el directorio escribible
+						@chmod($directory, 0777);
+					}
 
-						if(copy($from, $directory.'/'.str_replace(" ","_",$fields["title_module"]).'.php')){
+					/*=============================================
+					Copiamos o creamos el archivo custom con el nuevo nombre
+					=============================================*/	
+
+					$from = $baseDir."/custom.php";
+					$to = $directory.'/'.$moduleName.'.php';
+					
+					// Contenido del archivo (usar el template si existe, sino crear uno básico)
+					$fileContent = '';
+					
+					if(file_exists($from)){
+						// Intentar leer el contenido del archivo template
+						$fileContent = @file_get_contents($from);
+					}
+					
+					// Si no se pudo leer el template, usar contenido básico
+					if(empty($fileContent)){
+						$fileContent = '<?php
+/**
+ * Módulo Personalizable: '.$fields["title_module"].'
+ * 
+ * Este es un módulo personalizable. Puede editar este archivo para personalizar su contenido.
+ */
+?>
+
+<div class="card rounded">
+	<div class="card-header">
+		<h3 class="card-title">'.$fields["title_module"].'</h3>
+	</div>
+	<div class="card-body">
+		<p>Módulo personalizable. Edite este archivo para personalizar su contenido.</p>
+	</div>
+</div>';
+					}
+
+					// Intentar crear el archivo directamente (más confiable que copy)
+					$fileCreated = @file_put_contents($to, $fileContent);
+					
+					if($fileCreated !== false){
+
+						echo '
+
+						<script>
+
+							fncMatPreloader("off");
+							fncFormatInputs();
+						    fncSweetAlert("success","El módulo ha sido creado con éxito",setTimeout(()=>location.reload(),1250));		
+
+						</script>
+
+						';
+
+					}else{
+
+						// Si falla, intentar con copy como alternativa
+						if(file_exists($from) && @copy($from, $to)){
 
 							echo '
 
@@ -462,7 +560,33 @@ class ModulesController{
 
 							';
 
+						}else{
+
+							// Mostrar error detallado
+							$errorMsg = "Error al crear el archivo del módulo. ";
+							$errorMsg .= "Directorio: ".$directory." ";
+							$errorMsg .= "Archivo destino: ".$to." ";
+							if(!is_writable($directory)){
+								$errorMsg .= "El directorio no es escribible.";
+							}else{
+								$errorMsg .= "Verifique los permisos de escritura.";
+							}
+
+							echo '
+
+							<script>
+
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","'.$errorMsg.'", "");		
+
+							</script>
+
+							';
+
 						}
+
+					}
 
 
 					}else{

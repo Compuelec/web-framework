@@ -10,7 +10,30 @@ class ModulesAjax{
 	=============================================*/ 
 
 	public $idModuleDelete;
-	public $token; 
+	public $token;
+
+	/*=============================================
+	Función auxiliar para eliminar directorio recursivamente
+	=============================================*/
+
+	private function deleteDirectory($dir){
+		if(!file_exists($dir) || !is_dir($dir)){
+			return false;
+		}
+
+		$files = array_diff(@scandir($dir), array('.', '..'));
+		
+		foreach($files as $file){
+			$filePath = $dir.'/'.$file;
+			if(is_dir($filePath)){
+				$this->deleteDirectory($filePath);
+			}else{
+				@unlink($filePath);
+			}
+		}
+		
+		return @rmdir($dir);
+	} 
 
 	public function deleteModule(){
 
@@ -53,6 +76,41 @@ class ModulesAjax{
 					$stmtDestroyTable = InstallController::connect()->prepare($sqlDestroyTable);
 
 					$stmtDestroyTable->execute();
+				
+				}else if($module->results[0]->type_module == "custom"){
+
+					/*=============================================
+					Eliminar carpeta y archivo del módulo personalizable
+					=============================================*/
+
+					// Asegurar que DIR esté definido
+					if(!defined('DIR')){
+						define('DIR', dirname(__DIR__));
+					}
+
+					$moduleName = str_replace(" ","_",$module->results[0]->title_module);
+					$moduleDir = DIR."/views/pages/dynamic/custom/".$moduleName;
+
+					// Función recursiva para eliminar directorio y su contenido
+					if(file_exists($moduleDir) && is_dir($moduleDir)){
+						
+						// Eliminar todos los archivos y subdirectorios
+						$files = array_diff(@scandir($moduleDir), array('.', '..'));
+						
+						foreach($files as $file){
+							$filePath = $moduleDir.'/'.$file;
+							if(is_dir($filePath)){
+								// Eliminar subdirectorio recursivamente
+								$this->deleteDirectory($filePath);
+							}else{
+								// Eliminar archivo
+								@unlink($filePath);
+							}
+						}
+						
+						// Eliminar el directorio vacío
+						@rmdir($moduleDir);
+					}
 				}
 			}
 
