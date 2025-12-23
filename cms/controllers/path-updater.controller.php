@@ -15,19 +15,65 @@ class PathUpdaterController {
     public static function detectDomain() {
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
         
-        // Get project base directory
-        $basePath = dirname(dirname(dirname($scriptName)));
+        // Calculate base path based on the actual file structure
+        // This controller is in: cms/controllers/path-updater.controller.php
+        // The project root is 2 levels up from this file
+        $controllerPath = __DIR__; // cms/controllers
+        $cmsPath = dirname($controllerPath); // cms
+        $projectRoot = dirname($cmsPath); // project root
+        
+        // Get the document root to calculate relative path
+        $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $documentRoot = str_replace('\\', '/', rtrim($documentRoot, '/'));
+        $projectRoot = str_replace('\\', '/', rtrim($projectRoot, '/'));
+        
+        // Calculate the base path relative to document root
+        if (!empty($documentRoot) && strpos($projectRoot, $documentRoot) === 0) {
+            // Project is inside document root
+            $basePath = substr($projectRoot, strlen($documentRoot));
+            $basePath = str_replace('\\', '/', $basePath);
+        } else {
+            // Fallback: use REQUEST_URI to extract path
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+            
+            // Try to extract base path from REQUEST_URI
+            // Remove query string
+            $requestPath = parse_url($requestUri, PHP_URL_PATH);
+            $requestPath = $requestPath ?: '';
+            
+            // If accessing /cms/install or similar, extract base
+            if (preg_match('#^(.+?)/cms/#', $requestPath, $matches)) {
+                $basePath = $matches[1];
+            } elseif (preg_match('#^(.+?)/cms$#', $requestPath, $matches)) {
+                $basePath = $matches[1];
+            } else {
+                // Fallback to script name method
+                $scriptPath = dirname($scriptName);
+                // If script is in cms/, go up one level
+                if (strpos($scriptPath, '/cms') !== false) {
+                    $basePath = dirname($scriptPath);
+                } else {
+                    $basePath = $scriptPath;
+                }
+            }
+        }
+        
+        // Normalize base path
         $basePath = str_replace('\\', '/', $basePath);
+        $basePath = rtrim($basePath, '/');
+        
+        // If base path is empty or just '/', it means project is in document root
+        if (empty($basePath) || $basePath === '/') {
+            $basePath = '';
+        }
         
         // Build base URL
-        $baseUrl = $protocol . '://' . $host . $basePath;
+        $baseUrl = $protocol . '://' . $host . ($basePath ? '/' . ltrim($basePath, '/') : '');
         
-        // Clean double slashes
-        $baseUrl = str_replace('//', '/', $baseUrl);
-        $baseUrl = str_replace('http:/', 'http://', $baseUrl);
-        $baseUrl = str_replace('https:/', 'https://', $baseUrl);
+        // Clean double slashes (but preserve protocol://)
+        $baseUrl = preg_replace('#([^:])//+#', '$1/', $baseUrl);
         
         return [
             'protocol' => $protocol,

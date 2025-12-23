@@ -33,7 +33,7 @@ class InstallController{
 		return [
 			'database' => [
 				'host' => 'localhost',
-				'name' => 'chatcenter',
+				'name' => 'web-framework',
 				'user' => 'root',
 				'pass' => '',
 				'charset' => 'utf8mb4'

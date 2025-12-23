@@ -44,8 +44,8 @@ class CurlController{
 		// Force reload config to get latest values
 		clearstatcache();
 		$config = self::getConfig();
-		$apiBaseUrl = $config['api']['base_url'] ?? 'http://localhost/chatcenter/api/';
-		$apiKey = $config['api']['key'] ?? '';
+		$apiBaseUrl = $config['api']['base_url'];
+		$apiKey = $config['api']['key'];
 
 		$curl = curl_init();
 
