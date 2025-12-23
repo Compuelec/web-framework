@@ -148,8 +148,11 @@ Interfaz Dashboard
   transform: translateY(-50%);
 }
 
-.menu-item.active .menu-arrow {
+.menu-item.expanded .menu-arrow {
   transform: translateY(-50%) rotate(180deg);
+}
+
+.menu-item.active .menu-arrow {
   color: #3b82f6;
 }
 
@@ -163,6 +166,11 @@ Interfaz Dashboard
   color: #3b82f6;
 }
 
+.menu-item.expanded.active .menu-arrow {
+  transform: translateY(-50%) rotate(180deg);
+  color: #3b82f6;
+}
+
 /* Submenu Styles */
 .submenu {
   background-color: #f8f9fa;
@@ -172,6 +180,11 @@ Interfaz Dashboard
   border-radius: 0;
   list-style: none;
   overflow: visible;
+  display: none; /* Ensure submenus start collapsed by default */
+}
+
+.menu-item.expanded .submenu {
+  display: block; /* Only show when explicitly expanded */
 }
 
 .submenu-item {
@@ -454,7 +467,7 @@ Interfaz Dashboard
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
   margin: 0.5rem;
-  width: calc(100% - 1rem);
+  width: 88%
 }
 
 #sidebar-wrapper .btn-default:hover {

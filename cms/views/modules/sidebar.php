@@ -211,6 +211,16 @@ if($pages->status == 200){
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+	// Ensure all submenus start collapsed
+	document.querySelectorAll('.submenu').forEach(function(submenu) {
+		submenu.style.display = 'none';
+	});
+	
+	// Remove expanded class from all menu items on page load
+	document.querySelectorAll('.menu-item').forEach(function(menuItem) {
+		menuItem.classList.remove('expanded');
+	});
+	
 	// Get current page URL to highlight active menu items
 	var currentPath = window.location.pathname;
 	var cmsBasePath = '<?php echo $cmsBasePath; ?>';
@@ -223,10 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
 			var linkPage = href.split('/').pop().split('?')[0];
 			if (linkPage === currentPage || (currentPage === '' && linkPage === 'inicio')) {
 				link.classList.add('active');
-				// If it's a submenu item, expand parent menu
+				// If it's a submenu item, expand parent menu (but don't mark it as active/blue)
 				var submenuItem = link.closest('.submenu-item');
 				if (submenuItem) {
-					var submenu = submenuItem.closest('.sidebar-submenu');
+					var submenu = submenuItem.closest('.submenu');
 					if (submenu) {
 						var menuId = submenu.id.replace('submenu-', '');
 						var menuToggle = document.querySelector('.menu-toggle[data-menu-id="' + menuId + '"]');
@@ -234,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
 							var menuItem = menuToggle.closest('.menu-item');
 							if (menuItem) {
 								submenu.style.display = 'block';
-								submenu.style.maxHeight = submenu.scrollHeight + 'px';
-								menuItem.classList.add('active');
+								menuItem.classList.add('expanded');
+								// Don't add active class - only the subpage should be marked as active/blue
 							}
 						}
 					}
@@ -255,16 +265,16 @@ document.addEventListener('DOMContentLoaded', function() {
 			var menuItem = this.closest('.menu-item');
 			
 			if (submenu) {
-				var isExpanded = submenu.style.display === 'block' || menuItem.classList.contains('active');
+				var isExpanded = submenu.style.display === 'block' || menuItem.classList.contains('expanded');
 				
 				if (isExpanded) {
 					// Collapse
 					submenu.style.display = 'none';
-					menuItem.classList.remove('active');
+					menuItem.classList.remove('expanded');
 				} else {
 					// Expand
 					submenu.style.display = 'block';
-					menuItem.classList.add('active');
+					menuItem.classList.add('expanded');
 					
 					// Initialize sortable for submenu after it's visible
 					if (typeof window.initSubmenuSortables === 'function') {
