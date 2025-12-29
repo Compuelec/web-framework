@@ -153,6 +153,99 @@ $(document).on("change", "#type_page", function() {
 });
 
 /*=============================================
+Plugin Detection and Info Display
+=============================================*/
+
+// Plugin registry (should match server-side)
+var pluginsRegistry = {
+	'payku': {
+		name: 'Payku - Sistema de Pagos',
+		description: 'Plugin de integración con Payku para procesar pagos online (Visa, Mastercard, Magna, American Express, Diners y Redcompra)',
+		icon: 'bi-credit-card',
+		type: 'payment'
+	}
+};
+
+// Check if URL is a plugin and show info
+function checkPluginUrl(url) {
+	var pluginInfo = pluginsRegistry[url.toLowerCase()];
+	var alertDiv = $('#plugin_info_alert');
+	var warningDiv = $('#plugin_duplicate_warning');
+	
+	// Hide both alerts first
+	alertDiv.hide();
+	warningDiv.hide();
+	
+	if (pluginInfo) {
+		// Check if plugin page already exists
+		$.ajax({
+			url: CMS_AJAX_PATH + '/pages.ajax.php',
+			method: 'POST',
+			data: {
+				checkPluginExists: '1',
+				pluginUrl: url
+			},
+			success: function(response) {
+				try {
+					var data = typeof response === 'string' ? JSON.parse(response) : response;
+					
+					if (data.exists) {
+						// Show warning that plugin already exists
+						warningDiv.show();
+						alertDiv.hide();
+					} else {
+						// Show plugin info
+						$('#plugin_name').html('<i class="bi ' + pluginInfo.icon + '"></i> ' + pluginInfo.name);
+						$('#plugin_description').text(pluginInfo.description);
+						alertDiv.show();
+						warningDiv.hide();
+						
+						// Auto-fill some fields if creating new page
+						if (!$('#id_page').length) {
+							$('#title_page').val(pluginInfo.name);
+							$('#icon_page').val(pluginInfo.icon);
+							$('#type_page').val('custom');
+							
+							// Update icon preview
+							const iconPreview = document.getElementById('iconPagePreview');
+							if (iconPreview) {
+								iconPreview.className = 'bi ' + pluginInfo.icon;
+							}
+							
+							// Show parent page field
+							toggleParentPageField();
+						}
+					}
+				} catch(e) {
+					console.error('Error checking plugin:', e);
+					// Still show plugin info even if check fails
+					$('#plugin_name').html('<i class="bi ' + pluginInfo.icon + '"></i> ' + pluginInfo.name);
+					$('#plugin_description').text(pluginInfo.description);
+					alertDiv.show();
+				}
+			},
+			error: function() {
+				// On error, still show plugin info
+				$('#plugin_name').html('<i class="bi ' + pluginInfo.icon + '"></i> ' + pluginInfo.name);
+				$('#plugin_description').text(pluginInfo.description);
+				alertDiv.show();
+			}
+		});
+	}
+}
+
+// Monitor URL input for plugin detection
+$(document).on('input blur', '#url_page', function() {
+	var url = $(this).val().trim().toLowerCase();
+	if (url) {
+		checkPluginUrl(url);
+	} else {
+		$('#plugin_info_alert').hide();
+		$('#plugin_duplicate_warning').hide();
+	}
+});
+
+/*=============================================
 Cambiar orden de páginas
 =============================================*/
 

@@ -60,6 +60,16 @@
                       >
                       <div class="valid-feedback">Válido.</div>
                       <div class="invalid-feedback">Campo inválido.</div>
+                      <!-- Plugin Info Alert -->
+                      <div id="plugin_info_alert" class="alert alert-info mt-2" style="display: none;">
+                        <strong id="plugin_name"></strong>
+                        <p class="mb-0 small" id="plugin_description"></p>
+                      </div>
+                      <!-- Plugin Duplicate Warning -->
+                      <div id="plugin_duplicate_warning" class="alert alert-warning mt-2" style="display: none;">
+                        <strong>⚠️ Plugin ya existe</strong>
+                        <p class="mb-0 small">Este plugin ya tiene una página creada. No se puede duplicar.</p>
+                      </div>
                     </div>
                   </div>
                 </div>

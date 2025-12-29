@@ -113,6 +113,34 @@ class PagesAjax{
 
 	}
 
+	/*=============================================
+	Check if Plugin Page Exists
+	Check if a plugin already has a page created
+	=============================================*/ 
+
+	public $pluginUrl;
+
+	public function checkPluginExists(){
+
+		require_once __DIR__ . "/../../plugins/plugins-registry.php";
+
+		header('Content-Type: application/json');
+
+		if(empty($this->pluginUrl)){
+			echo json_encode(array(
+				'exists' => false
+			));
+			return;
+		}
+
+		$exists = PluginsRegistry::pluginPageExists($this->pluginUrl);
+
+		echo json_encode(array(
+			'exists' => $exists
+		));
+
+	}
+
 }
 
 if(isset($_POST["idPage"])){
@@ -139,4 +167,11 @@ if(isset($_POST["getMenuPages"])){
 	$ajax = new PagesAjax();
 	$ajax -> currentPageId = isset($_POST["currentPageId"]) ? $_POST["currentPageId"] : null;
 	$ajax -> getMenuPages();
+}
+
+if(isset($_POST["checkPluginExists"])){
+
+	$ajax = new PagesAjax();
+	$ajax -> pluginUrl = isset($_POST["pluginUrl"]) ? $_POST["pluginUrl"] : '';
+	$ajax -> checkPluginExists();
 }

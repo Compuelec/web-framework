@@ -35,6 +35,12 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 
 	$table = $routesArray[0];
 
+	// Handle special routes (plugins, services, etc.)
+	if($table == "payku"){
+		include "services/payku.php";
+		return;
+	}
+
 	$headers = function_exists("getallheaders") ? getallheaders() : [];
 	$authorization = $headers["Authorization"] ?? ($_SERVER["HTTP_AUTHORIZATION"] ?? ($_SERVER["REDIRECT_HTTP_AUTHORIZATION"] ?? null));
 

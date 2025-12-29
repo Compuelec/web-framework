@@ -68,6 +68,43 @@ class PagesController{
 				}
 
 				/*=============================================
+				Validar que el Plugin no esté duplicado
+				=============================================*/
+
+				$pluginUrl = trim($_POST["url_page"]);
+				$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+				
+				if(file_exists($pluginsRegistryPath)){
+					require_once $pluginsRegistryPath;
+					
+					if(class_exists('PluginsRegistry') && PluginsRegistry::isPluginUrl($pluginUrl)){
+						
+						try {
+							if(PluginsRegistry::pluginPageExists($pluginUrl)){
+
+								echo '
+
+								<script>
+
+									fncMatPreloader("off");
+									fncFormatInputs();
+								    fncToastr("error","ERROR: Este plugin ya tiene una página creada. No se puede duplicar.");	
+
+								</script>
+
+								';
+
+								return;
+
+							}
+						} catch (Exception $e) {
+							// If plugin check fails, log error but continue with page creation
+							error_log("Plugin validation error: " . $e->getMessage());
+						}
+					}
+				}
+
+				/*=============================================
 				Crear Página
 				=============================================*/
 
@@ -109,7 +146,39 @@ class PagesController{
 
 						if(!file_exists($directory)){
 
-							mkdir($directory, 0755);
+							@mkdir($directory, 0755, true);
+							@chmod($directory, 0755);
+						}
+
+						/*=============================================
+						Si es un plugin, asegurar permisos del directorio del plugin
+						=============================================*/
+
+						$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+						
+						if(file_exists($pluginsRegistryPath)){
+							require_once $pluginsRegistryPath;
+							
+							if(class_exists('PluginsRegistry') && PluginsRegistry::isPluginUrl($urlPage)){
+								
+								// Asegurar que el directorio del plugin existe con permisos correctos
+								$projectRoot = dirname(DIR);
+								$pluginDir = $projectRoot . '/plugins/' . $urlPage;
+								
+								if(!file_exists($pluginDir)){
+									@mkdir($pluginDir, 0777, true);
+									@chmod($pluginDir, 0777);
+								} else {
+									// Asegurar permisos incluso si el directorio ya existe
+									@chmod($pluginDir, 0777);
+								}
+								
+								// Also ensure parent plugins directory permissions
+								$pluginsDir = $projectRoot . '/plugins';
+								if(file_exists($pluginsDir)){
+									@chmod($pluginsDir, 0777);
+								}
+							}
 						}
 
 						/*=============================================
@@ -126,7 +195,28 @@ class PagesController{
 
 								fncMatPreloader("off");
 								fncFormatInputs();
-							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
+							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+									// Reload page to update sidebar
+									location.reload();
+								},1250));	
+
+							</script>
+
+							';
+
+						}else{
+
+							// If file copy fails, still reload to show in sidebar
+							echo '
+
+							<script>
+
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+									// Reload page to update sidebar
+									location.reload();
+								},1250));	
 
 							</script>
 
@@ -166,14 +256,17 @@ class PagesController{
 
 					}else{
 
-						// For modules type pages, redirect to the page
+						// For modules type pages, reload to update sidebar
 						echo '
 
 						<script>
 
 							fncMatPreloader("off");
 							fncFormatInputs();
-						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
+						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+								// Reload page to update sidebar
+								location.reload();
+							},1250));	
 
 						</script>
 

@@ -97,10 +97,10 @@ class EmailService {
      * @param string $title Email title (displayed in template)
      * @param string $message Email message content (HTML)
      * @param string $link Optional link URL
-     * @param string $linkText Optional link text (default: "Haz clic aquí")
+     * @param string $linkText Optional link text (default: "Click here")
      * @return array Result array with 'success' boolean and 'message' string
      */
-    public function sendEmail($to, $subject, $title, $message, $link = '', $linkText = 'Haz clic aquí') {
+    public function sendEmail($to, $subject, $title, $message, $link = '', $linkText = 'Click here') {
         try {
             // Clear previous recipients
             $this->mail->clearAddresses();
