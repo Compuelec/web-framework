@@ -612,6 +612,7 @@ class UpdatesController {
         $preservedFiles = [
             'api/config.php',
             'cms/config.php',
+            'web/',              // Preserve entire web/ directory (user customizations)
             'VERSION'
         ];
         
