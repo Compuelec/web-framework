@@ -22,6 +22,7 @@ desktop.ini
 .settings/
 *.sublime-project
 *.sublime-workspace
+.cursorrules
 
 # PHP
 composer.lock
