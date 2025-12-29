@@ -6,7 +6,7 @@
  * Handles AJAX requests for framework updates
  */
 
-session_start();
+require_once __DIR__ . '/session-init.php';
 
 require_once __DIR__ . '/../controllers/updates.controller.php';
 

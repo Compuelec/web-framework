@@ -6,7 +6,7 @@
  * Handles AJAX requests for activity logs
  */
 
-session_start();
+require_once __DIR__ . '/session-init.php';
 
 require_once __DIR__ . '/../controllers/activity_logs.controller.php';
 

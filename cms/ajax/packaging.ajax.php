@@ -6,7 +6,7 @@
  * Handles AJAX requests for project packaging
  */
 
-session_start();
+require_once __DIR__ . '/session-init.php';
 
 // Suppress warnings that might interfere with JSON output
 error_reporting(E_ALL);

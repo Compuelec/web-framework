@@ -28,7 +28,7 @@ class AdminsController{
 			if($login->status == 200){
 
 				/*=============================================
-				Validar estado del administrador
+				Validate administrator status
 				=============================================*/
 
 				if($login->results[0]->status_admin == 0){
@@ -47,10 +47,17 @@ class AdminsController{
 				}
 
 				/*=============================================
-				Crear variable de Sesión
+				Create unique session variable
 				=============================================*/
-
+				
+				require_once __DIR__ . "/session.controller.php";
+				
 				$_SESSION["admin"] = $login->results[0];
+				
+				SessionController::startUniqueSession(
+					$login->results[0]->id_admin,
+					$login->results[0]->token_admin
+				);
 				
 				/*=============================================
 				Log login activity
@@ -143,7 +150,7 @@ class AdminsController{
 
 
 	/*=============================================
-	Validar código de seguridad
+	Validate security code
 	=============================================*/
 
 	public function securityCode(){
@@ -162,7 +169,7 @@ class AdminsController{
 			';
 
 			/*=============================================
-			Validar admin
+			Validate admin
 			=============================================*/
 
 			$url = "admins?linkTo=scode_admin&equalTo=".$_POST["scode_admin"];
@@ -174,10 +181,17 @@ class AdminsController{
 			if($admin->status == 200){
 
 				/*=============================================
-				Crear variable de Sesión
+				Create unique session variable
 				=============================================*/
-
+				
+				require_once __DIR__ . "/session.controller.php";
+				
 				$_SESSION["admin"] = $admin->results[0];
+				
+				SessionController::startUniqueSession(
+					$admin->results[0]->id_admin,
+					$admin->results[0]->token_admin
+				);
 				
 				/*=============================================
 				Log login activity with security code
@@ -214,7 +228,7 @@ class AdminsController{
 	}
 
 	/*=============================================
-	Actualizar Administrador
+	Update Administrator
 	=============================================*/
 
 	public function updateAdmin(){
@@ -233,7 +247,7 @@ class AdminsController{
 			';
 
 			/*=============================================
-			Validar admin
+			Validate admin
 			=============================================*/
 
 			$url = "admins?linkTo=id_admin&equalTo=".base64_decode($_POST["id_admin"])."&select=id_admin,password_admin,rol_admin";
@@ -357,7 +371,7 @@ class AdminsController{
 				$crypt = crypt($newPassword, $passwordSalt);
 
 				/*=============================================
-				Actualizar contraseña en base de datos
+				Update password in database
 				=============================================*/
 				$url = "admins?id=".$admin->results[0]->id_admin."&nameId=id_admin&token=no&except=password_admin";
 				$method = "PUT";

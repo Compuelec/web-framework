@@ -5,7 +5,7 @@
  * Handles global search across pages, modules, and data
  */
 
-session_start();
+require_once __DIR__ . '/session-init.php';
 
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";

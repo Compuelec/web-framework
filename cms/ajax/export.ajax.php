@@ -5,7 +5,7 @@
  * Handles data export in different formats
  */
 
-session_start();
+require_once __DIR__ . '/session-init.php';
 
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";

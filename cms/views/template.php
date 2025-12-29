@@ -1,25 +1,30 @@
 <?php 
 
-/*=============================================
-Iniciar variables de sesión
-=============================================*/
-
 ob_start();
-session_start();
 
-/*=============================================
-Base Path del CMS (ej: /chatcenter/cms)
-=============================================*/
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+    session_start();
+}
+
+require_once __DIR__ . "/../controllers/session.controller.php";
+
+if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"])) {
+    $currentUserId = $_SESSION["admin"]->id_admin ?? null;
+    $currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+    SessionController::startUniqueSession($currentUserId, $currentUserToken);
+}
 
 $cmsBasePath = TemplateController::cmsBasePath();
 
-/*=============================================
-Capturar parámetros de la url
-=============================================*/
-
 $requestPath = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-
-/* Remover el prefijo del CMS del request para rutear correctamente */
 if($cmsBasePath !== "" && strpos($requestPath, $cmsBasePath) === 0){
 	$requestPath = substr($requestPath, strlen($cmsBasePath));
 }
@@ -33,9 +38,6 @@ foreach ($routesArray as $key => $value) {
 	$routesArray[$key] = explode("?",$value)[0];
 }
 
-/*=============================================
-Validar si existe la base de datos con la tabla admins
-=============================================*/
 
 $url = "admins";
 $method = "GET";
@@ -178,6 +180,7 @@ if($adminTable !== null && is_object($adminTable)){
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js"></script>
 
 	<!--=============================================
 	PLUGINS CSS
@@ -268,6 +271,33 @@ if($adminTable !== null && is_object($adminTable)){
 
 	<?php 
 
+	if(isset($_SESSION["admin"])){
+		if(!isset($_SESSION['_unique_session_info'])){
+			if(is_object($_SESSION["admin"])){
+				$currentUserId = $_SESSION["admin"]->id_admin ?? null;
+				$currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+				SessionController::startUniqueSession($currentUserId, $currentUserToken);
+			}
+		} else {
+			$isValid = SessionController::validateSession();
+			
+			if(!$isValid && isset($_SESSION["admin"])){
+				if(is_object($_SESSION["admin"])){
+					$currentUserId = $_SESSION["admin"]->id_admin ?? null;
+					$currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+					$domain = SessionController::getDomain();
+					$sessionId = substr(md5($domain), 0, 16);
+					$_SESSION['_unique_session_info'] = [
+						'domain' => $domain,
+						'user_id' => $currentUserId,
+						'session_id' => $sessionId,
+						'created_at' => time()
+					];
+				}
+			}
+		}
+	}
+
 	if(!isset($_SESSION["admin"])){
 
 		if($admin == null){
@@ -354,13 +384,13 @@ if($adminTable !== null && is_object($adminTable)){
 					<?php else: ?>
 
 						<!--=========================================
-						Validar permisos
+						Validate permissions
 						===========================================-->
 
 						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"))): ?>
 
 							<!--=========================================
-							Agregamos páginas dinámicas y personalizadas
+							Add dynamic and custom pages
 							===========================================-->
 
 							<?php 
@@ -447,13 +477,13 @@ if($adminTable !== null && is_object($adminTable)){
 
 
 					<!--=========================================
-				 	Validar permisos para super y admins
+				 	Validate permissions for super and admins
 					===========================================-->
 
 					<?php if ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin"): ?>
 
 						<!--=========================================
-						Agregamos la página inicial
+						Add initial page
 						===========================================-->
 
 						<?php 
@@ -505,7 +535,7 @@ if($adminTable !== null && is_object($adminTable)){
 					<?php else: ?>
 
 					<!--=========================================
-				 	Validar permisos para editores
+				 	Validate permissions for editors
 					===========================================-->
 
 						<?php if ($_SESSION["admin"]->rol_admin == "editor"): ?>
