@@ -141,6 +141,46 @@ class PagesAjax{
 
 	}
 
+	/*=============================================
+	Get Available Plugins
+	Get list of all registered plugins
+	=============================================*/ 
+
+	public function getAvailablePlugins(){
+
+		require_once __DIR__ . "/../../plugins/plugins-registry.php";
+
+		header('Content-Type: application/json');
+
+		$allPlugins = PluginsRegistry::getAllPlugins();
+		$availablePlugins = array();
+
+		foreach($allPlugins as $pluginName => $pluginConfig){
+			// Check if plugin page already exists
+			$pluginUrl = $pluginConfig['url'] ?? $pluginName;
+			$pageExists = PluginsRegistry::pluginPageExists($pluginUrl);
+			
+			if(!$pageExists){
+				$availablePlugins[] = array(
+					'name' => $pluginName,
+					'url' => $pluginUrl,
+					'displayName' => $pluginConfig['name'] ?? $pluginName,
+					'description' => $pluginConfig['description'] ?? '',
+					'icon' => $pluginConfig['icon'] ?? 'bi-gear',
+					'type' => $pluginConfig['type'] ?? 'general',
+					'version' => $pluginConfig['version'] ?? '',
+					'author' => $pluginConfig['author'] ?? ''
+				);
+			}
+		}
+
+		echo json_encode(array(
+			'status' => 200,
+			'results' => $availablePlugins
+		));
+
+	}
+
 }
 
 if(isset($_POST["idPage"])){
@@ -174,4 +214,10 @@ if(isset($_POST["checkPluginExists"])){
 	$ajax = new PagesAjax();
 	$ajax -> pluginUrl = isset($_POST["pluginUrl"]) ? $_POST["pluginUrl"] : '';
 	$ajax -> checkPluginExists();
+}
+
+if(isset($_POST["getAvailablePlugins"])){
+
+	$ajax = new PagesAjax();
+	$ajax -> getAvailablePlugins();
 }

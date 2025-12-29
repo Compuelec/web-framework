@@ -123,6 +123,8 @@ $(document).on("click",".myPage",function(){
 			
 			// Toggle parent page field visibility
 			toggleParentPageField();
+			// Hide plugin selector when editing
+			$("#plugin_selector_group").hide();
 		
 
 		}else{
@@ -141,6 +143,9 @@ $(document).on("click",".myPage",function(){
 			
 			// Hide parent page field for new pages
 			$("#parent_page_group").hide();
+			// Hide plugin selector for new pages
+			$("#plugin_selector_group").hide();
+			$("#selected_plugin").val('');
 		}
 
 	})
@@ -150,6 +155,121 @@ $(document).on("click",".myPage",function(){
 // Toggle parent page field when type changes
 $(document).on("change", "#type_page", function() {
 	toggleParentPageField();
+	togglePluginSelector();
+});
+
+// Show/hide plugin selector based on type selection
+function togglePluginSelector() {
+	var typePage = $("#type_page").val();
+	var pluginGroup = $("#plugin_selector_group");
+	var selectedPlugin = $("#selected_plugin");
+	
+	if(typePage == "plugins") {
+		pluginGroup.show();
+		// Load plugins if not already loaded
+		if(selectedPlugin.find('option').length <= 1) {
+			loadAvailablePlugins();
+		}
+	} else {
+		pluginGroup.hide();
+		selectedPlugin.val('');
+		$('#selected_plugin_info').hide();
+		// Reset fields if they were filled by plugin selection
+		if(!$('#id_page').length) {
+			$('#url_page').val('');
+			$('#title_page').val('');
+			$('#icon_page').val('bi-gear');
+			const iconPreview = document.getElementById('iconPagePreview');
+			if (iconPreview) {
+				iconPreview.className = 'bi bi-gear';
+			}
+		}
+	}
+}
+
+// Load available plugins from server
+function loadAvailablePlugins() {
+	$.ajax({
+		url: CMS_AJAX_PATH + '/pages.ajax.php',
+		method: 'POST',
+		data: {
+			getAvailablePlugins: '1'
+		},
+		success: function(response) {
+			try {
+				var data = typeof response === 'string' ? JSON.parse(response) : response;
+				var pluginSelect = $("#selected_plugin");
+				
+				// Clear existing options except the first one
+				pluginSelect.find('option:not(:first)').remove();
+				
+				if(data && data.status == 200 && data.results && data.results.length > 0) {
+					data.results.forEach(function(plugin) {
+						pluginSelect.append(
+							$('<option></option>')
+								.attr('value', plugin.url)
+								.attr('data-plugin-name', plugin.name)
+								.attr('data-plugin-display', plugin.displayName)
+								.attr('data-plugin-description', plugin.description)
+								.attr('data-plugin-icon', plugin.icon)
+								.text(plugin.displayName)
+						);
+					});
+				} else {
+					pluginSelect.append(
+						$('<option></option>')
+							.attr('value', '')
+							.text('No hay plugins disponibles')
+							.prop('disabled', true)
+					);
+				}
+			} catch(e) {
+				console.error('Error parsing plugins response:', e);
+			}
+		},
+		error: function() {
+			console.error('Error loading plugins');
+		}
+	});
+}
+
+// Handle plugin selection
+$(document).on('change', '#selected_plugin', function() {
+	var selectedUrl = $(this).val();
+	var selectedOption = $(this).find('option:selected');
+	
+	if(selectedUrl) {
+		var pluginName = selectedOption.attr('data-plugin-display') || selectedUrl;
+		var pluginDescription = selectedOption.attr('data-plugin-description') || '';
+		var pluginIcon = selectedOption.attr('data-plugin-icon') || 'bi-gear';
+		
+		// Show plugin info
+		$('#selected_plugin_name').html('<i class="bi ' + pluginIcon + '"></i> ' + pluginName);
+		$('#selected_plugin_description').text(pluginDescription);
+		$('#selected_plugin_info').show();
+		
+		// Auto-fill fields (only if creating new page)
+		if (!$('#id_page').length) {
+			$('#url_page').val(selectedUrl);
+			$('#title_page').val(pluginName);
+			$('#icon_page').val(pluginIcon);
+			$('#type_page').val('custom'); // Change to custom type
+			
+			// Update icon preview
+			const iconPreview = document.getElementById('iconPagePreview');
+			if (iconPreview) {
+				iconPreview.className = 'bi ' + pluginIcon;
+			}
+			
+			// Show parent page field
+			toggleParentPageField();
+			
+			// Hide plugin selector group since we changed to custom
+			$('#plugin_selector_group').hide();
+		}
+	} else {
+		$('#selected_plugin_info').hide();
+	}
 });
 
 /*=============================================
@@ -448,7 +568,11 @@ $(document).on("click",".deletePage",function(){
 					
 					if(response == 200){
 
-						fncSweetAlert("success","La página ha sido eliminada con éxito",setTimeout(()=>location.reload(),1250));
+						fncSweetAlert("success","La página ha sido eliminada con éxito",setTimeout(()=>{
+							// Redirect to home page instead of reloading
+							// This prevents 404 error if user was on the deleted page
+							window.location.href = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/') + '/';
+						},1250));
 					
 					}else{
 

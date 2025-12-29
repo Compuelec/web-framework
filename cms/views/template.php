@@ -458,9 +458,40 @@ if($adminTable !== null && is_object($adminTable)){
 									}
 								
 								}else{
-
-									include "pages/404/404.php";
-								
+									// Page not found in database
+									// Check if URL might be a plugin that was deleted
+									$isPluginUrl = false;
+									if(class_exists('PluginsRegistry')){
+										$isPluginUrl = PluginsRegistry::isPluginUrl($routesArray[0]);
+									} else {
+										$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+										if(file_exists($pluginsRegistryPath)){
+											require_once $pluginsRegistryPath;
+											if(class_exists('PluginsRegistry')){
+												$isPluginUrl = PluginsRegistry::isPluginUrl($routesArray[0]);
+											}
+										}
+									}
+									
+									if($isPluginUrl){
+										// Show friendly message for deleted plugin page
+										echo '<div class="container-fluid backgroundImage"';
+										if (!empty($admin->back_admin)) {
+											echo ' style="background-image: url(' . $admin->back_admin . ')"';
+										}
+										echo '>';
+										echo '<div class="d-flex flex-wrap justify-content-center align-content-center vh-100">';
+										echo '<div class="card rounded p-4 w-25 text-center" style="min-width: 320px !important;">';
+										echo '<h1 class="textColor">404</h1>';
+										echo '<h3><i class="fas fa-exclamation-triangle text-default textColor"></i> Página de Plugin Eliminada</h3>';
+										echo '<p>La página del plugin <strong>' . htmlspecialchars($routesArray[0]) . '</strong> ha sido eliminada.</p>';
+										echo '<p class="mb-0">Puedes <a href="' . $cmsBasePath . '/"><strong>regresar a la página de inicio</strong></a> o crear una nueva página para este plugin.</p>';
+										echo '</div>';
+										echo '</div>';
+										echo '</div>';
+									} else {
+										include "pages/404/404.php";
+									}
 								}
 
 							?>

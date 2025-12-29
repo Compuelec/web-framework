@@ -121,12 +121,34 @@
                       >
                         <option value="modules">Modular</option>
                         <option value="custom">Personalizable</option>
+                        <option value="plugins">Plugin</option>
                         <option value="menu">Menú</option>
                         <option value="external_link">Enlace Externo</option>
                         <option value="internal_link">Enlace Interno</option>
                       </select>
                       <div class="valid-feedback">Válido.</div>
                       <div class="invalid-feedback">Campo inválido.</div>
+                    </div>
+                  </div>
+                  
+                  <!-- Plugin Selector (shown when type is "plugins") -->
+                  <div class="row g-3 mt-2" id="plugin_selector_group" style="display: none;">
+                    <div class="col-md-12">
+                      <label for="selected_plugin" class="form-label small fw-semibold">Seleccionar Plugin<sup>*</sup></label>
+                      <select
+                        class="form-select form-select-sm rounded" 
+                        name="selected_plugin" 
+                        id="selected_plugin"
+                      >
+                        <option value="">-- Seleccione un plugin --</option>
+                      </select>
+                      <div class="valid-feedback">Válido.</div>
+                      <div class="invalid-feedback">Debe seleccionar un plugin.</div>
+                      <!-- Plugin Info Alert -->
+                      <div id="selected_plugin_info" class="alert alert-info mt-2" style="display: none;">
+                        <strong id="selected_plugin_name"></strong>
+                        <p class="mb-0 small" id="selected_plugin_description"></p>
+                      </div>
                     </div>
                   </div>
                 </div>
