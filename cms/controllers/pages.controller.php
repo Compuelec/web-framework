@@ -178,6 +178,21 @@ class PagesController{
 								if(file_exists($pluginsDir)){
 									@chmod($pluginsDir, 0777);
 								}
+								
+								/*=============================================
+								Verificar y crear tablas necesarias para el plugin
+								=============================================*/
+								
+								// Para el plugin Payku, verificar/crear tabla payku_orders
+								if($urlPage === 'payku'){
+									$paykuControllerPath = $projectRoot . '/plugins/payku/controllers/payku.controller.php';
+									if(file_exists($paykuControllerPath)){
+										require_once $paykuControllerPath;
+										if(class_exists('PaykuPlugin')){
+											PaykuPlugin::ensureTable();
+										}
+									}
+								}
 							}
 						}
 

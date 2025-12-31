@@ -44,6 +44,85 @@ class PaykuPlugin {
     public static function init() {
         self::loadConfig();
         self::registerRoutes();
+        self::ensureTable();
+    }
+    
+    /**
+     * Ensure payku_orders table exists
+     * This method verifies and creates the table if it doesn't exist
+     * Should be called when plugin is activated or initialized
+     */
+    public static function ensureTable() {
+        // Ensure Connection class is available
+        if (!class_exists('Connection')) {
+            $projectRoot = defined('PROJECT_ROOT') ? PROJECT_ROOT : (defined('DIR') && basename(DIR) === 'cms' ? dirname(DIR) : DIR);
+            require_once $projectRoot . '/api/models/connection.php';
+        }
+        
+        $link = Connection::connect();
+        if (!$link) {
+            error_log("Payku: Could not connect to database to ensure table exists");
+            return false;
+        }
+        
+        try {
+            // Check if table exists
+            $sqlCheck = "SHOW TABLES LIKE 'payku_orders'";
+            $stmtCheck = $link->query($sqlCheck);
+            
+            if ($stmtCheck->rowCount() == 0) {
+                // Create table
+                $sqlCreate = "CREATE TABLE payku_orders (
+                    id_order INT NOT NULL AUTO_INCREMENT,
+                    order_id VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    amount DECIMAL(10,2) NOT NULL,
+                    currency VARCHAR(10) NOT NULL DEFAULT 'CLP',
+                    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                    transaction_id VARCHAR(255) NULL,
+                    payment_key VARCHAR(255) NULL,
+                    transaction_key VARCHAR(255) NULL,
+                    verification_key VARCHAR(255) NULL,
+                    payku_response TEXT NULL,
+                    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id_order),
+                    UNIQUE KEY unique_order_id (order_id),
+                    INDEX idx_status (status),
+                    INDEX idx_email (email),
+                    INDEX idx_date_created (date_created)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                
+                $link->exec($sqlCreate);
+                error_log("Payku: Table payku_orders created successfully");
+                return true;
+            } else {
+                // Table exists, verify UNIQUE constraint exists
+                try {
+                    $sqlCheckUnique = "SELECT COUNT(*) as count FROM information_schema.table_constraints 
+                                       WHERE table_schema = DATABASE() 
+                                       AND table_name = 'payku_orders' 
+                                       AND constraint_name = 'unique_order_id'";
+                    $stmtUnique = $link->query($sqlCheckUnique);
+                    $hasUnique = $stmtUnique->fetch(PDO::FETCH_ASSOC)['count'] > 0;
+                    
+                    if (!$hasUnique) {
+                        // Add UNIQUE constraint if it doesn't exist
+                        $sqlAddUnique = "ALTER TABLE payku_orders ADD UNIQUE KEY unique_order_id (order_id)";
+                        $link->exec($sqlAddUnique);
+                        error_log("Payku: Added UNIQUE constraint to order_id");
+                    }
+                } catch (PDOException $e) {
+                    // Ignore if constraint already exists or other errors
+                    error_log("Payku: Could not add UNIQUE constraint (may already exist): " . $e->getMessage());
+                }
+                
+                return true;
+            }
+        } catch (PDOException $e) {
+            error_log("Payku ensureTable error: " . $e->getMessage());
+            return false;
+        }
     }
     
     /**
