@@ -905,9 +905,9 @@ Remover índice de un array de Archivos (FileList)
 
 function removeFileFromList(fileList, indexToRemove) {
    
-    const dt = new DataTransfer(); // Crea un nuevo objeto DataTransfer
+    const dt = new DataTransfer(); // Create a new DataTransfer object
 
-    // Agrega todos los archivos excepto el que quieres eliminar
+    // Add all files except the one you want to remove
     
     for (let i = 0; i < fileList.length; i++) {
 

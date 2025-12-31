@@ -180,7 +180,7 @@ class PagesController{
 								}
 								
 								/*=============================================
-								Verificar y crear tablas necesarias para el plugin
+								Verify and create necessary tables for the plugin
 								=============================================*/
 								
 								// For Payku plugin, verify/create payku_orders table
@@ -197,7 +197,7 @@ class PagesController{
 						}
 
 						/*=============================================
-						Copiamos el archivo custom con el nuevo nombre
+						Copy custom file with new name
 						=============================================*/	
 
 						$from = DIR."/views/pages/custom/custom.php";

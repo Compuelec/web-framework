@@ -612,7 +612,7 @@ class ModulesController{
 
 						}else{
 
-							// Mostrar error detallado
+							// Show detailed error
 							$errorMsg = "Error al crear el archivo del módulo. ";
 							$errorMsg .= "Directorio: ".$directory." ";
 							$errorMsg .= "Archivo destino: ".$to." ";

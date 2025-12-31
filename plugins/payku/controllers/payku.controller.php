@@ -39,7 +39,7 @@ class PaykuPlugin {
     private static $config = null;
     
     /**
-     * Inicializar plugin
+     * Initialize plugin
      */
     public static function init() {
         self::loadConfig();
