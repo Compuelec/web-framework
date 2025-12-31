@@ -7,7 +7,7 @@ class PagesController{
 		if(isset($_POST["title_page"])){
 
 			/*=============================================
-			Editar Página
+			Edit Page
 			=============================================*/
 
 			if(isset($_POST["id_page"])){
@@ -40,7 +40,7 @@ class PagesController{
 			}else{
 
 				/*=============================================
-				Validar que la Página no exista
+				Validate that Page does not exist
 				=============================================*/
 
 				$url = "pages?linkTo=title_page,url_page&equalTo=".urlencode(trim($_POST["title_page"])).",".urlencode(trim($_POST["url_page"]));
@@ -68,7 +68,7 @@ class PagesController{
 				}
 
 				/*=============================================
-				Validar que el Plugin no esté duplicado
+				Validate that Plugin is not duplicated
 				=============================================*/
 
 				$pluginUrl = trim($_POST["url_page"]);
@@ -105,7 +105,7 @@ class PagesController{
 				}
 
 				/*=============================================
-				Crear Página
+				Create Page
 				=============================================*/
 
 				$url = "pages?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
@@ -133,13 +133,13 @@ class PagesController{
 					$urlPage = urldecode($fields["url_page"]);
 
 					/*=============================================
-					Crear Página personalizable
+					Create Custom Page
 					=============================================*/
 
 					if($fields["type_page"] == "custom"){
 
 						/*=============================================
-						Creamos carpeta de página personalizable
+						Create custom page folder
 						=============================================*/
 
 						$directory = DIR."/views/pages/custom/".$urlPage;
@@ -151,7 +151,7 @@ class PagesController{
 						}
 
 						/*=============================================
-						Si es un plugin, asegurar permisos del directorio del plugin
+						If it's a plugin, ensure plugin directory permissions
 						=============================================*/
 
 						$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";

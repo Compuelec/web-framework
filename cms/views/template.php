@@ -65,8 +65,6 @@ $fields = array();
 
 $adminTable = CurlController::request($url,$method,$fields);
 
-// echo '<pre>$adminTable '; print_r($adminTable); echo '</pre>';
-
 // Initialize admin as null
 $admin = null;
 
@@ -88,8 +86,6 @@ if($adminTable !== null && is_object($adminTable)){
 	
 }
 
-// echo '<pre>$admin '; print_r($admin); echo '</pre>';
-
 ?>
 
 <!DOCTYPE html>
@@ -103,19 +99,19 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
 	<!--=============================================
-	Validamos si admin existe
+	Validate if admin exists
 	===============================================-->
 
 	<?php if (!empty($admin)): ?>
 
 		<!--=============================================
-		Título del Dashboard
+		Dashboard Title
 		===============================================-->
 
 		<title><?php echo $admin->title_admin ?></title>
 
 		<!--=============================================
-		Típografía del dashboard
+		Dashboard Typography
 		===============================================-->
 
 		<?php if ($admin->font_admin != null): ?>
@@ -127,13 +123,13 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php endif ?>
 
 		<!--=============================================
-		Estilos propios del dashboard
+		Dashboard Custom Styles
 		===============================================-->
 
 		<style>
 			
 			/*=============================================
-			Típografía del dashboard
+			Dashboard Typography
 			=============================================*/
 
 			<?php if ($admin->font_admin != null):?>
@@ -152,7 +148,7 @@ if($adminTable !== null && is_object($adminTable)){
 			<?php endif ?>
 
 			/*=============================================
-			Color del dashboard
+			Dashboard Color
 			=============================================*/
 
 			.backColor{
@@ -379,7 +375,7 @@ if($adminTable !== null && is_object($adminTable)){
 		?>
 
 		<!--=============================================
-		PLANTILLA DASHBOARD
+		DASHBOARD TEMPLATE
 		===============================================-->
 
 		<div class="d-flex backDashboard" id="wrapper">
@@ -659,7 +655,7 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php 
 
 		/*=============================================
-    	Incluimos modal de perfiles
+    	Include profile modal
     	=============================================*/
 
     	include "modules/modals/profile.php"; 
@@ -670,7 +666,7 @@ if($adminTable !== null && is_object($adminTable)){
 	    if(isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"){
 
 	    	/*=============================================
-	    	Incluimos modal de páginas
+	    	Include pages modal
 	    	=============================================*/
 
 		    include "views/modules/modals/pages.php";
@@ -680,7 +676,7 @@ if($adminTable !== null && is_object($adminTable)){
 		    $managePage->managePage();
 
 		    /*=============================================
-	    	Incluimos modal de módulos
+	    	Include modules modal
 	    	=============================================*/
 
 		    include "views/modules/modals/modules.php";
