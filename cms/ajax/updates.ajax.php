@@ -6,6 +6,9 @@
  * Handles AJAX requests for framework updates
  */
 
+// Define constant to indicate session-init is being included
+define('SESSION_INIT_INCLUDED', true);
+
 require_once __DIR__ . '/session-init.php';
 
 require_once __DIR__ . '/../controllers/updates.controller.php';

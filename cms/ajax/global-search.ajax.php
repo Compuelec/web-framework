@@ -5,6 +5,9 @@
  * Handles global search across pages, modules, and data
  */
 
+// Define constant to indicate session-init is being included
+define('SESSION_INIT_INCLUDED', true);
+
 require_once __DIR__ . '/session-init.php';
 
 require_once "../controllers/curl.controller.php";
