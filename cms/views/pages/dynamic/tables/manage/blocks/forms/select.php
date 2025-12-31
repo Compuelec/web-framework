@@ -17,11 +17,20 @@
 	name="<?php echo $module->columns[$i]->title_column ?>" 
 	id="<?php echo $module->columns[$i]->title_column ?>">
 
-	<?php if ($module->columns[$i]->matrix_column != null): ?>
+	<?php 
+		// Decode matrix_column and check if it's not empty
+		$matrixValue = !empty($module->columns[$i]->matrix_column) ? urldecode($module->columns[$i]->matrix_column) : '';
+		$matrixValue = trim($matrixValue);
+	?>
+	
+	<?php if (!empty($matrixValue)): ?>
 
-		<?php foreach (explode(",",urldecode($module->columns[$i]->matrix_column)) as $index => $item):?>
-
-			<option value="<?php echo $item ?>" <?php if (!empty($data) && urldecode($data[$module->columns[$i]->title_column]) == $item): ?> selected <?php endif ?>><?php echo $item ?></option>
+		<?php foreach (explode(",", $matrixValue) as $index => $item):?>
+			<?php 
+				$item = trim($item);
+				if (empty($item)) continue;
+			?>
+			<option value="<?php echo htmlspecialchars($item) ?>" <?php if (!empty($data) && isset($data[$module->columns[$i]->title_column]) && urldecode($data[$module->columns[$i]->title_column]) == $item): ?> selected <?php endif ?>><?php echo htmlspecialchars($item) ?></option>
 			
 		<?php endforeach ?>
 		

@@ -4,6 +4,49 @@ Actualizar la matriz del select
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
 
+// Initialize select options on page load
+$(document).ready(function(){
+	
+	// Check if token is available
+	var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+	if(!token){
+		console.warn("Token not available, skipping automatic select initialization");
+		return;
+	}
+	
+	// Wait a bit for select2 to initialize
+	setTimeout(function(){
+		
+		// Load options for all select fields that have matrix_column value but empty select
+		$(".changeSelectType").each(function(){
+			
+			var matrix_column = $(this).val();
+			var title_column = $(this).attr("titleColumn");
+			var selectElement = $("#"+title_column);
+			
+			// Decode the value if it's URL encoded
+			if(matrix_column){
+				try {
+					matrix_column = decodeURIComponent(matrix_column);
+				} catch(e) {
+					// If decoding fails, use original value
+				}
+			}
+			
+			// If input has value but select is empty or has no options, load options
+			if(matrix_column && matrix_column.trim() !== "" && (selectElement.find("option").length === 0 || (selectElement.find("option").length === 1 && selectElement.find("option").first().val() === ""))){
+				
+				// Trigger change to load options
+				$(this).trigger("change");
+				
+			}
+			
+		});
+		
+	}, 500);
+	
+});
+
 $(document).on("change",".changeSelectType",function(){
 
 	var matrix_column = $(this).val();
@@ -11,11 +54,23 @@ $(document).on("change",".changeSelectType",function(){
 	var title_column = $(this).attr("titleColumn");
 	var pre_value = $(this).attr("preValue");
 	
+	// If matrix_column is empty, don't make the request
+	if(!matrix_column || matrix_column.trim() === ""){
+		return;
+	}
+	
+	// Get token from session or localStorage
+	var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+	if(!token){
+		console.error("No token available for select options");
+		return;
+	}
+	
 	var data = new FormData();
 	data.append("matrix_column",matrix_column);
 	data.append("id_column",id_column);
 	data.append("pre_value",pre_value);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", token);
 
 	$.ajax({
 		url: CMS_AJAX_PATH + "/dynamic-forms.ajax.php",
@@ -25,9 +80,28 @@ $(document).on("change",".changeSelectType",function(){
 		cache: false,
 		processData: false,
 		success: function (response){
-
-			$("#"+title_column).html(response);
 			
+			// Check if response is an error message
+			if(typeof response === 'string' && (response.indexOf('token has expired') !== -1 || 
+			   response.indexOf('token expirado') !== -1 || 
+			   response.indexOf('The token has expired') !== -1 ||
+			   response.indexOf('error') !== -1 && response.indexOf('303') !== -1)){
+				console.error("Error loading select options:", response);
+				return;
+			}
+			
+			// Check if response is valid HTML
+			if(response && response.trim() !== ""){
+				$("#"+title_column).html(response);
+			}
+			
+		},
+		error: function(xhr, status, error){
+			console.error("Error loading select options:", status, error);
+			// Don't show error if it's a token expiration (handled by interceptor)
+			if(xhr.status !== 303){
+				console.warn("Failed to load options for select:", title_column);
+			}
 		}
 
 	})

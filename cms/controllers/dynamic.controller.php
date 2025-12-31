@@ -28,22 +28,25 @@ class DynamicController{
 				$fields = "";
 				$count = 0;
 
-				foreach ($module->columns as $key => $value) {
+			foreach ($module->columns as $key => $value) {
 
-					if($value->type_column == "password" && !empty($_POST[$value->title_column])){
+				// Get field value from POST, use empty string if not set
+				$fieldValue = $_POST[$value->title_column] ?? '';
 
-						$passwordSalt = TemplateController::getPasswordSalt();
-						$fields.= $value->title_column."=".crypt(trim($_POST[$value->title_column]), $passwordSalt)."&";
+				if($value->type_column == "password" && !empty($fieldValue)){
 
-					}else if($value->type_column == "email"){
+					$passwordSalt = TemplateController::getPasswordSalt();
+					$fields.= $value->title_column."=".crypt(trim($fieldValue), $passwordSalt)."&";
 
-						$fields.= $value->title_column."=".trim($_POST[$value->title_column])."&";
+				}else if($value->type_column == "email"){
 
-					}else{
-					
-						$fields.= $value->title_column."=".urlencode(trim($_POST[$value->title_column]))."&";
+					$fields.= $value->title_column."=".trim($fieldValue)."&";
 
-					}
+				}else{
+				
+					$fields.= $value->title_column."=".urlencode(trim($fieldValue))."&";
+
+				}
 					
 					$count++;
 
@@ -164,21 +167,27 @@ class DynamicController{
 				$fields = array();
 				$count = 0;
 
-				foreach ($module->columns as $key => $value) {
+			foreach ($module->columns as $key => $value) {
 
-					if($value->type_column == "password"){
+				// Get field value from POST, use empty string if not set
+				$fieldValue = $_POST[$value->title_column] ?? '';
 
+				if($value->type_column == "password"){
+
+					// Only process password if value is provided
+					if(!empty($fieldValue)){
 						$passwordSalt = TemplateController::getPasswordSalt();
-						$fields[$value->title_column] = crypt(trim($_POST[$value->title_column]), $passwordSalt);
-					
-					}else if($value->type_column == "email"){
-
-						$fields[$value->title_column] = trim($_POST[$value->title_column]);
-					}else{
-					
-						$fields[$value->title_column] = urlencode(trim($_POST[$value->title_column]));
-
+						$fields[$value->title_column] = crypt(trim($fieldValue), $passwordSalt);
 					}
+				
+				}else if($value->type_column == "email"){
+
+					$fields[$value->title_column] = trim($fieldValue);
+				}else{
+				
+					$fields[$value->title_column] = urlencode(trim($fieldValue));
+
+				}
 					
 					$count++;
 

@@ -15,10 +15,30 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . "/../controllers/session.controller.php";
+require_once __DIR__ . "/../controllers/template.controller.php";
+require_once __DIR__ . "/../../api/models/connection.php";
 
+// Validate token if admin session exists
 if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"])) {
     $currentUserId = $_SESSION["admin"]->id_admin ?? null;
     $currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+    
+    // Validate token expiration
+    if (!empty($currentUserToken)) {
+        $tokenValidation = Connection::tokenValidate($currentUserToken, "admins", "admin");
+        
+        if ($tokenValidation == "expired" || $tokenValidation == "no-auth") {
+            // Token expired or invalid - destroy session and redirect to login
+            session_destroy();
+            session_start();
+            
+            // Redirect to login
+            $cmsBasePath = TemplateController::cmsBasePath();
+            header("Location: " . $cmsBasePath . "/login");
+            exit();
+        }
+    }
+    
     SessionController::startUniqueSession($currentUserId, $currentUserToken);
 }
 
@@ -177,6 +197,13 @@ if($adminTable !== null && is_object($adminTable)){
 		window.CMS_BASE_PATH = <?php echo json_encode($cmsBasePath); ?>;
 		window.CMS_AJAX_PATH = (window.CMS_BASE_PATH || "") + "/ajax";
 		window.CMS_ASSETS_PATH = (window.CMS_BASE_PATH || "") + "/views/assets";
+		<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && isset($_SESSION["admin"]->token_admin)): ?>
+		window.CMS_TOKEN = <?php echo json_encode($_SESSION["admin"]->token_admin); ?>;
+		// Sync with localStorage
+		if (typeof(Storage) !== "undefined") {
+			localStorage.setItem("tokenAdmin", window.CMS_TOKEN);
+		}
+		<?php endif ?>
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>

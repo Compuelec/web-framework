@@ -139,7 +139,50 @@ var AuthInterceptor = {
     }
 };
 
+// Validate token on page load
+function validateTokenOnLoad() {
+    var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+    
+    if (!token) {
+        // No token available, redirect to login
+        var cmsBasePath = window.CMS_BASE_PATH || '';
+        if (cmsBasePath) {
+            window.location.href = cmsBasePath + '/login';
+        } else {
+            window.location.href = '/login';
+        }
+        return;
+    }
+    
+    // Validate token by making a simple request
+    $.ajax({
+        url: (window.CMS_AJAX_PATH || '/ajax') + '/session-init.php',
+        method: 'GET',
+        cache: false,
+        success: function(response) {
+            // Token is valid, continue
+        },
+        error: function(xhr, status, error) {
+            // If token expired, handle it
+            if (xhr.status === 303 || 
+                (xhr.responseText && (xhr.responseText.indexOf('token has expired') !== -1 || 
+                                      xhr.responseText.indexOf('token expirado') !== -1 ||
+                                      xhr.responseText.indexOf('The token has expired') !== -1))) {
+                AuthInterceptor.handleTokenExpired();
+            }
+        }
+    });
+}
+
 $(document).ready(function() {
     AuthInterceptor.init();
+    
+    // Validate token on page load (only if we're not on login/logout pages)
+    var currentPath = window.location.pathname;
+    if (currentPath.indexOf('/login') === -1 && 
+        currentPath.indexOf('/logout') === -1 &&
+        currentPath.indexOf('/install') === -1) {
+        validateTokenOnLoad();
+    }
 });
 
