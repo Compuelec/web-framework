@@ -12,25 +12,31 @@
 				</div>
 
 				<!-- Modal body -->
-				<div class="modal-body">
+				<div class="modal-body px-4">
 
-					<div class="form-group mb-3">
-						
-						<select  
-						class="form-select rounded" 
-						id="valueBoolean"
-						name="valueBoolean"
-						>
+					<div class="mb-3">
+						<h6 class="text-muted mb-3">
+							<i class="bi bi-toggle-on"></i> Estado
+						</h6>
+					</div>
 
-						<option value="0">False</option>
-						<option value="1">True</option>
-
-						</select>
-
-						<div class="valid-feedback">Válido.</div>
-						<div class="invalid-feedback">Campo inválido.</div>
-
-					</div>	
+					<div class="card border-0 bg-light">
+						<div class="card-body">
+							<div class="form-group">
+								<label for="valueBoolean" class="form-label small fw-semibold">Cambiar estado</label>
+								<select  
+									class="form-select form-select-sm rounded" 
+									id="valueBoolean"
+									name="valueBoolean"
+								>
+									<option value="0">False</option>
+									<option value="1">True</option>
+								</select>
+								<div class="valid-feedback">Válido.</div>
+								<div class="invalid-feedback">Campo inválido.</div>
+							</div>
+						</div>
+					</div>
 
 				</div>
 

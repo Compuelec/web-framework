@@ -28,7 +28,7 @@ class AdminsController{
 			if($login->status == 200){
 
 				/*=============================================
-				Validar estado del administrador
+				Validate administrator status
 				=============================================*/
 
 				if($login->results[0]->status_admin == 0){
@@ -47,7 +47,7 @@ class AdminsController{
 				}
 
 				/*=============================================
-				Generar y enviar código de seguridad al correo
+				Generate and send security code to email
 				=============================================*/
 
 				$securityCode = TemplateController::genPassword(6);
@@ -120,7 +120,7 @@ class AdminsController{
 
 
 	/*=============================================
-	Validar código de seguridad
+	Validate security code
 	=============================================*/
 
 	public function securityCode(){
@@ -139,7 +139,7 @@ class AdminsController{
 			';
 
 			/*=============================================
-			Validar admin
+			Validate admin
 			=============================================*/
 
 			$url = "admins?linkTo=scode_admin&equalTo=".$_POST["scode_admin"];
@@ -151,7 +151,7 @@ class AdminsController{
 			if($admin->status == 200){
 
 				/*=============================================
-				Crear variable de Sesión
+				Create Session variable
 				=============================================*/
 
 				$_SESSION["admin"] = $admin->results[0];
@@ -183,7 +183,7 @@ class AdminsController{
 	}
 
 	/*=============================================
-	Actualizar Administrador
+	Update Administrator
 	=============================================*/
 
 	public function updateAdmin(){
@@ -202,7 +202,7 @@ class AdminsController{
 			';
 
 			/*=============================================
-			Validar admin
+			Validate admin
 			=============================================*/
 
 			$url = "admins?linkTo=id_admin&equalTo=".base64_decode($_POST["id_admin"])."&select=id_admin,password_admin,rol_admin";
@@ -214,7 +214,7 @@ class AdminsController{
 			if($admin->status == 200){
 
 				/*=============================================
-				Si hay cambio de contraseña
+				If there is password change
 				=============================================*/
 
 				if(!empty($_POST["password_admin"])){

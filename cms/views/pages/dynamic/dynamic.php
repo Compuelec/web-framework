@@ -80,7 +80,23 @@ if($modules->status == 200){
 
                 <?php if ($module->type_module == "custom"): ?>
 
-                    <?php include "custom/".str_replace(" ","_",$module->title_module)."/".str_replace(" ","_",$module->title_module).".php" ?>
+                    <?php 
+                        $moduleName = str_replace(" ","_",$module->title_module);
+                        $modulePath = __DIR__."/custom/".$moduleName."/".$moduleName.".php";
+                        $includePath = "custom/".$moduleName."/".$moduleName.".php";
+                        
+                        // Include file only if it exists
+                        if(file_exists($modulePath)){
+                            include $includePath;
+                        }else{
+                            // If file doesn't exist, show informative message
+                            // File should have been created when module was created
+                            echo '<div class="alert alert-warning">
+                                <strong>Módulo no encontrado:</strong> El archivo del módulo "'.$module->title_module.'" no existe. 
+                                Por favor, recree el módulo desde el panel de administración.
+                            </div>';
+                        }
+                    ?>
                     
                 <?php endif ?>
    

@@ -2,6 +2,22 @@
   Breadcrumb
  ================================-->
 
+<?php
+// Get home page URL (page with order_page=1)
+$urlHome = "pages?linkTo=order_page&equalTo=1";
+$methodHome = "GET";
+$fieldsHome = array();
+
+$homePage = CurlController::request($urlHome, $methodHome, $fieldsHome);
+
+// Default to CMS base path if home page not found
+$homeUrl = $cmsBasePath . "/";
+
+if($homePage->status == 200 && isset($homePage->results[0]) && isset($homePage->results[0]->url_page)){
+	$homeUrl = $cmsBasePath . "/" . $homePage->results[0]->url_page;
+}
+?>
+
 <div class="<?php if ($module->width_module == "100"): ?> col-lg-12 <?php endif ?><?php if ($module->width_module == "75"): ?> col-lg-9 <?php endif ?><?php if ($module->width_module == "50"): ?> col-lg-6 <?php endif ?><?php if ($module->width_module == "33"): ?> col-lg-4 <?php endif ?><?php if ($module->width_module == "25"): ?> col-lg-3 <?php endif ?> col-12 mb-3 position-relative">
 
 	<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
@@ -28,7 +44,7 @@
 		<div class="pe-0">
 			<ul class="nav justify-content-lg-end">
 				<li class="nav-item">
-					<a class="nav-link py-0 px-0 text-dark" href="<?php echo $cmsBasePath ?>/">Inicio</a>
+					<a class="nav-link py-0 px-0 text-dark" href="<?php echo $homeUrl ?>">Inicio</a>
 				</li>
 				<li class="nav-item ps-3">/</li>
 				<li class="nav-item">

@@ -63,12 +63,6 @@ if($pages->status == 200){
 				?>
 
 				<li class="list-group-item position-relative <?php echo $isMenuPage ? 'menu-item' : '' ?>" idPage="<?php echo base64_encode($value->id_page) ?>">
-					
-					<?php if ($isMenuPage && isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
-						<span class="handle page-drag-handle" style="cursor:move; opacity: 0; transition: opacity 0.2s ease;">
-							<i class="bi bi-arrows-move"></i>
-						</span>
-					<?php endif ?>
 
 				<?php if ($isMenuPage): ?>
 					
@@ -122,10 +116,6 @@ if($pages->status == 200){
 											</a>
 											
 											<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
-												<span class="handle page-drag-handle" style="cursor:move; opacity: 0; transition: opacity 0.2s ease;">
-													<i class="bi bi-arrows-move"></i>
-												</span>
-												
 												<div class="page-actions-wrapper">
 													<button type="button" class="btn btn-sm text-muted rounded page-menu-toggle" data-page-id="<?php echo base64_encode($subPage->id_page) ?>" style="padding: 0.25rem 0.5rem;">
 														<i class="bi bi-three-dots-vertical"></i>
@@ -164,10 +154,6 @@ if($pages->status == 200){
 					<?php endif ?>
 	
 				 	<?php if (!$isMenuPage && isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
-
-				 		<span class="handle page-drag-handle" style="cursor:move; opacity: 0; transition: opacity 0.2s ease;">
-				 			<i class="bi bi-arrows-move"></i>
-				 			</span>
 
 				 		<div class="page-actions-wrapper">
 				 			<button type="button" class="btn btn-sm text-muted rounded page-menu-toggle" data-page-id="<?php echo base64_encode($value->id_page) ?>" style="padding: 0.25rem 0.5rem;">

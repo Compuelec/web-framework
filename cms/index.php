@@ -28,6 +28,10 @@ require_once "controllers/curl.controller.php";
 require_once "extensions/vendor/autoload.php";
 require_once __DIR__ . "/../core/activity_log.php";
 
+// Load plugins system
+require_once __DIR__ . "/../plugins/plugins-loader.php";
+require_once __DIR__ . "/../plugins/plugins-registry.php";
+
 // Ensure required pages exist (only if database is configured)
 if (is_array($config) && isset($config['database'])) {
     try {

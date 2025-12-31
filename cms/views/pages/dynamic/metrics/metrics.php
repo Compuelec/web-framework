@@ -98,7 +98,7 @@ if($response->status == 200){
 			</div>
 
 			<div class="display-2 text-center pt-2 pe-2" style="color:rgb(<?php echo $content->color ?>) !important">
-				<i class="<?php echo $content->icon ?>"></i>
+				<i class="<?php echo !empty($content->icon) ? $content->icon : 'bi-gear' ?>"></i>
 			</div>
 
 		</div>

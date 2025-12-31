@@ -7,7 +7,7 @@ class PagesController{
 		if(isset($_POST["title_page"])){
 
 			/*=============================================
-			Editar Página
+			Edit Page
 			=============================================*/
 
 			if(isset($_POST["id_page"])){
@@ -40,10 +40,10 @@ class PagesController{
 			}else{
 
 				/*=============================================
-				Validar que la Página no exista
+				Validate that Page does not exist
 				=============================================*/
 
-				$url = "pages?linkTo=title_page,url_page&equalTo=".trim($_POST["title_page"]).",".trim($_POST["url_page"]);
+				$url = "pages?linkTo=title_page,url_page&equalTo=".urlencode(trim($_POST["title_page"])).",".urlencode(trim($_POST["url_page"]));
 				$method = "GET";
 				$fields = array();
 
@@ -68,7 +68,44 @@ class PagesController{
 				}
 
 				/*=============================================
-				Crear Página
+				Validate that Plugin is not duplicated
+				=============================================*/
+
+				$pluginUrl = trim($_POST["url_page"]);
+				$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+				
+				if(file_exists($pluginsRegistryPath)){
+					require_once $pluginsRegistryPath;
+					
+					if(class_exists('PluginsRegistry') && PluginsRegistry::isPluginUrl($pluginUrl)){
+						
+						try {
+							if(PluginsRegistry::pluginPageExists($pluginUrl)){
+
+								echo '
+
+								<script>
+
+									fncMatPreloader("off");
+									fncFormatInputs();
+								    fncToastr("error","ERROR: Este plugin ya tiene una página creada. No se puede duplicar.");	
+
+								</script>
+
+								';
+
+								return;
+
+							}
+						} catch (Exception $e) {
+							// If plugin check fails, log error but continue with page creation
+							error_log("Plugin validation error: " . $e->getMessage());
+						}
+					}
+				}
+
+				/*=============================================
+				Create Page
 				=============================================*/
 
 				$url = "pages?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
@@ -96,29 +133,104 @@ class PagesController{
 					$urlPage = urldecode($fields["url_page"]);
 
 					/*=============================================
-					Crear Página personalizable
+					Create Custom Page
 					=============================================*/
 
 					if($fields["type_page"] == "custom"){
 
 						/*=============================================
-						Creamos carpeta de página personalizable
+						Create custom page folder
 						=============================================*/
 
 						$directory = DIR."/views/pages/custom/".$urlPage;
 
 						if(!file_exists($directory)){
 
-							mkdir($directory, 0755);
+							@mkdir($directory, 0755, true);
+							@chmod($directory, 0755);
 						}
 
 						/*=============================================
-						Copiamos el archivo custom con el nuevo nombre
+						If it's a plugin, ensure plugin directory permissions
+						=============================================*/
+
+						$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+						
+						if(file_exists($pluginsRegistryPath)){
+							require_once $pluginsRegistryPath;
+							
+							if(class_exists('PluginsRegistry') && PluginsRegistry::isPluginUrl($urlPage)){
+								
+								// Ensure plugin directory exists with correct permissions
+								$projectRoot = dirname(DIR);
+								$pluginDir = $projectRoot . '/plugins/' . $urlPage;
+								
+								if(!file_exists($pluginDir)){
+									@mkdir($pluginDir, 0777, true);
+									@chmod($pluginDir, 0777);
+								} else {
+									// Ensure permissions even if directory already exists
+									@chmod($pluginDir, 0777);
+								}
+								
+								// Also ensure parent plugins directory permissions
+								$pluginsDir = $projectRoot . '/plugins';
+								if(file_exists($pluginsDir)){
+									@chmod($pluginsDir, 0777);
+								}
+								
+								/*=============================================
+								Verify and create necessary tables for the plugin
+								=============================================*/
+								
+								// For Payku plugin, verify/create payku_orders table
+								if($urlPage === 'payku'){
+									$paykuControllerPath = $projectRoot . '/plugins/payku/controllers/payku.controller.php';
+									if(file_exists($paykuControllerPath)){
+										require_once $paykuControllerPath;
+										if(class_exists('PaykuPlugin')){
+											PaykuPlugin::ensureTable();
+										}
+									}
+								}
+							}
+						}
+
+						/*=============================================
+						Copy custom file with new name
 						=============================================*/	
 
 						$from = DIR."/views/pages/custom/custom.php";
+						$to = $directory.'/'.$urlPage.'.php';
 
-						if(copy($from, $directory.'/'.$urlPage.'.php')){
+						// Ensure source file exists
+						if(!file_exists($from)){
+							error_log("Pages Controller Error - Template file not found: " . $from);
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+								fncToastr("error","ERROR: Archivo plantilla no encontrado");
+							</script>';
+							return;
+						}
+
+						// Ensure directory is writable
+						if(!is_writable($directory)){
+							error_log("Pages Controller Error - Directory not writable: " . $directory);
+							@chmod($directory, 0755);
+							if(!is_writable($directory)){
+								echo '
+								<script>
+									fncMatPreloader("off");
+									fncFormatInputs();
+									fncToastr("error","ERROR: Sin permisos para crear archivo en el directorio");
+								</script>';
+								return;
+							}
+						}
+
+						if(@copy($from, $to)){
 
 							echo '
 
@@ -126,7 +238,32 @@ class PagesController{
 
 								fncMatPreloader("off");
 								fncFormatInputs();
-							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
+							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+									// Reload page to update sidebar
+									location.reload();
+								},1250));	
+
+							</script>
+
+							';
+
+						}else{
+
+							// Log error if copy fails
+							$error = error_get_last();
+							error_log("Pages Controller Error - Failed to copy file from '{$from}' to '{$to}'. Error: " . ($error ? $error['message'] : 'Unknown error'));
+							
+							// If file copy fails, still reload to show in sidebar
+							echo '
+
+							<script>
+
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+									// Reload page to update sidebar
+									location.reload();
+								},1250));	
 
 							</script>
 
@@ -166,14 +303,17 @@ class PagesController{
 
 					}else{
 
-						// For modules type pages, redirect to the page
+						// For modules type pages, reload to update sidebar
 						echo '
 
 						<script>
 
 							fncMatPreloader("off");
 							fncFormatInputs();
-						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>window.location.href="'.$cmsBasePath.'/'.$urlPage.'",1250));	
+						    fncSweetAlert("success","La página ha sido creada con éxito",setTimeout(()=>{
+								// Reload page to update sidebar
+								location.reload();
+							},1250));	
 
 						</script>
 

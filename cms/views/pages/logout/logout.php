@@ -8,7 +8,8 @@ if (isset($_SESSION['admin']) && function_exists('logActivity')) {
 	}
 }
 
-session_destroy();
+require_once __DIR__ . '/../../../controllers/session.controller.php';
+SessionController::destroyUniqueSession();
 
 // Calculate project base path (remove /cms from CMS base path)
 require_once __DIR__ . '/../../../controllers/template.controller.php';

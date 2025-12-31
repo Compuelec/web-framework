@@ -11,11 +11,25 @@ class DynamicFormsController{
 
 	public function updateMatrixColumn(){
 
+		// Check if token is provided
+		if(empty($this->token)){
+			http_response_code(401);
+			echo json_encode(['status' => 401, 'results' => 'Token is required']);
+			return;
+		}
+
 		$url = "columns?id=".$this->id_column."&nameId=id_column&token=".$this->token."&table=admins&suffix=admin";
 		$method = "PUT";
 		$fields = "matrix_column=".$this->matrix_column;
 
 		$updateMatrix = CurlController::request($url,$method,$fields);
+
+		// Check for token expiration or other errors
+		if(isset($updateMatrix->status) && $updateMatrix->status == 303){
+			http_response_code(303);
+			echo json_encode(['status' => 303, 'results' => 'The token has expired']);
+			return;
+		}
 
 		if($updateMatrix->status == 200){
 
@@ -25,36 +39,35 @@ class DynamicFormsController{
 
 			$getMatrix = CurlController::request($url,$method,$fields);
 
-			if($getMatrix->status == 200){
+			if($getMatrix->status == 200 && isset($getMatrix->results[0]->matrix_column) && !empty($getMatrix->results[0]->matrix_column)){
 
 				$html = "";
-				$count = 0;
-
-				foreach (explode(",",$getMatrix->results[0]->matrix_column) as $key => $value) {
+				$matrixValues = explode(",", $getMatrix->results[0]->matrix_column);
+				
+				foreach ($matrixValues as $key => $value) {
+					
+					$value = trim($value);
+					if(empty($value)) continue;
 
 					$selected = "";
 
-					if($this->pre_value != null){
-
-						if($value == $this->pre_value){
-
-							$selected = "selected";
-						}
+					if($this->pre_value != null && $value == $this->pre_value){
+						$selected = "selected";
 					}
 					
-					$html .= '<option value="'.$value.'" '.$selected.'>'.$value.'</option>';
-					
-					$count++;
-
-					if($count == count(explode(",",$getMatrix->results[0]->matrix_column))){
-
-						echo $html;
-					}
-
+					$html .= '<option value="'.htmlspecialchars($value).'" '.$selected.'>'.htmlspecialchars($value).'</option>';
 				}
 
+				echo $html;
+
+			} else {
+				// Return empty if no matrix_column found
+				echo "";
 			}
 
+		} else {
+			// Return empty on error
+			echo "";
 		}
 
 	}

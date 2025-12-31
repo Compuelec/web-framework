@@ -28,8 +28,23 @@ return [
 
     // Email Configuration (PHPMailer)
     'email' => [
+        // Sender information
         'from_email' => 'noreply@dashboard.com',
-        'from_name' => 'CMS-BUILDER'
+        'from_name' => 'CMS-BUILDER',
+        
+        // SMTP Configuration
+        // Set 'enabled' to true to use SMTP, false to use PHP mail() function
+        'smtp' => [
+            'enabled' => false,                    // Enable/disable SMTP
+            'host' => 'smtp.gmail.com',           // SMTP server (e.g., smtp.gmail.com, smtp.outlook.com)
+            'port' => 587,                        // SMTP port (587 for TLS, 465 for SSL, 25 for non-encrypted)
+            'secure' => 'tls',                    // Encryption type: 'tls', 'ssl', or '' (empty for no encryption)
+            'auth' => true,                       // Enable SMTP authentication
+            'username' => 'your-email@gmail.com', // SMTP username (usually your email address)
+            'password' => 'your-app-password',    // SMTP password (use app password for Gmail)
+            'timeout' => 30,                      // Connection timeout in seconds
+            'debug' => 0                         // Debug level: 0 = off, 1 = client messages, 2 = client and server messages
+        ]
     ],
 
     // API Configuration

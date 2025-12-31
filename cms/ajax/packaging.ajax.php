@@ -6,7 +6,10 @@
  * Handles AJAX requests for project packaging
  */
 
-session_start();
+// Define constant to indicate session-init is being included
+define('SESSION_INIT_INCLUDED', true);
+
+require_once __DIR__ . '/session-init.php';
 
 // Suppress warnings that might interfere with JSON output
 error_reporting(E_ALL);

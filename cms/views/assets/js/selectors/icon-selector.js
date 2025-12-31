@@ -5,7 +5,9 @@ Centralized list of Bootstrap Icons
 
 // List of available Bootstrap Icons
 // To add more icons, simply add them to this array
-const BOOTSTRAP_ICONS = [
+// Use window.BOOTSTRAP_ICONS to avoid redeclaration errors when script is loaded multiple times
+if (typeof window.BOOTSTRAP_ICONS === 'undefined') {
+	window.BOOTSTRAP_ICONS = [
 	'bi-house', 'bi-house-door', 'bi-building', 'bi-briefcase', 'bi-briefcase-fill',
 	'bi-graph-up', 'bi-graph-down', 'bi-bar-chart', 'bi-pie-chart', 'bi-speedometer',
 	'bi-people', 'bi-person', 'bi-person-circle', 'bi-person-square', 'bi-people-fill',
@@ -132,7 +134,11 @@ const BOOTSTRAP_ICONS = [
 	'bi-signpost', 'bi-signpost-2', 'bi-signpost-2-fill', 'bi-signpost-split',
 	'bi-signpost-split-fill', 'bi-postage', 'bi-postage-fill', 'bi-postage-heart',
 	'bi-postage-heart-fill', 'bi-stamp', 'bi-stamp-fill'
-];
+	];
+}
+
+// All references to BOOTSTRAP_ICONS should use window.BOOTSTRAP_ICONS directly
+// to avoid redeclaration errors when the script is loaded multiple times
 
 /**
  * Initialize the icon selector
@@ -213,7 +219,9 @@ function loadIcons(gridId, inputId, previewId = null) {
 
 	iconGrid.innerHTML = '';
 
-	BOOTSTRAP_ICONS.forEach(iconClass => {
+	// Use window.BOOTSTRAP_ICONS directly to avoid scope issues
+	var icons = window.BOOTSTRAP_ICONS || [];
+	icons.forEach(iconClass => {
 		const iconItem = document.createElement('div');
 		iconItem.className = 'icon-item';
 		iconItem.innerHTML = `
@@ -231,28 +239,70 @@ function loadIcons(gridId, inputId, previewId = null) {
 			// Update input with icon name
 			const iconInput = document.getElementById(inputId);
 			if (iconInput) {
-				iconInput.value = iconClass;
-				// Mark field as valid
-				iconInput.classList.remove('is-invalid');
-				iconInput.classList.add('is-valid');
-			}
-
-			// Update preview if exists
-			if (previewId) {
-				const previewElement = document.getElementById(previewId);
-				if (previewElement) {
-					previewElement.className = `bi ${iconClass}`;
+				// Update preview immediately if exists
+				if (previewId) {
+					const previewElement = document.getElementById(previewId);
+					if (previewElement) {
+						previewElement.className = `bi ${iconClass}`;
+					}
+				}
+				
+				// Set the value using jQuery to ensure it works with all listeners
+				if (typeof jQuery !== 'undefined') {
+					// Force update of the input value property first
+					iconInput.value = iconClass;
+					
+					// Then set value using jQuery
+					jQuery(iconInput).val(iconClass);
+					
+					// Mark field as valid
+					jQuery(iconInput).removeClass('is-invalid').addClass('is-valid');
+					
+					// Wait a bit longer to ensure value is fully set before triggering change
+					setTimeout(() => {
+						// Force set the value one more time to ensure it's correct
+						iconInput.value = iconClass;
+						jQuery(iconInput).val(iconClass);
+						
+						// Verify value is correct
+						var currentValue = jQuery(iconInput).val();
+						
+						if (currentValue !== iconClass) {
+							// Value was changed, force set it again
+							iconInput.value = iconClass;
+							jQuery(iconInput).val(iconClass);
+						}
+						
+						// Use a custom event to pass the icon value directly
+						var customEvent = jQuery.Event('change', { iconValue: iconClass });
+						jQuery(iconInput).trigger(customEvent);
+						
+						// Also trigger regular change event
+						jQuery(iconInput).trigger('change');
+					}, 250);
+				} else {
+					// Fallback if jQuery is not available
+					iconInput.value = iconClass;
+					iconInput.classList.remove('is-invalid');
+					iconInput.classList.add('is-valid');
+					
+					setTimeout(() => {
+						const changeEvent = new Event('change', { bubbles: true });
+						iconInput.dispatchEvent(changeEvent);
+					}, 50);
 				}
 			}
 
-			// Close modal after a brief delay
+			// Close modal after a brief delay to ensure value is set
 			setTimeout(() => {
 				const modalElement = iconGrid.closest('.modal');
 				if (modalElement) {
 					const modal = bootstrap.Modal.getInstance(modalElement);
-					if (modal) modal.hide();
+					if (modal) {
+						modal.hide();
+					}
 				}
-			}, 300);
+			}, 200);
 		});
 		iconGrid.appendChild(iconItem);
 	});

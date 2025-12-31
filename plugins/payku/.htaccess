@@ -1,0 +1,28 @@
+# Security: Protect Payku Plugin Configuration
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect config.php from direct access
+<FilesMatch "^(config\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect debug.log from direct access (contains sensitive data)
+<FilesMatch "^(debug\.log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Additional protection via mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Block direct access to config.php
+    RewriteRule ^config\.php$ - [F,L]
+    
+    # Block direct access to debug.log
+    RewriteRule ^debug\.log$ - [F,L]
+</IfModule>
+

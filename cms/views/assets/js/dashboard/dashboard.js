@@ -109,6 +109,11 @@ Limpiar el campo de icono
 
 $(document).on("change",".cleanIcon",function(){
 
+  // Skip if this is the metricIcon or icon_page field (they're handled separately)
+  if($(this).attr("id") == "metricIcon" || $(this).attr("id") == "icon_page"){
+    return;
+  }
+
   if($(this).val().split('"').length > 0){
 
     $(this).val($(this).val().split('"')[1]);

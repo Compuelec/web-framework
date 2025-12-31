@@ -1,13 +1,13 @@
 <?php
 
 /*=============================================
-Base Path del CMS (ej: /chatcenter/cms)
+CMS Base Path (e.g: /chatcenter/cms)
 =============================================*/
 
 $cmsBasePath = TemplateController::cmsBasePath();
 
 /*=============================================
-Traemos columnas de la tabla
+Get table columns
 =============================================*/
 
 $url = "columns?linkTo=id_module_column&equalTo=".$module->id_module;
@@ -27,12 +27,12 @@ if($columns->status == 200){
 }
 
 /*=============================================
-Agregar las columnas a los datos del módulo
+Add columns to module data
 =============================================*/
 $module->columns = $columns;
 
 /*=============================================
-Traemos contenido de la tabla
+Get table content
 =============================================*/
 $limit = 10;
 $totalPages = 0;
@@ -48,7 +48,7 @@ if($table->status == 200){
 	$table = $table->results;
 
 	/*=============================================
-	Traemos contenido total de la tabla
+	Get total table content
 	=============================================*/
 	
 	$url = $module->title_module."?select=id_".$module->suffix_module;
@@ -65,7 +65,7 @@ $totalColumns = 3;
 ?>
 
 <!--===========================================
-Cargamos el gestor de datos
+Load data manager
 =============================================-->
 
 <?php if (!empty($routesArray[1]) && $routesArray[1] == "manage"): ?>
@@ -79,7 +79,7 @@ Cargamos el gestor de datos
 	?>
 
 <!--===========================================
-Cargamos el módulo tabla
+Load table module
 =============================================-->
 
 <?php else: ?>
@@ -89,7 +89,7 @@ Cargamos el módulo tabla
 	<div class="card rounded p-3 w-100" id="cardTable">
 
 		<!--=========================================
-        Cabecera de la tabla
+        Table header
         ===========================================-->
 		
 		<div class="card-header bg-white position-relative">
@@ -113,7 +113,7 @@ Cargamos el módulo tabla
 			<div class="d-lg-flex justify-content-between">
 
 				<!--=========================================
-		        Botón para crear un nuevo registro
+		        Button to create a new record
 		        ===========================================-->
 				
 				<div class="mb-3">
@@ -152,7 +152,7 @@ Cargamos el módulo tabla
 						</li>
 
 						<!--=========================================
-				        Botón para rango de fechas
+				        Date range button
 				        ===========================================-->
 						
 						<li class="nav-item p-0 me-2 position-relative" style="bottom:5px">
@@ -177,7 +177,7 @@ Cargamos el módulo tabla
 						<li class="nav-item p-0">
 
 							<!--=========================================
-				        	Selección masiva
+				        	Bulk selection
 				        	===========================================-->
 
 							<button type="button" class="btn btn-sm bg-blue rounded border-0 checkAllItems" mode="false">
@@ -185,7 +185,7 @@ Cargamos el módulo tabla
 							</button>
 
 							<!--=========================================
-				        	Cambio Selección masiva
+				        	Bulk selection change
 				        	===========================================-->
 
 				        	<?php 
@@ -208,7 +208,7 @@ Cargamos el módulo tabla
 				        	?>
 
 							<!--=========================================
-				        	Cambio Boleano masivo
+				        	Bulk boolean change
 				        	===========================================-->
 
 				        	<?php 
@@ -231,7 +231,7 @@ Cargamos el módulo tabla
 				        	?>
 
 							<!--=========================================
-				        	Eliminación masiva
+				        	Bulk deletion
 				        	===========================================-->
 
 							<button type="button" class="btn btn-sm bg-maroon rounded border-0 deleteAllItems">
@@ -251,13 +251,13 @@ Cargamos el módulo tabla
 		</div>
 
 		<!--=========================================
-        Cuerpo de la tabla
+        Table body
         ===========================================-->
 
 		<div class="card-body">
 
 			<!--========================================
-			Filtros Iniciales
+			Initial filters
 			=========================================-->
 
 			<input type="hidden" id="contentModule" value='<?php echo json_encode($module) ?>'>
@@ -271,13 +271,13 @@ Cargamos el módulo tabla
 		    <input type="hidden" id="checkItems" value="" table="<?php echo $module->title_module ?>" suffix="<?php echo $module->suffix_module ?>">
 
 			<!--=========================================
-	        Bloque de filtros
+	        Filters block
 	        ===========================================-->		
 
 			<div class="d-lg-flex justify-content-lg-between">
 
 				<!--=========================================
-		        Filtar cantidad de registros
+		        Filter number of records
 		        ===========================================-->
 				
 				<div class="mb-3 row">
@@ -302,7 +302,7 @@ Cargamos el módulo tabla
 				</div>
 
 				<!--=========================================
-		        Filtar por búsqueda de registros
+		        Filter by record search
 		        ===========================================-->
 
 		        <div class="mb-3">
@@ -314,7 +314,7 @@ Cargamos el módulo tabla
 			</div>
 
 			<!--=========================================
-	        Bloque de tabla
+	        Table block
 	        ===========================================-->	
 
 	        <div class="table-responsive">
@@ -401,7 +401,7 @@ Cargamos el módulo tabla
 		        						<?php 
 
 	        							/*=============================================
-										Contenido tipo Imagen
+										Image type content
 										=============================================*/
 
 										if($item->type_column == "image"){
@@ -414,34 +414,32 @@ Cargamos el módulo tabla
 
 											}else{
 
-												echo '
-													<img src="<?php echo $cmsBasePath ?>/views/assets/img/file.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">
-												';
+												echo '<img src="'.$cmsBasePath.'/views/assets/img/file.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">';
 											}
 
 										/*=============================================
-										Contenido tipo Video
+										Video type content
 										=============================================*/
 
 										}else if($item->type_column == "video"){
 
 											echo '<a href="'.urldecode($value[$item->title_column]).'" target="_blank">
-												<img src="<?php echo $cmsBasePath ?>/views/assets/img/video.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">
+												<img src="'.$cmsBasePath.'/views/assets/img/video.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">
 											</a>';
 
 										/*=============================================
-										Contenido tipo otros Archivos
+										Other files type content
 										=============================================*/
 
 										}else if($item->type_column == "file"){
 
 											echo '<a href="'.urldecode($value[$item->title_column]).'" target="_blank">
-												<img src="<?php echo $cmsBasePath ?>/views/assets/img/file.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">
+												<img src="'.$cmsBasePath.'/views/assets/img/file.png" class="rounded" style="width:60px; height:60px; object-fit: cover; object-position:center;">
 											</a>';
 
 
 										/*=============================================
-										Contenido tipo Boleano
+										Boolean type content
 										=============================================*/
 
 										}else if($item->type_column == "boolean"){
@@ -471,7 +469,7 @@ Cargamos el módulo tabla
 											}
 
 										/*=============================================
-										Contenido tipo Array
+										Array type content
 										=============================================*/
 									    }else if($item->type_column == "array" && !empty($value[$item->title_column])){
 
@@ -484,7 +482,7 @@ Cargamos el módulo tabla
 											}
 
 										/*=============================================
-										Contenido tipo Objetos
+										Objects type content
 										=============================================*/
 
 										}else if($item->type_column == "object" && !empty($value[$item->title_column])){
@@ -498,7 +496,7 @@ Cargamos el módulo tabla
 									    	}
 
 									    /*=============================================
-										Contenido tipo Enlace
+										Link type content
 										=============================================*/
 
 										}else if($item->type_column == "link"){
@@ -506,7 +504,7 @@ Cargamos el módulo tabla
 									    	echo '<a href="'.$value[$item->title_column].'" target="_blank" class="badge badge-default border rounded bg-indigo">'.TemplateController::reduceText(urldecode($value[$item->title_column]), 20).'</a>';
 
 										/*=============================================
-										Contenido tipo Color
+										Color type content
 										=============================================*/
 
 										}else if($item->type_column == "color"){
@@ -514,15 +512,15 @@ Cargamos el módulo tabla
 									    	echo '<div class="rounded border" style="width:25px; height:25px; background:'.urldecode($value[$item->title_column]).'"></div>';
 
 									    /*=============================================
-										Contenido tipo Double
+										Double type content
 										=============================================*/
 
 										}else if($item->type_column == "money"){
 
 									    	echo '$'.number_format(urldecode($value[$item->title_column]),2);
 
-									    /*=============================================
-										Contenido tipo Relaciones
+										/*=============================================
+										Relations type content
 										=============================================*/
 
 										}else if($item->type_column == "relations"){
@@ -549,7 +547,7 @@ Cargamos el módulo tabla
 											}
 
 										/*=============================================
-										Contenido tipo Órden
+										Order type content
 										=============================================*/
 
 										}else if($item->type_column == "order"){
@@ -617,13 +615,13 @@ Cargamos el módulo tabla
 	        <?php if (!empty($table)): ?>
 
 	        <!--=========================================
-	        Bloque final
+	        Final block
 	        ===========================================-->	
 
 	        <div class="d-lg-flex justify-content-lg-between mt-2 mb-0">
 
 	        	<!--=========================================
-	        	Visualización de registros
+	        	Records display
 	        	===========================================-->	
 
 	        	<div class="mb-3 blockFooter" id="cont-filters">
@@ -637,7 +635,7 @@ Cargamos el módulo tabla
 	        	</div>
 
 	        	<!--=========================================
-	        	Paginación
+	        	Pagination
 	        	===========================================-->	
 
 	        	<div class="mb-3 blockFooter" id="cont-pagination">

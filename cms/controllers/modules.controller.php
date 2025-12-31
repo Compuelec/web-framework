@@ -38,14 +38,14 @@ class ModulesController{
 				if($updateModule->status == 200){
 
 					/*=============================================
-					Editando Módulo de tipo table
+					Editing table type Module
 					=============================================*/
 
 					if($_POST["type_module"] == "tables"){
 					
 
 						/*=============================================
-						Editar columnas
+						Edit columns
 						=============================================*/
 
 						$countColumns = 0;
@@ -62,7 +62,7 @@ class ModulesController{
 									$type = TemplateController::typeColumn($_POST["type_column_".$value]);
 
 									/*=============================================
-									Actualizar la tabla columnas
+									Update columns table
 									=============================================*/
 
 									if($_POST["id_column_".$value] > 0){
@@ -76,7 +76,7 @@ class ModulesController{
 										if($updateColumn->status == 200){
 										
 											/*=============================================
-											Editar columnas en MySQL
+											Edit columns in MySQL
 											=============================================*/
 
 											$sqlUpdateColumn = "ALTER TABLE ".$title_module." CHANGE ".$_POST["original_title_column_".$value]." ".str_replace(" ","_",$_POST["title_column_".$value])." ".$type;
@@ -92,7 +92,7 @@ class ModulesController{
 										}
 
 									/*=============================================
-									Creando nuevas columnas
+									Creating new columns
 									=============================================*/
 
 									}else{
@@ -146,7 +146,7 @@ class ModulesController{
 						}
 
 						/*=============================================
-						Eliminar columnas
+						Delete columns
 						=============================================*/
 
 						$countDeleteColumns = 0;
@@ -161,7 +161,7 @@ class ModulesController{
 								foreach ($deleteColumns as $key => $value) {
 
 									/*=============================================
-									Capturar el nombre de la columna 
+									Capture column name
 									=============================================*/
 
 									$url = "columns?linkTo=id_column&equalTo=".$value."&select=title_column";
@@ -171,7 +171,7 @@ class ModulesController{
 									$column = CurlController::request($url,$method,$fields);
 
 									/*=============================================
-									Eliminar de la tabla columnas
+									Delete from columns table
 									=============================================*/
 
 									$url = "columns?id=".$value."&nameId=id_column&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
@@ -183,7 +183,7 @@ class ModulesController{
 									if($deleteColumn->status == 200){
 
 										/*=============================================
-										Eliminar columna en BD de MySQL
+										Delete column in MySQL database
 										=============================================*/
 
 										$sqlDeleteColumn = "ALTER TABLE $title_module DROP ".$column->results[0]->title_column;
@@ -207,7 +207,7 @@ class ModulesController{
 						}
 
 						/*=============================================
-						Validar que termino el proceso SQL
+						Validate that SQL process finished
 						=============================================*/	
 
 						if($countDeleteColumns == count($deleteColumns) && count($indexColumns) == $countColumns){
@@ -246,13 +246,13 @@ class ModulesController{
 				}
 
 			/*=============================================
-			Creando módulo
+			Creating module
 			=============================================*/
 
 			}else{
 
 				/*=============================================
-				Validar primero que el módulo no exista
+				Validate first that module does not exist
 				=============================================*/
 
 				$url = "modules?linkTo=title_module,type_module&equalTo=".urlencode($_POST["title_module"]).",".$_POST["type_module"];	
@@ -280,7 +280,7 @@ class ModulesController{
 				}
 
 				/*=============================================
-				Validar que la tabla en BD no exista
+				Validate that table in database does not exist
 				=============================================*/
 
 				if($_POST["type_module"] == "tables"){
@@ -308,7 +308,7 @@ class ModulesController{
 				}
 
 				/*=============================================
-				Creación de los datos del módulo
+				Module data creation
 				=============================================*/
 
 				$url = "modules?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
@@ -329,13 +329,63 @@ class ModulesController{
 				if($createModule->status == 200){
 
 					/*=============================================
-					El módulo que se creó es tabla
+					Extract module ID from API response
+					=============================================*/
+					
+					$moduleId = null;
+					
+					// Try multiple ways to extract lastId or id_module
+					if(isset($createModule->results)){
+						if(is_object($createModule->results)){
+							// Direct access to lastId
+							if(isset($createModule->results->lastId)){
+								$moduleId = $createModule->results->lastId;
+							} elseif(isset($createModule->results->id_module)){
+								$moduleId = $createModule->results->id_module;
+							}
+						} elseif(is_array($createModule->results)){
+							// Check if it's an array with lastId
+							if(isset($createModule->results[0])){
+								if(is_object($createModule->results[0])){
+									if(isset($createModule->results[0]->lastId)){
+										$moduleId = $createModule->results[0]->lastId;
+									} elseif(isset($createModule->results[0]->id_module)){
+										$moduleId = $createModule->results[0]->id_module;
+									}
+								} elseif(is_array($createModule->results[0])){
+									if(isset($createModule->results[0]['lastId'])){
+										$moduleId = $createModule->results[0]['lastId'];
+									} elseif(isset($createModule->results[0]['id_module'])){
+										$moduleId = $createModule->results[0]['id_module'];
+									}
+								}
+							} elseif(isset($createModule->results['lastId'])){
+								$moduleId = $createModule->results['lastId'];
+							} elseif(isset($createModule->results['id_module'])){
+								$moduleId = $createModule->results['id_module'];
+							}
+						}
+					}
+					
+					// If we still don't have moduleId, log error
+					if($moduleId === null){
+						error_log("Modules API Response Structure: " . json_encode($createModule, JSON_PRETTY_PRINT));
+						echo '<script>
+							fncMatPreloader("off");
+							fncFormatInputs();
+							fncToastr("error", "Error: No se pudo obtener el ID del módulo creado");
+						</script>';
+						return;
+					}
+
+					/*=============================================
+					Module created is table type
 					=============================================*/
 
 					if($_POST["type_module"] == "tables"){
 
 						/*=============================================
-						Creamos la tabla en BD MySQL
+						Create table in MySQL database
 						=============================================*/
 
 						$sqlNewTable = "CREATE TABLE ".str_replace(" ","_",$fields["title_module"])." ( 
@@ -360,13 +410,13 @@ class ModulesController{
 									foreach ($indexColumns as $key => $value) {
 
 										/*=============================================
-										Crear nuevas columnas
+										Create new columns
 										=============================================*/
 
 										$url = "columns?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "POST";
 										$data = array(
-											"id_module_column" => $createModule->results->lastId,
+											"id_module_column" => $moduleId,
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],
@@ -426,29 +476,127 @@ class ModulesController{
 						}
 					
 					/*=============================================
-					El módulo que se creó es tabla
+					Module created is table type
 					=============================================*/
 
 					}else if($_POST["type_module"] == "custom"){
 
-						/*=============================================
-						Creamos carpeta de módulo personalizable
-						=============================================*/
+					/*=============================================
+					Create custom module folder
+					=============================================*/
 
-						$directory = DIR."/views/pages/dynamic/custom/".str_replace(" ","_",$fields["title_module"]);
+					// Ensure DIR is defined (use __DIR__ if not defined)
+					if(!defined('DIR')){
+						define('DIR', dirname(__DIR__));
+					}
 
-						if(!file_exists($directory)){
+					$moduleName = str_replace(" ","_",$fields["title_module"]);
+					$baseDir = DIR."/views/pages/dynamic/custom";
+					$directory = $baseDir."/".$moduleName;
 
-							mkdir($directory, 0755);
+					// Check if base directory exists and is writable
+					if(!file_exists($baseDir)){
+						if(!@mkdir($baseDir, 0777, true)){
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","Error al crear el directorio base. Verifique los permisos de escritura en: '.$baseDir.'", "");		
+							</script>';
+							exit;
 						}
+						// Try to make directory writable
+						@chmod($baseDir, 0777);
+					}
 
-						/*=============================================
-						Copiamos el archivo custom con el nuevo nombre
-						=============================================*/	
+					// Verify base directory is writable
+					if(!is_writable($baseDir)){
+						@chmod($baseDir, 0777);
+						if(!is_writable($baseDir)){
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","El directorio base no es escribible. Verifique los permisos en: '.$baseDir.'", "");		
+							</script>';
+							exit;
+						}
+					}
 
-						$from = DIR."/views/pages/dynamic/custom/custom.php";
+					// Create module directory if it doesn't exist (with recursive permissions)
+					if(!file_exists($directory)){
+						if(!@mkdir($directory, 0777, true)){
+							// If it fails, try with chmod afterwards
+							if(!file_exists($directory)){
+								echo '
+								<script>
+									fncMatPreloader("off");
+									fncFormatInputs();
+								    fncSweetAlert("error","Error al crear el directorio del módulo. Verifique los permisos de escritura en: '.$directory.'", "");		
+								</script>';
+								exit;
+							}
+						}
+						// Try to make directory writable
+						@chmod($directory, 0777);
+					}
 
-						if(copy($from, $directory.'/'.str_replace(" ","_",$fields["title_module"]).'.php')){
+					/*=============================================
+					Copy or create custom file with new name
+					=============================================*/	
+
+					$from = $baseDir."/custom.php";
+					$to = $directory.'/'.$moduleName.'.php';
+					
+					// File content (use template if exists, otherwise create basic one)
+					$fileContent = '';
+					
+					if(file_exists($from)){
+						// Try to read template file content
+						$fileContent = @file_get_contents($from);
+					}
+					
+					// If template couldn't be read, use basic content
+					if(empty($fileContent)){
+						$fileContent = '<?php
+/**
+ * Custom Module: '.$fields["title_module"].'
+ * 
+ * This is a custom module. You can edit this file to customize its content.
+ */
+?>
+
+<div class="card rounded">
+	<div class="card-header">
+		<h3 class="card-title">'.$fields["title_module"].'</h3>
+	</div>
+	<div class="card-body">
+		<p>Custom module. Edit this file to customize its content.</p>
+	</div>
+</div>';
+					}
+
+					// Try to create file directly (more reliable than copy)
+					$fileCreated = @file_put_contents($to, $fileContent);
+					
+					if($fileCreated !== false){
+
+						echo '
+
+						<script>
+
+							fncMatPreloader("off");
+							fncFormatInputs();
+						    fncSweetAlert("success","El módulo ha sido creado con éxito",setTimeout(()=>location.reload(),1250));		
+
+						</script>
+
+						';
+
+					}else{
+
+						// If it fails, try copy as alternative
+						if(file_exists($from) && @copy($from, $to)){
 
 							echo '
 
@@ -462,7 +610,33 @@ class ModulesController{
 
 							';
 
+						}else{
+
+							// Show detailed error
+							$errorMsg = "Error al crear el archivo del módulo. ";
+							$errorMsg .= "Directorio: ".$directory." ";
+							$errorMsg .= "Archivo destino: ".$to." ";
+							if(!is_writable($directory)){
+								$errorMsg .= "El directorio no es escribible.";
+							}else{
+								$errorMsg .= "Verifique los permisos de escritura.";
+							}
+
+							echo '
+
+							<script>
+
+								fncMatPreloader("off");
+								fncFormatInputs();
+							    fncSweetAlert("error","'.$errorMsg.'", "");		
+
+							</script>
+
+							';
+
 						}
+
+					}
 
 
 					}else{

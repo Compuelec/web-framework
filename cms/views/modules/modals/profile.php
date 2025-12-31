@@ -7,164 +7,241 @@
 
         <!-- Modal Header -->
         <div class="modal-header">
-          <h4 class="modal-title text-capitalize">Perfil <?php echo $_SESSION["admin"]->rol_admin ?></h4>
+          <h4 class="modal-title text-capitalize">Perfil <?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? $_SESSION["admin"]->rol_admin : '' ?></h4>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
         <!-- Modal body -->
         <div class="modal-body px-4">
 
-          <input type="hidden" name="id_admin" value="<?php echo base64_encode($_SESSION["admin"]->id_admin) ?>">
+          <input type="hidden" name="id_admin" value="<?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? base64_encode($_SESSION["admin"]->id_admin) : '' ?>">
          
-          <div class="form-group mb-3">
-
-            <label for="email_admin">Correo<sup>*</sup></label>
-
-            <input 
-            type="email"
-            class="form-control rounded"
-            id="email_admin"
-            name="email_admin"
-            value="<?php echo $_SESSION["admin"]->email_admin ?>"
-            required
-            >
-
-            <div class="valid-feedback">Válido.</div>
-            <div class="invalid-feedback">Campo inválido.</div>
-
+          <div class="mb-3">
+            <h6 class="text-muted mb-3">
+              <i class="bi bi-person-circle"></i> Información de Cuenta
+            </h6>
           </div>
 
-          <div class="form-group mb-3">
+          <div class="row g-3">
+            
+            <!--=============================================
+            Account Information Section
+            ===============================================-->
+            
+            <div class="col-12">
+              <div class="card border-0 bg-light">
+                <div class="card-body">
+                  <h6 class="card-title text-muted mb-3">
+                    <i class="bi bi-shield-lock"></i> Credenciales
+                  </h6>
+                  
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="email_admin" class="form-label small fw-semibold">Correo<sup>*</sup></label>
+                      <input 
+                        type="email"
+                        class="form-control form-control-sm rounded"
+                        id="email_admin"
+                        name="email_admin"
+                        value="<?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? $_SESSION["admin"]->email_admin : '' ?>"
+                        required
+                      >
+                      <div class="valid-feedback">Válido.</div>
+                      <div class="invalid-feedback">Campo inválido.</div>
+                    </div>
 
-            <label for="password_admin">Contraseña</label>
-
-            <input 
-            type="password"
-            class="form-control rounded"
-            id="password_admin"
-            name="password_admin"
-            placeholder="*********"
-            >
-
-            <div class="valid-feedback">Válido.</div>
-            <div class="invalid-feedback">Campo inválido.</div>
-
-          </div>
-
-          <?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
-
-            <div class="form-group mb-3">
-
-              <label for="title_admin">Nombre del Dashboard <sup>*</sup></label>
-
-              <input 
-              type="text" 
-              class="form-control rounded" 
-              id="title_admin"
-              name="title_admin"
-              value="<?php echo $_SESSION["admin"]->title_admin ?>"
-              required
-              >
-
-              <div class="valid-feedback">Válido.</div>
-              <div class="invalid-feedback">Campo inválido.</div>
-
+                    <div class="col-md-6">
+                      <label for="password_admin" class="form-label small fw-semibold">Contraseña</label>
+                      <input 
+                        type="password"
+                        class="form-control form-control-sm rounded"
+                        id="password_admin"
+                        name="password_admin"
+                        placeholder="Dejar vacío para mantener la actual"
+                      >
+                      <div class="valid-feedback">Válido.</div>
+                      <div class="invalid-feedback">Campo inválido.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="symbol_admin" class="form-label">
-                            Símbolo <span class="text-danger">*</span>
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="bi <?php echo $_SESSION["admin"]->symbol_admin ?>" id="iconPreviewPlaceholder"></i>
-                            </span>
-                            <input 
+            <?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
+
+              <!--=============================================
+              Dashboard Configuration Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="mb-3">
+                  <h6 class="text-muted mb-3">
+                    <i class="bi bi-sliders"></i> Configuración del Dashboard
+                  </h6>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-info-circle"></i> Información General
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-12">
+                        <label for="title_admin" class="form-label small fw-semibold">Nombre del Dashboard<sup>*</sup></label>
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm rounded" 
+                          id="title_admin"
+                          name="title_admin"
+                          value="<?php echo $_SESSION["admin"]->title_admin ?>"
+                          placeholder="Nombre del dashboard"
+                          required
+                        >
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!--=============================================
+              Appearance Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-palette"></i> Apariencia
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="symbol_admin" class="form-label small fw-semibold">Símbolo<sup>*</sup></label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text bg-white">
+                            <i class="bi <?php echo $_SESSION["admin"]->symbol_admin ?>" id="iconPreviewPlaceholder"></i>
+                          </span>
+                          <input 
                             type="text"
-                            class="form-control"
+                            class="form-control form-control-sm rounded"
                             id="symbol_admin"
                             name="symbol_admin"
                             value="<?php echo htmlspecialchars($_SESSION["admin"]->symbol_admin) ?>"
+                            placeholder="Seleccionar icono"
                             readonly
                             required
-                            >
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSelectIcon" data-bs-toggle="modal" data-bs-target="#iconSelectorModal">
-                                <i class="bi bi-grid-3x3-gap"></i>
-                            </button>
+                          >
+                          <button type="button" class="btn btn-outline-secondary" id="btnSelectIcon" data-bs-toggle="modal" data-bs-target="#iconSelectorModal" title="Seleccionar icono">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                          </button>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="color_admin" class="form-label">
-                            Color del Dashboard
-                        </label>
+                        <div class="valid-feedback">Válido.</div>
+                        <div class="invalid-feedback">Campo inválido.</div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label for="color_admin" class="form-label small fw-semibold">Color del Dashboard</label>
                         <div class="d-flex align-items-center gap-2">
-                            <input 
+                          <input 
                             type="color"
                             class="form-control form-control-color"
                             id="color_admin"
                             name="color_admin"
                             value="<?php echo $_SESSION["admin"]->color_admin ?>"
-                            title="Escoge Color"
+                            title="Seleccionar color"
                             style="width: 60px; height: 38px;"
-                            >
-                            <input 
+                          >
+                          <input 
                             type="text"
-                            class="form-control"
+                            class="form-control form-control-sm rounded"
                             id="color_admin_text"
                             value="<?php echo $_SESSION["admin"]->color_admin ?>"
                             readonly
-                            style="max-width: 100px;"
-                            >
+                            style="max-width: 120px;"
+                          >
                         </div>
+                      </div>
                     </div>
+                  </div>
                 </div>
-            </div>
+              </div>
 
-            <div class="form-group mb-3">
-                <label for="font_admin" class="form-label">
-                    Tipografía del Dashboard
-                </label>
-                <div class="input-group">
-                    <span class="input-group-text">
-                        <i class="bi bi-fonts"></i>
-                    </span>
-                    <textarea 
-                    class="form-control"
-                    id="font_admin"
-                    name="font_admin"
-                    placeholder="Seleccionar tipografía"
-                    readonly
-                    rows="2"
-                    ><?php echo htmlspecialchars($_SESSION["admin"]->font_admin) ?></textarea>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSelectFont" data-bs-toggle="modal" data-bs-target="#fontSelectorModal">
-                        <i class="bi bi-grid-3x3-gap"></i>
-                    </button>
+              <!--=============================================
+              Typography Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-type"></i> Tipografía
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-12">
+                        <label for="font_admin" class="form-label small fw-semibold">Tipografía del Dashboard</label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text bg-white">
+                            <i class="bi bi-fonts"></i>
+                          </span>
+                          <textarea 
+                            class="form-control form-control-sm rounded"
+                            id="font_admin"
+                            name="font_admin"
+                            placeholder="Seleccionar tipografía"
+                            readonly
+                            rows="2"
+                          ><?php echo htmlspecialchars($_SESSION["admin"]->font_admin) ?></textarea>
+                          <button type="button" class="btn btn-outline-secondary" id="btnSelectFont" data-bs-toggle="modal" data-bs-target="#fontSelectorModal" title="Seleccionar tipografía">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                          </button>
+                        </div>
+                        <div id="fontPreview" class="mt-2 p-2 border rounded bg-light" <?php if(empty($_SESSION["admin"]->font_admin)): ?> style="display: none;" <?php endif ?>>
+                          <small class="text-muted d-block mb-1"><strong>Vista previa:</strong></small>
+                          <span id="fontPreviewText" style="font-size: 0.95rem; <?php if(!empty($_SESSION["admin"]->font_admin)): ?><?php echo explode("\n\n", $_SESSION["admin"]->font_admin)[1] ?? $_SESSION["admin"]->font_admin ?><?php endif ?>">Texto de ejemplo con la fuente seleccionada</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div id="fontPreview" class="mt-2 p-2 border rounded bg-light" <?php if(empty($_SESSION["admin"]->font_admin)): ?> style="display: none;" <?php endif ?>>
-                    <small class="text-muted d-block mb-1"><strong>Vista previa:</strong></small>
-                    <span id="fontPreviewText" style="font-size: 0.95rem; <?php if(!empty($_SESSION["admin"]->font_admin)): ?><?php echo explode("\n\n", $_SESSION["admin"]->font_admin)[1] ?? $_SESSION["admin"]->font_admin ?><?php endif ?>">Texto de ejemplo con la fuente seleccionada</span>
+              </div>
+
+              <!--=============================================
+              Login Background Section
+              ===============================================-->
+              
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                      <i class="bi bi-image"></i> Imagen de Fondo
+                    </h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-12">
+                        <label for="back_admin" class="form-label small fw-semibold">Imagen para el Login</label>
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm rounded" 
+                          id="back_admin"
+                          name="back_admin"
+                          value="<?php echo $_SESSION["admin"]->back_admin ?>"
+                          placeholder="URL de la imagen"
+                        >
+                      </div>
+                    </div>
+                  </div>
                 </div>
-            </div>
+              </div>
 
-            <div class="form-group mb-3">
+            <?php endif ?>
 
-              <label for="back_admin">Imagen para el Login</label>
-
-              <input 
-              type="text" 
-              class="form-control rounded" 
-              id="back_admin"
-              name="back_admin"
-              value="<?php echo $_SESSION["admin"]->back_admin ?>"
-              >
-
-            </div>
-
-          <?php endif ?>
+          </div>
 
         </div>
 

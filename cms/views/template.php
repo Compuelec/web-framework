@@ -1,25 +1,50 @@
 <?php 
 
-/*=============================================
-Iniciar variables de sesión
-=============================================*/
-
 ob_start();
-session_start();
 
-/*=============================================
-Base Path del CMS (ej: /chatcenter/cms)
-=============================================*/
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+    session_start();
+}
+
+require_once __DIR__ . "/../controllers/session.controller.php";
+require_once __DIR__ . "/../controllers/template.controller.php";
+require_once __DIR__ . "/../../api/models/connection.php";
+
+// Validate token if admin session exists
+if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"])) {
+    $currentUserId = $_SESSION["admin"]->id_admin ?? null;
+    $currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+    
+    // Validate token expiration
+    if (!empty($currentUserToken)) {
+        $tokenValidation = Connection::tokenValidate($currentUserToken, "admins", "admin");
+        
+        if ($tokenValidation == "expired" || $tokenValidation == "no-auth") {
+            // Token expired or invalid - destroy session and redirect to login
+            session_destroy();
+            session_start();
+            
+            // Redirect to login
+            $cmsBasePath = TemplateController::cmsBasePath();
+            header("Location: " . $cmsBasePath . "/login");
+            exit();
+        }
+    }
+    
+    SessionController::startUniqueSession($currentUserId, $currentUserToken);
+}
 
 $cmsBasePath = TemplateController::cmsBasePath();
 
-/*=============================================
-Capturar parámetros de la url
-=============================================*/
-
 $requestPath = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-
-/* Remover el prefijo del CMS del request para rutear correctamente */
 if($cmsBasePath !== "" && strpos($requestPath, $cmsBasePath) === 0){
 	$requestPath = substr($requestPath, strlen($cmsBasePath));
 }
@@ -33,17 +58,12 @@ foreach ($routesArray as $key => $value) {
 	$routesArray[$key] = explode("?",$value)[0];
 }
 
-/*=============================================
-Validar si existe la base de datos con la tabla admins
-=============================================*/
 
 $url = "admins";
 $method = "GET";
 $fields = array();
 
 $adminTable = CurlController::request($url,$method,$fields);
-
-// echo '<pre>$adminTable '; print_r($adminTable); echo '</pre>';
 
 // Initialize admin as null
 $admin = null;
@@ -66,8 +86,6 @@ if($adminTable !== null && is_object($adminTable)){
 	
 }
 
-// echo '<pre>$admin '; print_r($admin); echo '</pre>';
-
 ?>
 
 <!DOCTYPE html>
@@ -81,19 +99,19 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
 	<!--=============================================
-	Validamos si admin existe
+	Validate if admin exists
 	===============================================-->
 
 	<?php if (!empty($admin)): ?>
 
 		<!--=============================================
-		Título del Dashboard
+		Dashboard Title
 		===============================================-->
 
 		<title><?php echo $admin->title_admin ?></title>
 
 		<!--=============================================
-		Típografía del dashboard
+		Dashboard Typography
 		===============================================-->
 
 		<?php if ($admin->font_admin != null): ?>
@@ -105,13 +123,13 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php endif ?>
 
 		<!--=============================================
-		Estilos propios del dashboard
+		Dashboard Custom Styles
 		===============================================-->
 
 		<style>
 			
 			/*=============================================
-			Típografía del dashboard
+			Dashboard Typography
 			=============================================*/
 
 			<?php if ($admin->font_admin != null):?>
@@ -130,7 +148,7 @@ if($adminTable !== null && is_object($adminTable)){
 			<?php endif ?>
 
 			/*=============================================
-			Color del dashboard
+			Dashboard Color
 			=============================================*/
 
 			.backColor{
@@ -175,9 +193,17 @@ if($adminTable !== null && is_object($adminTable)){
 		window.CMS_BASE_PATH = <?php echo json_encode($cmsBasePath); ?>;
 		window.CMS_AJAX_PATH = (window.CMS_BASE_PATH || "") + "/ajax";
 		window.CMS_ASSETS_PATH = (window.CMS_BASE_PATH || "") + "/views/assets";
+		<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && isset($_SESSION["admin"]->token_admin)): ?>
+		window.CMS_TOKEN = <?php echo json_encode($_SESSION["admin"]->token_admin); ?>;
+		// Sync with localStorage
+		if (typeof(Storage) !== "undefined") {
+			localStorage.setItem("tokenAdmin", window.CMS_TOKEN);
+		}
+		<?php endif ?>
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js"></script>
 
 	<!--=============================================
 	PLUGINS CSS
@@ -268,6 +294,33 @@ if($adminTable !== null && is_object($adminTable)){
 
 	<?php 
 
+	if(isset($_SESSION["admin"])){
+		if(!isset($_SESSION['_unique_session_info'])){
+			if(is_object($_SESSION["admin"])){
+				$currentUserId = $_SESSION["admin"]->id_admin ?? null;
+				$currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+				SessionController::startUniqueSession($currentUserId, $currentUserToken);
+			}
+		} else {
+			$isValid = SessionController::validateSession();
+			
+			if(!$isValid && isset($_SESSION["admin"])){
+				if(is_object($_SESSION["admin"])){
+					$currentUserId = $_SESSION["admin"]->id_admin ?? null;
+					$currentUserToken = $_SESSION["admin"]->token_admin ?? null;
+					$domain = SessionController::getDomain();
+					$sessionId = substr(md5($domain), 0, 16);
+					$_SESSION['_unique_session_info'] = [
+						'domain' => $domain,
+						'user_id' => $currentUserId,
+						'session_id' => $sessionId,
+						'created_at' => time()
+					];
+				}
+			}
+		}
+	}
+
 	if(!isset($_SESSION["admin"])){
 
 		if($admin == null){
@@ -322,7 +375,7 @@ if($adminTable !== null && is_object($adminTable)){
 		?>
 
 		<!--=============================================
-		PLANTILLA DASHBOARD
+		DASHBOARD TEMPLATE
 		===============================================-->
 
 		<div class="d-flex backDashboard" id="wrapper">
@@ -354,13 +407,13 @@ if($adminTable !== null && is_object($adminTable)){
 					<?php else: ?>
 
 						<!--=========================================
-						Validar permisos
+						Validate permissions
 						===========================================-->
 
 						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"))): ?>
 
 							<!--=========================================
-							Agregamos páginas dinámicas y personalizadas
+							Add dynamic and custom pages
 							===========================================-->
 
 							<?php 
@@ -428,9 +481,40 @@ if($adminTable !== null && is_object($adminTable)){
 									}
 								
 								}else{
-
-									include "pages/404/404.php";
-								
+									// Page not found in database
+									// Check if URL might be a plugin that was deleted
+									$isPluginUrl = false;
+									if(class_exists('PluginsRegistry')){
+										$isPluginUrl = PluginsRegistry::isPluginUrl($routesArray[0]);
+									} else {
+										$pluginsRegistryPath = __DIR__ . "/../../plugins/plugins-registry.php";
+										if(file_exists($pluginsRegistryPath)){
+											require_once $pluginsRegistryPath;
+											if(class_exists('PluginsRegistry')){
+												$isPluginUrl = PluginsRegistry::isPluginUrl($routesArray[0]);
+											}
+										}
+									}
+									
+									if($isPluginUrl){
+										// Show friendly message for deleted plugin page
+										echo '<div class="container-fluid backgroundImage"';
+										if (!empty($admin->back_admin)) {
+											echo ' style="background-image: url(' . $admin->back_admin . ')"';
+										}
+										echo '>';
+										echo '<div class="d-flex flex-wrap justify-content-center align-content-center vh-100">';
+										echo '<div class="card rounded p-4 w-25 text-center" style="min-width: 320px !important;">';
+										echo '<h1 class="textColor">404</h1>';
+										echo '<h3><i class="fas fa-exclamation-triangle text-default textColor"></i> Página de Plugin Eliminada</h3>';
+										echo '<p>La página del plugin <strong>' . htmlspecialchars($routesArray[0]) . '</strong> ha sido eliminada.</p>';
+										echo '<p class="mb-0">Puedes <a href="' . $cmsBasePath . '/"><strong>regresar a la página de inicio</strong></a> o crear una nueva página para este plugin.</p>';
+										echo '</div>';
+										echo '</div>';
+										echo '</div>';
+									} else {
+										include "pages/404/404.php";
+									}
 								}
 
 							?>
@@ -447,13 +531,13 @@ if($adminTable !== null && is_object($adminTable)){
 
 
 					<!--=========================================
-				 	Validar permisos para super y admins
+				 	Validate permissions for super and admins
 					===========================================-->
 
 					<?php if ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin"): ?>
 
 						<!--=========================================
-						Agregamos la página inicial
+						Add initial page
 						===========================================-->
 
 						<?php 
@@ -505,7 +589,7 @@ if($adminTable !== null && is_object($adminTable)){
 					<?php else: ?>
 
 					<!--=========================================
-				 	Validar permisos para editores
+				 	Validate permissions for editors
 					===========================================-->
 
 						<?php if ($_SESSION["admin"]->rol_admin == "editor"): ?>
@@ -571,7 +655,7 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php 
 
 		/*=============================================
-    	Incluimos modal de perfiles
+    	Include profile modal
     	=============================================*/
 
     	include "modules/modals/profile.php"; 
@@ -579,10 +663,10 @@ if($adminTable !== null && is_object($adminTable)){
 		$update = new AdminsController();
 	    $update->updateAdmin();
 
-	    if($_SESSION["admin"]->rol_admin == "superadmin"){
+	    if(isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"){
 
 	    	/*=============================================
-	    	Incluimos modal de páginas
+	    	Include pages modal
 	    	=============================================*/
 
 		    include "views/modules/modals/pages.php";
@@ -592,7 +676,7 @@ if($adminTable !== null && is_object($adminTable)){
 		    $managePage->managePage();
 
 		    /*=============================================
-	    	Incluimos modal de módulos
+	    	Include modules modal
 	    	=============================================*/
 
 		    include "views/modules/modals/modules.php";
@@ -616,7 +700,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js"></script>
 	
-	<!-- Nuevas funcionalidades mejoradas -->
+	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js"></script>
