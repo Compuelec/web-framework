@@ -737,6 +737,49 @@ class InstallController{
 
 				$tableModule = CurlController::request($url,$method,$fields);
 
+				// Extract module ID from API response
+				$tableModuleId = null;
+				
+				if($tableModule->status == 200 && isset($tableModule->results)){
+					// Try multiple ways to extract lastId or id_module
+					if(is_object($tableModule->results)){
+						// Direct access to lastId
+						if(isset($tableModule->results->lastId)){
+							$tableModuleId = $tableModule->results->lastId;
+						} elseif(isset($tableModule->results->id_module)){
+							$tableModuleId = $tableModule->results->id_module;
+						}
+					} elseif(is_array($tableModule->results)){
+						// Check if it's an array with lastId
+						if(isset($tableModule->results[0])){
+							if(is_object($tableModule->results[0])){
+								if(isset($tableModule->results[0]->lastId)){
+									$tableModuleId = $tableModule->results[0]->lastId;
+								} elseif(isset($tableModule->results[0]->id_module)){
+									$tableModuleId = $tableModule->results[0]->id_module;
+								}
+							} elseif(is_array($tableModule->results[0])){
+								if(isset($tableModule->results[0]['lastId'])){
+									$tableModuleId = $tableModule->results[0]['lastId'];
+								} elseif(isset($tableModule->results[0]['id_module'])){
+									$tableModuleId = $tableModule->results[0]['id_module'];
+								}
+							}
+						} elseif(isset($tableModule->results['lastId'])){
+							$tableModuleId = $tableModule->results['lastId'];
+						} elseif(isset($tableModule->results['id_module'])){
+							$tableModuleId = $tableModule->results['id_module'];
+						}
+					}
+				}
+				
+				// If we still don't have moduleId, log error and skip column creation
+				if($tableModuleId === null || $tableModuleId == 0){
+					error_log("Install Error: Could not extract module ID from tableModule response. Response: " . json_encode($tableModule, JSON_PRETTY_PRINT));
+					// Continue with installation but skip column creation
+					$tableModuleId = null;
+				}
+
 				// Create server folder
 
 				$url = "folders?token=no&except=id_folder";
@@ -760,14 +803,15 @@ class InstallController{
 				   $packagingPage->status == 200 &&
 				   $breadcrumbModule->status == 200 &&
 				   $tableModule->status == 200 &&
-				   $serverFolder->status == 200
+				   $serverFolder->status == 200 &&
+				   $tableModuleId !== null && $tableModuleId > 0
 				){
 
 					// Create each column for admins table
 
 					$columns = array(
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "rol_admin",
 							"alias_column" => "rol",
 							"type_column" =>  "select",
@@ -776,7 +820,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "permissions_admin",
 							"alias_column" => "permisos",
 							"type_column" =>  "object",
@@ -785,7 +829,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "email_admin",
 							"alias_column" => "email",
 							"type_column" =>  "email",
@@ -794,7 +838,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "password_admin",
 							"alias_column" => "pass",
 							"type_column" =>  "password",
@@ -803,7 +847,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "token_admin",
 							"alias_column" => "token",
 							"type_column" =>  "text",
@@ -812,7 +856,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "token_exp_admin",
 							"alias_column" => "expiración",
 							"type_column" =>  "text",
@@ -821,7 +865,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "status_admin",
 							"alias_column" => "estado",
 							"type_column" =>  "boolean",
@@ -830,7 +874,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "title_admin",
 							"alias_column" => "título",
 							"type_column" =>  "text",
@@ -839,7 +883,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "symbol_admin",
 							"alias_column" => "simbolo",
 							"type_column" =>  "text",
@@ -848,7 +892,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "font_admin",
 							"alias_column" => "tipografía",
 							"type_column" =>  "text",
@@ -857,7 +901,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "color_admin",
 							"alias_column" => "color",
 							"type_column" =>  "text",
@@ -866,7 +910,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "back_admin",
 							"alias_column" => "fondo",
 							"type_column" =>  "text",
@@ -875,7 +919,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "scode_admin",
 							"alias_column" => "seguridad",
 							"type_column" =>  "text",
@@ -884,7 +928,7 @@ class InstallController{
 							"date_created_column" => date("Y-m-d")
 						],
 						[	
-							"id_module_column" => $tableModule->results->lastId,
+							"id_module_column" => $tableModuleId,
 							"title_column" =>  "chatgpt_admin",
 							"alias_column" => "chatgpt",
 							"type_column" =>  "object",
