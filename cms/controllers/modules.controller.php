@@ -595,7 +595,7 @@ class ModulesController{
 
 					}else{
 
-						// Si falla, intentar con copy como alternativa
+						// If it fails, try copy as alternative
 						if(file_exists($from) && @copy($from, $to)){
 
 							echo '

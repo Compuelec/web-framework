@@ -108,17 +108,17 @@ require_once 'cms/controllers/path-updater.controller.php';
 // Detectar dominio
 $domainInfo = PathUpdaterController::detectDomain();
 
-// Actualizar configuración del CMS
-// NOTA: Los valores de base de datos deben venir de tu configuración, no estar hardcodeados
+// Update CMS configuration
+// NOTE: Database values should come from your configuration, not be hardcoded
 $dbConfig = [
-    'host' => 'tu_host',      // Ejemplo: 'localhost' o '127.0.0.1'
-    'name' => 'tu_database',   // Ejemplo: 'mi_base_datos'
-    'user' => 'tu_usuario',    // Ejemplo: 'root' o tu usuario de BD
-    'pass' => 'tu_password'     // Tu contraseña de base de datos
+    'host' => 'tu_host',      // Example: 'localhost' or '127.0.0.1'
+    'name' => 'tu_database',   // Example: 'mi_base_datos'
+    'user' => 'tu_usuario',    // Example: 'root' or your DB user
+    'pass' => 'tu_password'     // Your database password
 ];
 PathUpdaterController::updateCmsConfig($domainInfo, $dbConfig);
 
-// Actualizar configuración de la API
+// Update API configuration
 PathUpdaterController::updateApiConfig($dbConfig);
 ```
 

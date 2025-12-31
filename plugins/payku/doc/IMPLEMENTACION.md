@@ -343,22 +343,22 @@ Esta página muestra el estado del pago y tiene un botón "Volver" que redirige 
 ### Verificar Estado Después del Pago
 
 ```javascript
-// Después de que el usuario regresa de Payku
+// After user returns from Payku
 const urlParams = new URLSearchParams(window.location.search);
 const orderId = urlParams.get('order_id');
 
 if (orderId) {
-  // Consultar estado inmediatamente
+  // Query status immediately
   consultarEstado(orderId).then(orden => {
     if (orden) {
       if (orden.status === 'completed') {
-        // Pago exitoso
+        // Payment successful
         mostrarMensajeExito();
       } else if (orden.status === 'failed') {
-        // Pago fallido
+        // Payment failed
         mostrarMensajeError();
       } else {
-        // Pendiente - consultar nuevamente después de unos segundos
+        // Pending - query again after a few seconds
         setTimeout(() => consultarEstado(orderId), 3000);
       }
     }
@@ -483,7 +483,7 @@ class CarritoPayku {
     const data = await response.json();
     
     if (data.status === 200) {
-      // Guardar order_id en localStorage para verificación posterior
+      // Save order_id in localStorage for later verification
       localStorage.setItem('lastOrderId', orderData.order_id);
       window.location.href = data.results.redirect_url;
     } else {

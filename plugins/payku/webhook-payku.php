@@ -115,7 +115,7 @@ if ($status == "rejected" || $status == "failed") {
                 }
             }
         } else {
-            // Si no podemos verificar pero el estado es success, actualizar de todas formas
+            // If we can't verify but status is success, update anyway
             error_log("Payku webhook: Could not verify payment via API, but status is success. Updating order: " . $order_id);
             PaykuPlugin::updateOrderStatus($order_id, 'completed', [
                 'transaction_id' => $transaction_id,
@@ -126,7 +126,7 @@ if ($status == "rejected" || $status == "failed") {
             ]);
         }
     } else {
-        // No hay payment_key pero el estado es success - actualizar de todas formas
+        // No payment_key but status is success - update anyway
         error_log("Payku webhook: Status is success but no payment_key. Updating order: " . $order_id);
         PaykuPlugin::updateOrderStatus($order_id, 'completed', [
             'transaction_id' => $transaction_id,

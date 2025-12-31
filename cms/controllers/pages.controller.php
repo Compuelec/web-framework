@@ -161,7 +161,7 @@ class PagesController{
 							
 							if(class_exists('PluginsRegistry') && PluginsRegistry::isPluginUrl($urlPage)){
 								
-								// Asegurar que el directorio del plugin existe con permisos correctos
+								// Ensure plugin directory exists with correct permissions
 								$projectRoot = dirname(DIR);
 								$pluginDir = $projectRoot . '/plugins/' . $urlPage;
 								
@@ -169,7 +169,7 @@ class PagesController{
 									@mkdir($pluginDir, 0777, true);
 									@chmod($pluginDir, 0777);
 								} else {
-									// Asegurar permisos incluso si el directorio ya existe
+									// Ensure permissions even if directory already exists
 									@chmod($pluginDir, 0777);
 								}
 								
@@ -183,7 +183,7 @@ class PagesController{
 								Verificar y crear tablas necesarias para el plugin
 								=============================================*/
 								
-								// Para el plugin Payku, verificar/crear tabla payku_orders
+								// For Payku plugin, verify/create payku_orders table
 								if($urlPage === 'payku'){
 									$paykuControllerPath = $projectRoot . '/plugins/payku/controllers/payku.controller.php';
 									if(file_exists($paykuControllerPath)){

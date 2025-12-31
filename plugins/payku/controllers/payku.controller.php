@@ -329,7 +329,7 @@ class PaykuPlugin {
             $stmtCheck = $link->query($sqlCheck);
             
             if ($stmtCheck->rowCount() == 0) {
-                // Crear tabla
+                // Create table
                 $sqlCreate = "CREATE TABLE payku_orders (
                     id_order INT NOT NULL AUTO_INCREMENT,
                     order_id VARCHAR(255) NOT NULL,
@@ -374,7 +374,7 @@ class PaykuPlugin {
                 }
             }
             
-            // Insertar o actualizar orden
+            // Insert or update order
             $sql = "INSERT INTO payku_orders 
                     (order_id, email, amount, currency, status, payment_key, payku_response) 
                     VALUES (:order_id, :email, :amount, :currency, :status, :payment_key, :payku_response)

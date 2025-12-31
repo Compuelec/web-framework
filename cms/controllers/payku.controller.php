@@ -8,12 +8,12 @@
 require_once "controllers/curl.controller.php";
 require_once "controllers/template.controller.php";
 
-// Cargar controlador del plugin con manejo correcto de rutas
+// Load plugin controller with proper route handling
 $pluginControllerPath = __DIR__ . "/../../plugins/payku/controllers/payku.controller.php";
 if (file_exists($pluginControllerPath)) {
     require_once $pluginControllerPath;
 } else {
-    // Intentar ruta alternativa
+    // Try alternative path
     $projectRoot = dirname(__DIR__, 2);
     $pluginControllerPath = $projectRoot . '/plugins/payku/controllers/payku.controller.php';
     if (file_exists($pluginControllerPath)) {
@@ -63,9 +63,9 @@ class PaykuController {
         $configPath = $projectRoot . '/plugins/payku/config.php';
         $configDir = dirname($configPath);
         
-        // Asegurar que el directorio existe con permisos adecuados
+        // Ensure directory exists with proper permissions
         if (!is_dir($configDir)) {
-            // Crear directorio con permisos completos
+            // Create directory with full permissions
             if (!@mkdir($configDir, 0777, true)) {
                 $errorMsg = "No se pudo crear el directorio: " . $configDir;
                 error_log("Payku config error: " . $errorMsg);
@@ -137,12 +137,12 @@ class PaykuController {
         $writeResult = @file_put_contents($configPath, $configContent);
         
         if ($writeResult !== false) {
-            // Asegurar que el archivo tenga permisos correctos
-            // Establecer permisos para que tanto el propietario como el grupo puedan escribir
+            // Ensure file has correct permissions
+            // Set permissions so both owner and group can write
             @chmod($configPath, 0664);
-            // Intentar establecer propiedad al usuario actual si es posible
+            // Try to set ownership to current user if possible
             if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
-                // Si se ejecuta como root, establecer propiedad al usuario del servidor web
+                // If running as root, set ownership to web server user
                 $webUser = getenv('APACHE_RUN_USER') ?: 'daemon';
                 @chown($configPath, $webUser);
             }

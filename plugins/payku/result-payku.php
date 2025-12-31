@@ -54,7 +54,7 @@ if (!empty($order->payku_response)) {
         $savedTransactionKey = $savedResponse['transaction_key'] ?? $savedResponse['transactionKey'] ?? $savedResponse['key'] ?? null;
         $savedVerificationKey = $savedResponse['verification_key'] ?? $savedResponse['verificationKey'] ?? $savedResponse['verification'] ?? null;
         
-        // IMPORTANTE: Verificar dentro del objeto payment (estructura anidada)
+        // IMPORTANT: Check inside payment object (nested structure)
         if (isset($savedResponse['payment']) && is_array($savedResponse['payment'])) {
             $payment = $savedResponse['payment'];
             $savedTransactionKey = $savedTransactionKey ?? $payment['transaction_key'] ?? null;
@@ -70,7 +70,7 @@ if (!empty($order->payku_response)) {
                 'verification_key' => $savedVerificationKey ?? $order->verification_key,
                 'payku_response' => $order->payku_response
             ]);
-            // Recargar orden
+            // Reload order
             $order = PaykuPlugin::getOrder($order_id);
         }
     }
@@ -148,20 +148,20 @@ if (($order->status == 'pending' || empty($order->status)) && !empty($order->pay
             if (is_object($response)) {
                 if (isset($response->payment)) {
                     if (is_object($response->payment)) {
-                        // Objeto con propiedades significa que existen datos de pago
+                        // Object with properties means payment data exists
                         $hasPaymentData = count(get_object_vars($response->payment)) > 0;
                     } elseif (is_array($response->payment)) {
-                        // Array con elementos significa que existen datos de pago
+                        // Array with elements means payment data exists
                         $hasPaymentData = count($response->payment) > 0;
                     }
                 }
             } elseif (is_array($response)) {
                 if (isset($response['payment'])) {
                     if (is_array($response['payment'])) {
-                        // Array con elementos significa que existen datos de pago
+                        // Array with elements means payment data exists
                         $hasPaymentData = count($response['payment']) > 0;
                     } elseif (is_object($response['payment'])) {
-                        // Objeto con propiedades significa que existen datos de pago
+                        // Object with properties means payment data exists
                         $hasPaymentData = count(get_object_vars($response['payment'])) > 0;
                     }
                 }
@@ -368,7 +368,7 @@ $verification_key = $order->verification_key ?? '';
 // Debug: Log current order state
 error_log("Payku result: Current order state - status: " . $status . ", transaction_key: " . ($transaction_key ?: 'NULL') . ", verification_key: " . ($verification_key ?: 'NULL'));
 
-// Determinar mensaje y color del estado
+// Determine status message and color
 $statusMessages = [
     'completed' => ['mensaje' => '¡Pago Completado Exitosamente!', 'color' => 'success', 'icon' => '✓'],
     'failed' => ['mensaje' => 'Pago Fallido', 'color' => 'danger', 'icon' => '✗'],

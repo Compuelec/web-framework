@@ -4,13 +4,13 @@
  * Payku Plugin Configuration Page
  */
 
-// Calcular ruta del directorio CMS
-// Archivo actual: cms/views/pages/custom/payku/payku.php
-// Objetivo: cms/controllers/payku.controller.php
-// Necesita subir 4 niveles: payku -> custom -> pages -> views -> cms
+// Calculate CMS directory path
+// Current file: cms/views/pages/custom/payku/payku.php
+// Target: cms/controllers/payku.controller.php
+// Need to go up 4 levels: payku -> custom -> pages -> views -> cms
 $cmsDir = dirname(__DIR__, 4);
 
-// Cargar controlador de Payku
+// Load Payku controller
 require_once $cmsDir . '/controllers/payku.controller.php';
 
 $paykuController = new PaykuController();
