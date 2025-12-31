@@ -667,7 +667,7 @@ if($adminTable !== null && is_object($adminTable)){
 		$update = new AdminsController();
 	    $update->updateAdmin();
 
-	    if($_SESSION["admin"]->rol_admin == "superadmin"){
+	    if(isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"){
 
 	    	/*=============================================
 	    	Incluimos modal de páginas

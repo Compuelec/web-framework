@@ -7,14 +7,14 @@
 
         <!-- Modal Header -->
         <div class="modal-header">
-          <h4 class="modal-title text-capitalize">Perfil <?php echo $_SESSION["admin"]->rol_admin ?></h4>
+          <h4 class="modal-title text-capitalize">Perfil <?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? $_SESSION["admin"]->rol_admin : '' ?></h4>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
         <!-- Modal body -->
         <div class="modal-body px-4">
 
-          <input type="hidden" name="id_admin" value="<?php echo base64_encode($_SESSION["admin"]->id_admin) ?>">
+          <input type="hidden" name="id_admin" value="<?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? base64_encode($_SESSION["admin"]->id_admin) : '' ?>">
          
           <div class="mb-3">
             <h6 class="text-muted mb-3">
@@ -43,7 +43,7 @@
                         class="form-control form-control-sm rounded"
                         id="email_admin"
                         name="email_admin"
-                        value="<?php echo $_SESSION["admin"]->email_admin ?>"
+                        value="<?php echo isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) ? $_SESSION["admin"]->email_admin : '' ?>"
                         required
                       >
                       <div class="valid-feedback">Válido.</div>
@@ -67,7 +67,7 @@
               </div>
             </div>
 
-            <?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
+            <?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_SESSION["admin"]->rol_admin == "superadmin"): ?>
 
               <!--=============================================
               Dashboard Configuration Section

@@ -43,7 +43,7 @@ class PagesController{
 				Validar que la Página no exista
 				=============================================*/
 
-				$url = "pages?linkTo=title_page,url_page&equalTo=".trim($_POST["title_page"]).",".trim($_POST["url_page"]);
+				$url = "pages?linkTo=title_page,url_page&equalTo=".urlencode(trim($_POST["title_page"])).",".urlencode(trim($_POST["url_page"]));
 				$method = "GET";
 				$fields = array();
 
@@ -201,8 +201,36 @@ class PagesController{
 						=============================================*/	
 
 						$from = DIR."/views/pages/custom/custom.php";
+						$to = $directory.'/'.$urlPage.'.php';
 
-						if(copy($from, $directory.'/'.$urlPage.'.php')){
+						// Ensure source file exists
+						if(!file_exists($from)){
+							error_log("Pages Controller Error - Template file not found: " . $from);
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+								fncToastr("error","ERROR: Archivo plantilla no encontrado");
+							</script>';
+							return;
+						}
+
+						// Ensure directory is writable
+						if(!is_writable($directory)){
+							error_log("Pages Controller Error - Directory not writable: " . $directory);
+							@chmod($directory, 0755);
+							if(!is_writable($directory)){
+								echo '
+								<script>
+									fncMatPreloader("off");
+									fncFormatInputs();
+									fncToastr("error","ERROR: Sin permisos para crear archivo en el directorio");
+								</script>';
+								return;
+							}
+						}
+
+						if(@copy($from, $to)){
 
 							echo '
 
@@ -221,6 +249,10 @@ class PagesController{
 
 						}else{
 
+							// Log error if copy fails
+							$error = error_get_last();
+							error_log("Pages Controller Error - Failed to copy file from '{$from}' to '{$to}'. Error: " . ($error ? $error['message'] : 'Unknown error'));
+							
 							// If file copy fails, still reload to show in sidebar
 							echo '
 
