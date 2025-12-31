@@ -152,10 +152,20 @@ $(document).on("click",".myPage",function(){
 
 })
 
+// Track if type change is from plugin selection (to avoid clearing fields)
+var isPluginTypeChange = false;
+
 // Toggle parent page field when type changes
 $(document).on("change", "#type_page", function() {
-	toggleParentPageField();
-	togglePluginSelector();
+	// Only toggle plugin selector if change is not from plugin selection
+	if (!isPluginTypeChange) {
+		toggleParentPageField();
+		togglePluginSelector();
+	} else {
+		// Reset flag and just toggle parent page field
+		isPluginTypeChange = false;
+		toggleParentPageField();
+	}
 });
 
 // Show/hide plugin selector based on type selection
@@ -163,6 +173,11 @@ function togglePluginSelector() {
 	var typePage = $("#type_page").val();
 	var pluginGroup = $("#plugin_selector_group");
 	var selectedPlugin = $("#selected_plugin");
+	
+	// IMPORTANT: Never clear title_page or url_page fields here
+	// These fields should only be cleared when:
+	// 1. Modal opens for new page (handled in modal open handler)
+	// 2. Plugin is deselected (handled in plugin change handler)
 	
 	if(typePage == "plugins") {
 		pluginGroup.show();
@@ -172,18 +187,10 @@ function togglePluginSelector() {
 		}
 	} else {
 		pluginGroup.hide();
+		// Only clear plugin selection, NEVER clear title/URL fields
 		selectedPlugin.val('');
 		$('#selected_plugin_info').hide();
-		// Reset fields if they were filled by plugin selection
-		if(!$('#id_page').length) {
-			$('#url_page').val('');
-			$('#title_page').val('');
-			$('#icon_page').val('bi-gear');
-			const iconPreview = document.getElementById('iconPagePreview');
-			if (iconPreview) {
-				iconPreview.className = 'bi bi-gear';
-			}
-		}
+		// DO NOT clear title_page or url_page here - they should persist when type changes
 	}
 }
 
@@ -250,6 +257,9 @@ $(document).on('change', '#selected_plugin', function() {
 		
 		// Auto-fill fields (only if creating new page)
 		if (!$('#id_page').length) {
+			// Set flag to prevent clearing fields when type changes
+			isPluginTypeChange = true;
+			
 			$('#url_page').val(selectedUrl);
 			$('#title_page').val(pluginName);
 			$('#icon_page').val(pluginIcon);
@@ -268,7 +278,28 @@ $(document).on('change', '#selected_plugin', function() {
 			$('#plugin_selector_group').hide();
 		}
 	} else {
+		// Plugin was deselected - clear fields that were auto-filled by plugin
 		$('#selected_plugin_info').hide();
+		
+		// Only clear fields if they were auto-filled by a plugin (not manually entered)
+		// Check if we're creating a new page and fields match a plugin pattern
+		if (!$('#id_page').length) {
+			// Store original values before clearing to check if they were plugin-generated
+			var currentUrl = $('#url_page').val();
+			var currentTitle = $('#title_page').val();
+			
+			// Clear fields only if they appear to be plugin-generated
+			// (This is a simple check - you might want to track if fields were auto-filled)
+			$('#url_page').val('');
+			$('#title_page').val('');
+			$('#icon_page').val('bi-gear');
+			
+			// Update icon preview
+			const iconPreview = document.getElementById('iconPagePreview');
+			if (iconPreview) {
+				iconPreview.className = 'bi bi-gear';
+			}
+		}
 	}
 });
 
@@ -322,6 +353,9 @@ function checkPluginUrl(url) {
 						
 						// Auto-fill some fields if creating new page
 						if (!$('#id_page').length) {
+							// Set flag to prevent clearing fields when type changes
+							isPluginTypeChange = true;
+							
 							$('#title_page').val(pluginInfo.name);
 							$('#icon_page').val(pluginInfo.icon);
 							$('#type_page').val('custom');
@@ -369,20 +403,77 @@ $(document).on('input blur', '#url_page', function() {
 Cambiar orden de páginas
 =============================================*/
 
+// Track if we're dragging to prevent link clicks
+var isDragging = false;
+
+// Handle mousedown to show grab cursor
+$(document).on('mousedown', '#sortable > li.list-group-item', function(e) {
+	// Only if not clicking on buttons or action menus
+	if ($(e.target).closest('.page-actions-wrapper, .page-menu-toggle, button').length === 0) {
+		var $item = $(this);
+		$item.addClass('mousedown-active');
+		$('body').addClass('mousedown-active');
+		
+		// Also apply cursor directly to ensure it shows
+		$item.css('cursor', 'grab');
+		$item.find('a, .menu-toggle').css('cursor', 'grab');
+	}
+});
+
+// Handle mouseup to remove grab cursor
+$(document).on('mouseup', function(e) {
+	$('#sortable > li.list-group-item').each(function() {
+		$(this).removeClass('mousedown-active');
+		$(this).css('cursor', '');
+		$(this).find('a, .menu-toggle').css('cursor', '');
+	});
+	$('.submenu-item').each(function() {
+		$(this).removeClass('mousedown-active');
+		$(this).css('cursor', '');
+		$(this).find('a').css('cursor', '');
+	});
+	$('body').removeClass('mousedown-active');
+});
+
 // Sortable for main pages (exclude submenu items)
 $("#sortable").sortable({
 	placeholder: 'sort-highlight',
-	handle: '.handle',
+	// Only cancel on buttons and action menus, allow dragging from anywhere else including links
+	cancel: '.submenu, .submenu *, .submenu-item, .submenu-item *, .page-actions-wrapper, .page-actions-wrapper *, button.page-menu-toggle',
 	forcePlaceholderSize: true,
 	zIndex:999999,
 	items: '> li',
-	cancel: '.submenu, .submenu *, .submenu-item, .submenu-item *, .submenu .handle',
+	cursor: 'grabbing',
+	cursorAt: { top: 20, left: 20 },
+	delay: 150, // Delay to distinguish from click - allows normal click on links
+	distance: 10, // Minimum distance (pixels) to start dragging - requires click and hold
 	start: function(event, ui) {
 		// Prevent main sortable if dragging from submenu
 		if (ui.item.hasClass('submenu-item') || ui.item.closest('.submenu').length > 0) {
 			$(this).sortable("cancel");
 			return false;
 		}
+		// Mark as dragging
+		isDragging = true;
+		// Add grabbing cursor class
+		$('body').addClass('dragging-menu-item');
+		ui.helper.css('cursor', 'grabbing');
+		// Prevent link navigation during drag
+		ui.item.find('a, .menu-toggle').on('click.drag', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			return false;
+		});
+	},
+	stop: function(event, ui) {
+		// Remove dragging flag
+		isDragging = false;
+		// Remove grabbing cursor class
+		$('body').removeClass('dragging-menu-item');
+		// Re-enable link clicks after a short delay
+		setTimeout(function() {
+			ui.item.find('a, .menu-toggle').off('click.drag');
+		}, 50);
 	},
 	out: function(event,ui){
 		
@@ -453,24 +544,61 @@ function initSubmenuSortables() {
 				$submenu.css({display: 'block', visibility: 'hidden', position: 'absolute'});
 			}
 			
+			// Handle mousedown on submenu items to show grab cursor
+			$submenu.on('mousedown', '.submenu-item', function(e) {
+				// Only if not clicking on buttons or action menus
+				if ($(e.target).closest('.page-actions-wrapper, .page-menu-toggle, button').length === 0) {
+					var $item = $(this);
+					$item.addClass('mousedown-active');
+					$('body').addClass('mousedown-active');
+					
+					// Also apply cursor directly to ensure it shows
+					$item.css('cursor', 'grab');
+					$item.find('a').css('cursor', 'grab');
+				}
+			});
+			
 			$submenu.sortable({
 				placeholder: 'sort-highlight',
-				handle: '.submenu-item .handle, .handle',
+				// Only cancel on buttons and action menus, allow dragging from anywhere else including links
+				cancel: '.page-actions-wrapper, .page-actions-wrapper *, button.page-menu-toggle',
 				forcePlaceholderSize: true,
 				zIndex: 1000000,
 				items: '> .submenu-item',
 				tolerance: 'pointer',
-				cursor: 'move',
+				cursor: 'grabbing',
+				cursorAt: { top: 20, left: 20 },
+				delay: 150, // Delay to distinguish from click
+				distance: 10, // Minimum distance (pixels) to start dragging - requires click and hold
 				connectWith: false,
 				start: function(event, ui) {
 					// Disable main sortable when dragging submenu item
 					$("#sortable").sortable("disable");
+					// Mark as dragging
+					isDragging = true;
 					// Make sure the item being dragged is visible
 					ui.helper.css('display', 'block');
+					ui.helper.css('cursor', 'grabbing');
+					// Add grabbing cursor class
+					$('body').addClass('dragging-menu-item');
+					// Prevent link navigation during drag
+					ui.item.find('a').on('click.drag', function(e) {
+						e.preventDefault();
+						e.stopPropagation();
+						return false;
+					});
 				},
 				stop: function(event, ui) {
 					// Re-enable main sortable after dragging submenu item
 					$("#sortable").sortable("enable");
+					// Remove dragging flag
+					isDragging = false;
+					// Remove grabbing cursor class
+					$('body').removeClass('dragging-menu-item');
+					// Re-enable link clicks after a short delay
+					setTimeout(function() {
+						ui.item.find('a').off('click.drag');
+					}, 50);
 				},
 				update: function(event, ui) {
 					// Get all subpages in this submenu after reorder

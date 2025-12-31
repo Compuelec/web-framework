@@ -262,39 +262,60 @@ Interfaz Dashboard
   color: #3b82f6;
 }
 
-/* Page Drag Handle */
-.page-drag-handle {
-  position: absolute;
-  right: 42px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  padding: 0.25rem 0.5rem;
-  color: #6b7280;
-  background: transparent;
-  border: none;
-  cursor: move;
-  transition: opacity 0.2s ease;
+/* Menu items show pointer cursor by default (for clicking) */
+#sortable > li.list-group-item,
+.submenu-item {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-.list-group-item:hover .page-drag-handle:not(.submenu-item .page-drag-handle),
-.submenu-item:hover .page-drag-handle {
-  opacity: 1;
+/* Links inside menu items show pointer cursor by default */
+#sortable > li.list-group-item a,
+.submenu-item a,
+.menu-toggle {
+  cursor: pointer !important;
 }
 
-/* Ensure submenu handles are separate from main menu handles */
-.submenu-item .page-drag-handle {
-  z-index: 20;
+/* Grab cursor when mouse is down (click held) - must override link cursor */
+#sortable > li.list-group-item.mousedown-active,
+.submenu-item.mousedown-active,
+body.mousedown-active #sortable > li.list-group-item,
+body.mousedown-active .submenu-item,
+body.mousedown-active #sortable > li.list-group-item a,
+body.mousedown-active .submenu-item a,
+body.mousedown-active .menu-toggle {
+  cursor: grab !important;
 }
 
-.page-drag-handle:hover {
-  color: #374151;
-  background-color: #f3f4f6;
-  border-radius: 4px;
+/* Grabbing cursor when actually dragging */
+#sortable > li.list-group-item:active,
+.submenu-item:active,
+body.dragging-menu-item #sortable > li.list-group-item,
+body.dragging-menu-item .submenu-item,
+body.dragging-menu-item #sortable > li.list-group-item a,
+body.dragging-menu-item .submenu-item a,
+body.dragging-menu-item .menu-toggle {
+  cursor: grabbing !important;
 }
 
-.page-drag-handle i {
-  font-size: 0.9rem;
+/* Buttons and action menus always show pointer cursor */
+#sortable > li.list-group-item button,
+#sortable > li.list-group-item .page-actions-wrapper,
+#sortable > li.list-group-item .page-menu-toggle,
+.submenu-item button,
+.submenu-item .page-actions-wrapper,
+.submenu-item .page-menu-toggle {
+  cursor: pointer !important;
+}
+
+/* Sortable placeholder styling */
+.sort-highlight {
+  background-color: #e0e7ff !important;
+  border: 2px dashed #6366f1 !important;
+  opacity: 0.5;
 }
 
 /* Page Actions Menu (Three Dots) */
