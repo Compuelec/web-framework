@@ -198,10 +198,24 @@ class PagesController{
 
 						/*=============================================
 						Copy custom file with new name
-						=============================================*/	
+						=============================================*/
 
 						$from = DIR."/views/pages/custom/custom.php";
 						$to = $directory.'/'.$urlPage.'.php';
+
+						// If file already exists (e.g., plugin page), skip file creation
+						if(file_exists($to)){
+							// File already exists, page was saved in database, show success
+							echo '
+							<script>
+								fncMatPreloader("off");
+								fncFormatInputs();
+								fncSweetAlert("success","La pagina ha sido creada con exito",setTimeout(()=>{
+									location.reload();
+								},1250));
+							</script>';
+							return;
+						}
 
 						// Ensure source file exists
 						if(!file_exists($from)){

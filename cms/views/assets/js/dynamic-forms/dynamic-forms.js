@@ -180,7 +180,6 @@ Quitar un objeto
 =============================================*/
 
 function removeJson(column, position,event){
-	console.log("position", position);
 
 	if(position == "_0"){
 
@@ -277,8 +276,6 @@ $(document).on("click",".myFiles",function(){
 </svg> `)
 
 		$(document).on("click",".copyLink",function(){
-
-			console.log("input", $(input));
 
 			$(input).val($(this).attr("copy"));
 

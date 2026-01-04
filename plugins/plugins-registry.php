@@ -100,3 +100,14 @@ PluginsRegistry::register('payku', [
     'author' => 'Payku Integration'
 ]);
 
+// Register Workflow Manager plugin
+PluginsRegistry::register('workflow-manager', [
+    'url' => 'workflow-manager',
+    'name' => 'Workflow Manager',
+    'description' => 'Administrador visual de workflows para personalizar estados y transiciones de cada modulo',
+    'icon' => 'bi-diagram-3',
+    'type' => 'system',
+    'version' => '1.0.0',
+    'author' => 'Web Framework'
+]);
+

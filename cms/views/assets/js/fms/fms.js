@@ -421,9 +421,6 @@ function uploadFiles(event, type, time){
 
 			 	`);
 
-			 	console.log("cerrar")
-
-
 				fncMatPreloader("off");
 				fncSweetAlert("close", "", "");
 
