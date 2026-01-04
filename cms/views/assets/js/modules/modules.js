@@ -375,7 +375,7 @@ $(document).on("click",".myModule",function(){
 					Marcar tipo de columna seleccionado
 					=============================================*/
 
-					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt"];
+					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow"];
 					var selectColumn = [];
 
 					typeColumn.forEach((v,f)=>{
@@ -486,6 +486,7 @@ $(document).on("click",".myModule",function(){
 												<option value="relations" ${selectColumn[22]}>Relaciones</option>
 												<option value="order" ${selectColumn[23]}>Ordenar</option>
 												<option value="chatgpt" ${selectColumn[24]}>ChatGPT</option>
+												<option value="workflow" ${selectColumn[25]}>Workflow</option>
 											</select>
 											<div class="valid-feedback">Válido</div>
 											<div class="invalid-feedback">Campo Inválido</div>
@@ -493,16 +494,57 @@ $(document).on("click",".myModule",function(){
 
 										<div class="col-md-2">
 											<label for="visible_column_${i}" class="form-label small fw-semibold">Visibilidad</label>
-											<select 
-												class="form-select form-select-sm rounded" 
-												name="visible_column_${i}" 
-												id="visible_column_${i}" 
+											<select
+												class="form-select form-select-sm rounded"
+												name="visible_column_${i}"
+												id="visible_column_${i}"
 												required>
 												<option value="1" ${selectOn}>ON</option>
-												<option value="0" ${selectOff}>OFF</option>							
+												<option value="0" ${selectOff}>OFF</option>
 											</select>
 											<div class="valid-feedback">Válido</div>
 											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
+
+										<div class="col-12 mt-3">
+											<div class="card bg-light border-0">
+												<div class="card-body py-2">
+													<div class="d-flex align-items-center justify-content-between">
+														<small class="text-muted fw-semibold">
+															<i class="bi bi-eye"></i> Condiciones de Visibilidad
+														</small>
+														<button type="button" class="btn btn-sm btn-outline-primary toggleConditions" data-index="${i}">
+															<i class="bi bi-plus-circle"></i> Configurar
+														</button>
+													</div>
+													<div class="conditions-config mt-2" id="conditions_config_${i}" style="display:none;">
+														<div class="row g-2">
+															<div class="col-md-4">
+																<select class="form-select form-select-sm condition-field" data-index="${i}">
+																	<option value="">Seleccionar campo...</option>
+																</select>
+															</div>
+															<div class="col-md-3">
+																<select class="form-select form-select-sm condition-operator" data-index="${i}">
+																	<option value="equals">Es igual a</option>
+																	<option value="not_equals">No es igual a</option>
+																	<option value="empty">Está vacío</option>
+																	<option value="not_empty">No está vacío</option>
+																</select>
+															</div>
+															<div class="col-md-4">
+																<input type="text" class="form-control form-control-sm condition-value" data-index="${i}" placeholder="Valor">
+															</div>
+															<div class="col-md-1">
+																<button type="button" class="btn btn-sm btn-success applyCondition" data-index="${i}" title="Aplicar">
+																	<i class="bi bi-check"></i>
+																</button>
+															</div>
+														</div>
+													</div>
+													<input type="hidden" name="conditions_column_${i}" id="conditions_column_${i}" value="${e.conditions_column || ''}">
+												</div>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -776,6 +818,7 @@ $(document).on("click",".addColumn",function(){
 								<option value="relations">Relaciones</option>
 								<option value="order">Ordenar</option>
 								<option value="chatgpt">ChatGPT</option>
+								<option value="workflow">Workflow</option>
 							</select>
 							<div class="valid-feedback">Válido</div>
 							<div class="invalid-feedback">Campo Inválido</div>
@@ -783,16 +826,57 @@ $(document).on("click",".addColumn",function(){
 
 						<div class="col-md-2">
 							<label for="visible_column_${indexRandom}" class="form-label small fw-semibold">Visibilidad</label>
-							<select 
-								class="form-select form-select-sm rounded" 
-								name="visible_column_${indexRandom}" 
-								id="visible_column_${indexRandom}" 
+							<select
+								class="form-select form-select-sm rounded"
+								name="visible_column_${indexRandom}"
+								id="visible_column_${indexRandom}"
 								required>
 								<option value="1">ON</option>
-								<option value="0">OFF</option>							
+								<option value="0">OFF</option>
 							</select>
 							<div class="valid-feedback">Válido</div>
 							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
+
+						<div class="col-12 mt-3">
+							<div class="card bg-light border-0">
+								<div class="card-body py-2">
+									<div class="d-flex align-items-center justify-content-between">
+										<small class="text-muted fw-semibold">
+											<i class="bi bi-eye"></i> Condiciones de Visibilidad
+										</small>
+										<button type="button" class="btn btn-sm btn-outline-primary toggleConditions" data-index="${indexRandom}">
+											<i class="bi bi-plus-circle"></i> Configurar
+										</button>
+									</div>
+									<div class="conditions-config mt-2" id="conditions_config_${indexRandom}" style="display:none;">
+										<div class="row g-2">
+											<div class="col-md-4">
+												<select class="form-select form-select-sm condition-field" data-index="${indexRandom}">
+													<option value="">Seleccionar campo...</option>
+												</select>
+											</div>
+											<div class="col-md-3">
+												<select class="form-select form-select-sm condition-operator" data-index="${indexRandom}">
+													<option value="equals">Es igual a</option>
+													<option value="not_equals">No es igual a</option>
+													<option value="empty">Está vacío</option>
+													<option value="not_empty">No está vacío</option>
+												</select>
+											</div>
+											<div class="col-md-4">
+												<input type="text" class="form-control form-control-sm condition-value" data-index="${indexRandom}" placeholder="Valor">
+											</div>
+											<div class="col-md-1">
+												<button type="button" class="btn btn-sm btn-success applyCondition" data-index="${indexRandom}" title="Aplicar">
+													<i class="bi bi-check"></i>
+												</button>
+											</div>
+										</div>
+									</div>
+									<input type="hidden" name="conditions_column_${indexRandom}" id="conditions_column_${indexRandom}" value="">
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -997,3 +1081,113 @@ function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
 			}
 	});
 }
+
+/*=============================================
+Toggle conditions configuration
+=============================================*/
+
+$(document).on("click", ".toggleConditions", function() {
+	var index = $(this).data("index");
+	var configDiv = $("#conditions_config_" + index);
+
+	if (configDiv.is(":visible")) {
+		configDiv.slideUp();
+		$(this).html('<i class="bi bi-plus-circle"></i> Configurar');
+	} else {
+		configDiv.slideDown();
+		$(this).html('<i class="bi bi-dash-circle"></i> Ocultar');
+
+		// Populate field selector with available columns
+		populateConditionFields(index);
+	}
+});
+
+/*=============================================
+Populate condition field selector with columns
+=============================================*/
+
+function populateConditionFields(currentIndex) {
+	var $fieldSelect = $(".condition-field[data-index='" + currentIndex + "']");
+	var indexColumns = JSON.parse($("#indexColumns").val() || "[]");
+
+	var options = '<option value="">Seleccionar campo...</option>';
+
+	indexColumns.forEach(function(colIndex) {
+		if (colIndex != currentIndex) {
+			var titleColumn = $("#title_column_" + colIndex).val();
+			var aliasColumn = $("#alias_column_" + colIndex).val();
+			if (titleColumn) {
+				options += '<option value="' + titleColumn + '">' + (aliasColumn || titleColumn) + '</option>';
+			}
+		}
+	});
+
+	$fieldSelect.html(options);
+
+	// If there's an existing condition, parse and display it
+	var existingCondition = $("#conditions_column_" + currentIndex).val();
+	if (existingCondition) {
+		try {
+			var condition = JSON.parse(decodeURIComponent(existingCondition));
+			if (condition.rules && condition.rules.length > 0) {
+				var rule = condition.rules[0];
+				$fieldSelect.val(rule.field);
+				$(".condition-operator[data-index='" + currentIndex + "']").val(rule.operator);
+				$(".condition-value[data-index='" + currentIndex + "']").val(rule.value || '');
+			}
+		} catch (e) {
+			// Ignore parse errors
+		}
+	}
+}
+
+/*=============================================
+Apply condition to field
+=============================================*/
+
+$(document).on("click", ".applyCondition", function() {
+	var index = $(this).data("index");
+	var field = $(".condition-field[data-index='" + index + "']").val();
+	var operator = $(".condition-operator[data-index='" + index + "']").val();
+	var value = $(".condition-value[data-index='" + index + "']").val();
+
+	if (!field) {
+		fncToastr("warning", "Seleccione un campo para la condición");
+		return;
+	}
+
+	// Build condition JSON
+	var condition = {
+		operator: "and",
+		rules: [{
+			field: field,
+			operator: operator,
+			value: value
+		}]
+	};
+
+	// Save to hidden input
+	$("#conditions_column_" + index).val(encodeURIComponent(JSON.stringify(condition)));
+
+	// Visual feedback
+	fncToastr("success", "Condición aplicada");
+
+	// Update button text
+	$(".toggleConditions[data-index='" + index + "']").html('<i class="bi bi-check-circle"></i> Configurado');
+});
+
+/*=============================================
+Clear condition from field
+=============================================*/
+
+$(document).on("change", ".condition-operator", function() {
+	var index = $(this).data("index");
+	var operator = $(this).val();
+
+	// Hide value input for empty/not_empty operators
+	if (operator === "empty" || operator === "not_empty") {
+		$(".condition-value[data-index='" + index + "']").val("").prop("disabled", true);
+	} else {
+		$(".condition-value[data-index='" + index + "']").prop("disabled", false);
+	}
+});

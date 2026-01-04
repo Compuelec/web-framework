@@ -142,7 +142,7 @@ class InstallController{
 			$newDomain = $domainInfo['base_url'];
 
 			// Check if tables already exist before starting installation
-			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files', 'activity_logs'];
+			$requiredTables = ['admins', 'pages', 'modules', 'columns', 'folders', 'files', 'activity_logs', 'workflows'];
 			$existingTables = [];
 
 			foreach($requiredTables as $table){
@@ -236,14 +236,15 @@ class InstallController{
 			$stmtModules = InstallController::connect()->prepare($sqlModules);
 
 			// Create columns table
-			
-			$sqlColumns = "CREATE TABLE columns ( 
+
+			$sqlColumns = "CREATE TABLE columns (
 				id_column INT NOT NULL AUTO_INCREMENT,
 				id_module_column INT NULL DEFAULT '0',
 				title_column TEXT NULL DEFAULT NULL,
 				alias_column TEXT NULL DEFAULT NULL,
 				type_column TEXT NULL DEFAULT NULL,
 				matrix_column TEXT NULL DEFAULT NULL,
+				conditions_column TEXT NULL DEFAULT NULL,
 				visible_column INT NULL DEFAULT '1',
 				date_created_column DATE NULL DEFAULT NULL,
 				date_updated_column TIMESTAMP on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -306,18 +307,37 @@ class InstallController{
 
 			$stmtActivityLogs = InstallController::connect()->prepare($sqlActivityLogs);
 
+			// Create workflows table
+
+			$sqlWorkflows = "CREATE TABLE workflows (
+				id_workflow INT NOT NULL AUTO_INCREMENT,
+				id_module_workflow INT NOT NULL,
+				title_workflow VARCHAR(255) NOT NULL,
+				states_workflow TEXT NOT NULL,
+				transitions_workflow TEXT NOT NULL,
+				settings_workflow TEXT NULL DEFAULT NULL,
+				date_created_workflow DATE NULL DEFAULT NULL,
+				date_updated_workflow TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				PRIMARY KEY (id_workflow),
+				UNIQUE KEY unique_module_workflow (id_module_workflow),
+				INDEX idx_module (id_module_workflow)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+			$stmtWorkflows = InstallController::connect()->prepare($sqlWorkflows);
+
 			// Try to create tables with error handling
 			$tablesCreated = false;
 			$errorMessage = '';
 
 			try {
-				if($stmtAdmins->execute() && 
+				if($stmtAdmins->execute() &&
 				   $stmtPages->execute() &&
 				   $stmtModules->execute() &&
 				   $stmtColumns->execute() &&
 				   $stmtFolders->execute() &&
 				   $stmtFiles->execute() &&
-				   $stmtActivityLogs->execute()
+				   $stmtActivityLogs->execute() &&
+				   $stmtWorkflows->execute()
 				){
 					$tablesCreated = true;
 				}
@@ -1038,6 +1058,47 @@ class InstallController{
 		}
 
 
+	}
+
+	/**
+	 * Ensure a column exists in a table (auto-migration)
+	 * @param string $table Table name
+	 * @param string $column Column name
+	 * @param string $definition Column definition (e.g., "TEXT NULL DEFAULT NULL")
+	 * @param string|null $after Column to add after (optional)
+	 * @return bool True if column exists or was created
+	 */
+	static public function ensureColumnExists($table, $column, $definition, $after = null) {
+		try {
+			$link = self::connect();
+
+			// Check if column exists
+			$checkSql = "SHOW COLUMNS FROM `$table` LIKE :column";
+			$stmt = $link->prepare($checkSql);
+			$stmt->execute([':column' => $column]);
+
+			if ($stmt->rowCount() == 0) {
+				// Column doesn't exist, create it
+				$afterClause = $after ? " AFTER `$after`" : "";
+				$alterSql = "ALTER TABLE `$table` ADD COLUMN `$column` $definition$afterClause";
+				$link->exec($alterSql);
+				error_log("InstallController: Added column '$column' to table '$table'");
+			}
+
+			return true;
+		} catch (PDOException $e) {
+			error_log("InstallController::ensureColumnExists error: " . $e->getMessage());
+			return false;
+		}
+	}
+
+	/**
+	 * Run automatic migrations for new features
+	 * Call this to ensure all required columns/tables exist
+	 */
+	static public function runAutoMigrations() {
+		// Ensure conditions_column exists in columns table
+		self::ensureColumnExists('columns', 'conditions_column', 'TEXT NULL DEFAULT NULL', 'matrix_column');
 	}
 
 }

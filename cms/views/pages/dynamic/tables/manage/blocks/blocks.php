@@ -1,5 +1,16 @@
-<div class="card rounded border-0 shadow mb-3 pb-3">
-	
+<?php
+// Prepare condition attributes for conditional fields
+$conditionsAttr = '';
+$conditionsData = '';
+if (!empty($module->columns[$i]->conditions_column)) {
+	$conditionsData = htmlspecialchars($module->columns[$i]->conditions_column, ENT_QUOTES);
+	$conditionsAttr = 'data-conditions="' . $conditionsData . '"';
+}
+?>
+<div class="card rounded border-0 shadow mb-3 pb-3 conditional-field-container"
+	 data-field="<?php echo $module->columns[$i]->title_column ?>"
+	 <?php echo $conditionsAttr ?>>
+
 	<div class="card-body">
 
 		<label for="<?php echo $module->columns[$i]->title_column ?>" class="form-label float-start text-capitalize">
@@ -127,11 +138,16 @@
 		include "forms/relations.php";
 
 		/*=============================================
-		Formulario de tipo Relaciones
+		Formulario de tipo ChatGPT
 		=============================================*/
 
 		include "forms/chatgpt.php";
 
+		/*=============================================
+		Formulario de tipo Workflow
+		=============================================*/
+
+		include "forms/workflow.php";
 
 		?>
 

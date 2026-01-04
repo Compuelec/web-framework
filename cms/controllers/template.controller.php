@@ -109,7 +109,13 @@ class TemplateController{
 	    if($value == "code" || $value == "chatgpt"){
 
 	       	$type = "LONGTEXT NULL DEFAULT NULL";
-	    
+
+	    }
+
+	    if($value == "workflow"){
+
+	       	$type = "VARCHAR(100) NULL DEFAULT 'draft'";
+
 	    }
 
 	    return $type;

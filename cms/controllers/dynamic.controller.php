@@ -1,6 +1,69 @@
-<?php 
+<?php
 
 class DynamicController{
+
+	/**
+	 * Evaluate if a field's conditions are met based on POST data
+	 * @param string|null $conditionsJson JSON string with conditions
+	 * @param array $postData POST data to evaluate against
+	 * @return bool True if conditions are met (field should be processed)
+	 */
+	private function evaluateConditions($conditionsJson, $postData) {
+		if (empty($conditionsJson)) {
+			return true; // No conditions = always process
+		}
+
+		try {
+			$decoded = urldecode($conditionsJson);
+			$conditions = json_decode($decoded, true);
+
+			if (!$conditions || empty($conditions['rules'])) {
+				return true;
+			}
+
+			$results = [];
+			foreach ($conditions['rules'] as $rule) {
+				$results[] = $this->evaluateRule($rule, $postData);
+			}
+
+			$operator = $conditions['operator'] ?? 'and';
+			if ($operator === 'and') {
+				return !in_array(false, $results, true);
+			} else {
+				return in_array(true, $results, true);
+			}
+		} catch (Exception $e) {
+			return true; // On error, process the field
+		}
+	}
+
+	/**
+	 * Evaluate a single condition rule
+	 * @param array $rule Rule with field, operator, value
+	 * @param array $postData POST data
+	 * @return bool True if rule is satisfied
+	 */
+	private function evaluateRule($rule, $postData) {
+		if (!isset($rule['field']) || !isset($rule['operator'])) {
+			return true;
+		}
+
+		$fieldValue = $postData[$rule['field']] ?? '';
+		$ruleValue = $rule['value'] ?? '';
+
+		switch ($rule['operator']) {
+			case 'equals':
+				return (string)$fieldValue === (string)$ruleValue;
+			case 'not_equals':
+				return (string)$fieldValue !== (string)$ruleValue;
+			case 'empty':
+				return empty($fieldValue);
+			case 'not_empty':
+				return !empty($fieldValue);
+			default:
+				return true;
+		}
+	}
 
 	// Dynamic data management
 
@@ -30,8 +93,12 @@ class DynamicController{
 
 			foreach ($module->columns as $key => $value) {
 
-				// Get field value from POST, use empty string if not set
-				$fieldValue = $_POST[$value->title_column] ?? '';
+				// Check if field conditions are met
+				$conditionsJson = $value->conditions_column ?? null;
+				$conditionsMet = $this->evaluateConditions($conditionsJson, $_POST);
+
+				// Get field value from POST, use empty string if not set or conditions not met
+				$fieldValue = $conditionsMet ? ($_POST[$value->title_column] ?? '') : '';
 
 				if($value->type_column == "password" && !empty($fieldValue)){
 
@@ -43,11 +110,11 @@ class DynamicController{
 					$fields.= $value->title_column."=".trim($fieldValue)."&";
 
 				}else{
-				
+
 					$fields.= $value->title_column."=".urlencode(trim($fieldValue))."&";
 
 				}
-					
+
 					$count++;
 
 					if($count == count($module->columns)){
@@ -169,8 +236,12 @@ class DynamicController{
 
 			foreach ($module->columns as $key => $value) {
 
-				// Get field value from POST, use empty string if not set
-				$fieldValue = $_POST[$value->title_column] ?? '';
+				// Check if field conditions are met
+				$conditionsJson = $value->conditions_column ?? null;
+				$conditionsMet = $this->evaluateConditions($conditionsJson, $_POST);
+
+				// Get field value from POST, use empty string if not set or conditions not met
+				$fieldValue = $conditionsMet ? ($_POST[$value->title_column] ?? '') : '';
 
 				if($value->type_column == "password"){
 
@@ -179,16 +250,16 @@ class DynamicController{
 						$passwordSalt = TemplateController::getPasswordSalt();
 						$fields[$value->title_column] = crypt(trim($fieldValue), $passwordSalt);
 					}
-				
+
 				}else if($value->type_column == "email"){
 
 					$fields[$value->title_column] = trim($fieldValue);
 				}else{
-				
+
 					$fields[$value->title_column] = urlencode(trim($fieldValue));
 
 				}
-					
+
 					$count++;
 
 					if($count == count($module->columns)){

@@ -13,6 +13,9 @@ class ModulesController{
 
 		if(isset($_POST["title_module"])){
 
+			// Run auto-migrations to ensure all columns exist
+			InstallController::runAutoMigrations();
+
 			echo '<script>
 
 				fncMatPreloader("on");
@@ -69,7 +72,8 @@ class ModulesController{
 
 										$url = "columns?id=".$_POST["id_column_".$value]."&nameId=id_column&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "PUT";
-										$data = "title_column=".str_replace(" ","_",$_POST["title_column_".$value])."&alias_column=".$_POST["alias_column_".$value]."&type_column=".$_POST["type_column_".$value]."&visible_column=".$_POST["visible_column_".$value];
+										$conditionsValue = isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '';
+										$data = "title_column=".str_replace(" ","_",$_POST["title_column_".$value])."&alias_column=".$_POST["alias_column_".$value]."&type_column=".$_POST["type_column_".$value]."&visible_column=".$_POST["visible_column_".$value]."&conditions_column=".urlencode($conditionsValue);
 
 										$updateColumn = CurlController::request($url,$method,$data);
 
@@ -104,6 +108,7 @@ class ModulesController{
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],
+											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
 											"date_created_column" => date("Y-m-d")
 										);
@@ -420,6 +425,7 @@ class ModulesController{
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],
+											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
 											"date_created_column" => date("Y-m-d")
 										);

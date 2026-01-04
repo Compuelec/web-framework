@@ -559,7 +559,23 @@ Load table module
 										}else if($item->type_column == "code"){
 
 
-											echo TemplateController::reduceText(htmlentities(urldecode($value[$item->title_column])),25); 
+											echo TemplateController::reduceText(htmlentities(urldecode($value[$item->title_column])),25);
+
+
+										/*=============================================
+										Workflow type content
+										=============================================*/
+
+										}else if($item->type_column == "workflow"){
+
+											require_once __DIR__ . "/../../../../controllers/workflow.controller.php";
+											$workflow = WorkflowController::getWorkflow($module->id_module);
+											$currentState = urldecode($value[$item->title_column]);
+											$stateInfo = $workflow ? WorkflowController::getStateInfo($workflow, $currentState) : null;
+											$stateLabel = $stateInfo ? $stateInfo->label : ucfirst($currentState);
+											$stateColor = $stateInfo ? $stateInfo->color : '#6c757d';
+
+											echo '<span class="badge rounded-pill px-2 py-1" style="background-color:'.$stateColor.'">'.htmlspecialchars($stateLabel).'</span>';
 
 
 										}else{

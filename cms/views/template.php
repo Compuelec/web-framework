@@ -695,8 +695,10 @@ if($adminTable !== null && is_object($adminTable)){
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dashboard/dashboard.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/pages/pages.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.1"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/workflow.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js"></script>
 	

@@ -43,8 +43,8 @@ $pageTitle = 'Example Table - ' . $siteName;
 $pageDescription = 'Example of displaying dynamic table data';
 
 // Configuration: Change this to your actual table name
-$tableName = 'pages';  // Replace with your table name
-$idColumn = 'id_page';      // Replace with your ID column name
+$tableName = 'cars';  // Replace with your table name
+$idColumn = 'id_car';      // Replace with your ID column name
 
 // Fetch data from API
 $data = [];
