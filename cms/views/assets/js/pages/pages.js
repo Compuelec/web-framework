@@ -1,5 +1,5 @@
 /*=============================================
-Abrir ventana modal de páginas
+Open pages modal window
 =============================================*/
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
@@ -101,7 +101,7 @@ $(document).on("click",".myPage",function(){
 		if(page != undefined){
 
 			/*=============================================
-			Editar Página
+			Edit Page
 			=============================================*/
 
 			$("#title_page").before(`
@@ -400,7 +400,7 @@ $(document).on('input blur', '#url_page', function() {
 });
 
 /*=============================================
-Cambiar orden de páginas
+Change page order
 =============================================*/
 
 // Track if we're dragging to prevent link clicks
@@ -489,7 +489,7 @@ $("#sortable").sortable({
 			var data = new FormData();
 			data.append("idPage",idPage);
 			data.append("index", index);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -614,7 +614,7 @@ function initSubmenuSortables() {
 						var data = new FormData();
 						data.append("idPage", idPage);
 						data.append("index", orderIndex);
-						data.append("token", localStorage.getItem("tokenAdmin"));
+						data.append("token", window.CMS_TOKEN || '');
 						
 						$.ajax({
 							url: CMS_AJAX_PATH + "/pages.ajax.php",
@@ -663,7 +663,7 @@ $(document).on('click', '.menu-toggle', function() {
 });
 
 /*=============================================
-Eliminar una página
+Delete a page
 =============================================*/
 
 $(document).on("click",".deletePage",function(){
@@ -682,7 +682,7 @@ $(document).on("click",".deletePage",function(){
 			
 			var data = new FormData();
 			data.append("idPageDelete",idPage);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 

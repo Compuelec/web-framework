@@ -102,7 +102,7 @@ function showCommentPrompt(actionLabel, callback) {
  * Execute workflow transition via AJAX
  */
 function executeWorkflowTransition(table, suffix, recordId, transitionId, comment, btn) {
-    var token = localStorage.getItem("tokenAdmin") || '';
+    var token = window.CMS_TOKEN || '' || '';
 
     // Show loading
     if (typeof fncMatPreloader === 'function') {

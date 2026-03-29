@@ -82,11 +82,7 @@ class PostController{
 
 		if(isset($data["password_".$suffix]) && $data["password_".$suffix] != null){
 
-			$config = Connection::getConfig();
-			$passwordSalt = $config['password']['salt'] ?? '$2a$07$azybxcags23425sdg23sdfhsd$';
-			$crypt = crypt($data["password_".$suffix], $passwordSalt);
-
-			$data["password_".$suffix] = $crypt;
+			$data["password_".$suffix] = password_hash($data["password_".$suffix], PASSWORD_BCRYPT);
 
 			$response = PostModel::postData($table, $data);
 
@@ -156,12 +152,8 @@ class PostController{
 
 			if($response[0]->{"password_".$suffix} != null)	{
 			
-				// Encrypt password
-				$config = Connection::getConfig();
-				$passwordSalt = $config['password']['salt'] ?? '$2a$07$azybxcags23425sdg23sdfhsd$';
-				$crypt = crypt($data["password_".$suffix], $passwordSalt);
-
-				if($response[0]->{"password_".$suffix} == $crypt){
+				// Verify password using bcrypt — compatible with both old crypt() and new password_hash() hashes
+				if(password_verify($data["password_".$suffix], $response[0]->{"password_".$suffix})){
 
 					$token = Connection::jwt($response[0]->{"id_".$suffix}, $response[0]->{"email_".$suffix});
 

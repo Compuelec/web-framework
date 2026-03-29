@@ -68,7 +68,7 @@ var ExportData = {
         var params = new URLSearchParams({
             module: module.title_module,
             format: format,
-            token: localStorage.getItem('tokenAdmin') || ''
+            token: window.CMS_TOKEN || '' || ''
         });
         
         // Apply current filters if they exist

@@ -203,7 +203,7 @@ var NotificationSystem = {
             method: 'POST',
             data: {
                 action: 'get',
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function(response) {
                 try {
@@ -374,7 +374,7 @@ var NotificationSystem = {
             data: {
                 action: 'mark_read',
                 id: id,
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function() {
                 // Update locally
@@ -398,7 +398,7 @@ var NotificationSystem = {
             method: 'POST',
             data: {
                 action: 'mark_all_read',
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function() {
                 self.notifications.forEach(function(n) {

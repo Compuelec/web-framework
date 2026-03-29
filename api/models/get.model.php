@@ -8,33 +8,30 @@ class GetModel{
 	static public function getData($table, $select,$orderBy,$orderMode,$startAt,$endAt){
 
 		// Validate table and columns existence
-
 		$selectArray = explode(",",$select);
-		
+
 		if(empty(Connection::getColumnsData($table, $selectArray))){
-			
 			return null;
-		
 		}
+
+		// Sanitize ORDER BY and LIMIT to prevent SQL injection
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
 
 		$sql = "SELECT $select FROM $table";
 
-		if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
-
+		if($orderBy !== null && $orderMode !== null && $startAt === null && $endAt === null){
 			$sql = "SELECT $select FROM $table ORDER BY $orderBy $orderMode";
-
 		}
 
-		if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
-
+		if($orderBy !== null && $orderMode !== null && $startAt !== null && $endAt !== null){
 			$sql = "SELECT $select FROM $table ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
-
 		}
 
-		if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
-
+		if($orderBy === null && $orderMode === null && $startAt !== null && $endAt !== null){
 			$sql = "SELECT $select FROM $table LIMIT $startAt, $endAt";
-
 		}
 
 		$link = Connection::connect();
@@ -46,15 +43,16 @@ class GetModel{
 
 		try{
 
-			$stmt -> execute();
+			$stmt->execute();
 
 		}catch(PDOException $Exception){
 
-			return $Exception;
-		
+			error_log("GetModel::getData error: " . $Exception->getMessage());
+			return null;
+
 		}
 
-		return $stmt -> fetchAll(PDO::FETCH_CLASS);
+		return $stmt->fetchAll(PDO::FETCH_CLASS);
 
 	}
 
@@ -62,7 +60,6 @@ class GetModel{
 	static public function getDataFilter($table, $select, $linkTo, $equalTo, $orderBy,$orderMode,$startAt,$endAt){
 
 		// Validate table and columns existence
-
 		$linkToArray = explode(",",$linkTo);
 		$selectArray = explode(",",$select);
 
@@ -72,46 +69,39 @@ class GetModel{
 
 		$selectArray = array_unique($selectArray);
 
-
-		if(empty(Connection::getColumnsData($table,$selectArray ))){	
-			
+		if(empty(Connection::getColumnsData($table,$selectArray))){
 			return null;
-
 		}
-		
+
+		// Sanitize ORDER BY and LIMIT to prevent SQL injection
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
+
 		$equalToArray = explode(",",$equalTo);
 		$linkToText = "";
 
 		if(count($linkToArray)>1){
-
 			foreach ($linkToArray as $key => $value) {
-				
 				if($key > 0){
-
 					$linkToText .= "AND ".$value." = :".$value." ";
 				}
 			}
-
 		}
 
 		$sql = "SELECT $select FROM $table WHERE $linkToArray[0] = :$linkToArray[0] $linkToText";
 
-		if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
-
+		if($orderBy !== null && $orderMode !== null && $startAt === null && $endAt === null){
 			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] = :$linkToArray[0] $linkToText ORDER BY $orderBy $orderMode";
-
 		}
 
-		if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
-
+		if($orderBy !== null && $orderMode !== null && $startAt !== null && $endAt !== null){
 			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] = :$linkToArray[0] $linkToText ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
-
 		}
 
-		if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
-
+		if($orderBy === null && $orderMode === null && $startAt !== null && $endAt !== null){
 			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] = :$linkToArray[0] $linkToText LIMIT $startAt, $endAt";
-
 		}
 
 		$link = Connection::connect();
@@ -155,7 +145,7 @@ class GetModel{
 			foreach ($relArray as $key => $value) {
 
 				/*=============================================
-				Validar existencia de la tabla y de las columnas
+				Validate table and columns existence
 				=============================================*/
 				
 				if(empty(Connection::getColumnsData($value,["*"]))){
@@ -328,7 +318,6 @@ class GetModel{
 	static public function getDataSearch($table, $select, $linkTo, $search,$orderBy,$orderMode,$startAt,$endAt){
 
 		// Validate table and columns existence
-
 		$linkToArray = explode(",",$linkTo);
 		$selectArray = explode(",",$select);
 
@@ -337,63 +326,41 @@ class GetModel{
 		}
 
 		$selectArray = array_unique($selectArray);
-		
-		if(empty(Connection::getColumnsData($table,$selectArray ))){
-			
-			return null;
 
+		if(empty(Connection::getColumnsData($table,$selectArray))){
+			return null;
 		}
+
+		// Sanitize ORDER BY and LIMIT to prevent SQL injection
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
 
 		$searchArray = explode(",",$search);
 		$linkToText = "";
 
 		if(count($linkToArray)>1){
-
 			foreach ($linkToArray as $key => $value) {
-				
 				if($key > 0){
-
 					$linkToText .= "AND ".$value." = :".$value." ";
 				}
 			}
-
 		}
 
+		// Use :search placeholder to safely bind LIKE value
+		$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE :search $linkToText";
 
-		/*=============================================
-		Sin ordenar y sin limitar datos
-		=============================================*/
-
-		$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText";
-
-		/*=============================================
-		Ordenar datos sin limites
-		=============================================*/
-
-		if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText ORDER BY $orderBy $orderMode";
-
+		if($orderBy !== null && $orderMode !== null && $startAt === null && $endAt === null){
+			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE :search $linkToText ORDER BY $orderBy $orderMode";
 		}
 
-		/*=============================================
-		Ordenar y limitar datos
-		=============================================*/
-
-		if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
-
+		if($orderBy !== null && $orderMode !== null && $startAt !== null && $endAt !== null){
+			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE :search $linkToText ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
 		}
 
-		/*=============================================
-		Limitar datos sin ordenar
-		=============================================*/
-
-		if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText LIMIT $startAt, $endAt";
-
+		if($orderBy === null && $orderMode === null && $startAt !== null && $endAt !== null){
+			$sql = "SELECT $select FROM $table WHERE $linkToArray[0] LIKE :search $linkToText LIMIT $startAt, $endAt";
 		}
 
 		$link = Connection::connect();
@@ -402,14 +369,14 @@ class GetModel{
 		}
 		$stmt = $link->prepare($sql);
 
+		// Bind LIKE value safely with wildcards
+		$likeValue = '%' . $searchArray[0] . '%';
+		$stmt->bindParam(':search', $likeValue, PDO::PARAM_STR);
+
 		foreach ($linkToArray as $key => $value) {
-
 			if($key > 0){
-			
-				$stmt -> bindParam(":".$value, $searchArray[$key], PDO::PARAM_STR);
-
+				$stmt->bindParam(":".$value, $searchArray[$key], PDO::PARAM_STR);
 			}
-
 		}
 
 		try{
@@ -539,13 +506,12 @@ class GetModel{
 	static public function getDataRange($table,$select,$linkTo,$between1,$between2,$orderBy,$orderMode,$startAt,$endAt, $filterTo, $inTo){
 
 		// Validate table and columns existence
-
 		$linkToArray = explode(",",$linkTo);
 
 		if($filterTo != null){
 			$filterToArray = explode(",",$filterTo);
 		}else{
-			$filterToArray =array();
+			$filterToArray = array();
 		}
 
 		$selectArray = explode(",",$select);
@@ -559,55 +525,43 @@ class GetModel{
 		}
 
 		$selectArray = array_unique($selectArray);
-		
-		if(empty(Connection::getColumnsData($table,$selectArray ))){
-			
+
+		if(empty(Connection::getColumnsData($table,$selectArray))){
 			return null;
-
 		}
 
+		// Sanitize ORDER BY and LIMIT to prevent SQL injection
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
+
+		// Build IN() clause safely using individual bound parameters
 		$filter = "";
-
-		if($filterTo != null && $inTo != null){
-
-			$filter = 'AND '.$filterTo.' IN ('.$inTo.')';
-
+		$filterParams = [];
+		if($filterTo !== null && $inTo !== null) {
+			$inValues = explode(",", $inTo);
+			$placeholders = [];
+			foreach ($inValues as $i => $val) {
+				$key = ':in_' . $i;
+				$placeholders[] = $key;
+				$filterParams[$key] = $val;
+			}
+			$filter = 'AND ' . $filterTo . ' IN (' . implode(',', $placeholders) . ')';
 		}
 
-		/*=============================================
-		Sin ordenar y sin limitar datos
-		=============================================*/
+		$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN :between1 AND :between2 $filter";
 
-		$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter";
-
-		/*=============================================
-		Ordenar datos sin limites
-		=============================================*/
-
-		if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter ORDER BY $orderBy $orderMode";
-
+		if($orderBy !== null && $orderMode !== null && $startAt === null && $endAt === null){
+			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN :between1 AND :between2 $filter ORDER BY $orderBy $orderMode";
 		}
 
-		/*=============================================
-		Ordenar y limitar datos
-		=============================================*/
-
-		if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
-
+		if($orderBy !== null && $orderMode !== null && $startAt !== null && $endAt !== null){
+			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN :between1 AND :between2 $filter ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
 		}
 
-		/*=============================================
-		Limitar datos sin ordenar
-		=============================================*/
-
-		if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
-
-			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter LIMIT $startAt, $endAt";
-
+		if($orderBy === null && $orderMode === null && $startAt !== null && $endAt !== null){
+			$sql = "SELECT $select FROM $table WHERE $linkTo BETWEEN :between1 AND :between2 $filter LIMIT $startAt, $endAt";
 		}
 
 		$link = Connection::connect();
@@ -615,18 +569,20 @@ class GetModel{
 			return null;
 		}
 		$stmt = $link->prepare($sql);
+		$stmt->bindParam(':between1', $between1, PDO::PARAM_STR);
+		$stmt->bindParam(':between2', $between2, PDO::PARAM_STR);
 
-		try{
-
-			$stmt -> execute();
-
-		}catch(PDOException $Exception){
-
-			return null;
-		
+		foreach ($filterParams as $key => $val) {
+			$stmt->bindValue($key, $val, PDO::PARAM_STR);
 		}
 
-		return $stmt -> fetchAll(PDO::FETCH_CLASS);
+		try{
+			$stmt->execute();
+		}catch(PDOException $Exception){
+			return null;
+		}
+
+		return $stmt->fetchAll(PDO::FETCH_CLASS);
 
 	}
 

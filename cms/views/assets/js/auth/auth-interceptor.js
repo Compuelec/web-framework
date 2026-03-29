@@ -127,8 +127,8 @@ var AuthInterceptor = {
     },
     
     logout: function() {
-        localStorage.removeItem('tokenAdmin');
-        
+        window.CMS_TOKEN = null;
+
         var cmsBasePath = window.CMS_BASE_PATH || '';
         
         if (cmsBasePath) {
@@ -141,7 +141,7 @@ var AuthInterceptor = {
 
 // Validate token on page load
 function validateTokenOnLoad() {
-    var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+    var token = window.CMS_TOKEN || '';
     
     if (!token) {
         // No token available, redirect to login
@@ -174,12 +174,12 @@ function validateTokenOnLoad() {
     });
 }
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
     AuthInterceptor.init();
-    
+
     // Validate token on page load (only if we're not on login/logout pages)
     var currentPath = window.location.pathname;
-    if (currentPath.indexOf('/login') === -1 && 
+    if (currentPath.indexOf('/login') === -1 &&
         currentPath.indexOf('/logout') === -1 &&
         currentPath.indexOf('/install') === -1) {
         validateTokenOnLoad();

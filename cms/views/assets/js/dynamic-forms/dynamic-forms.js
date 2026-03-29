@@ -1,5 +1,5 @@
 /*=============================================
-Actualizar la matriz del select
+Update the select matrix
 =============================================*/
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
@@ -8,7 +8,7 @@ var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
 $(document).ready(function(){
 	
 	// Check if token is available
-	var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+	var token = window.CMS_TOKEN || window.CMS_TOKEN || '';
 	if(!token){
 		console.warn("Token not available, skipping automatic select initialization");
 		return;
@@ -60,7 +60,7 @@ $(document).on("change",".changeSelectType",function(){
 	}
 	
 	// Get token from session or localStorage
-	var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+	var token = window.CMS_TOKEN || window.CMS_TOKEN || '';
 	if(!token){
 		console.error("No token available for select options");
 		return;
@@ -109,7 +109,7 @@ $(document).on("change",".changeSelectType",function(){
 })
 
 /*=============================================
-Adicionar un nuevo objeto
+Add a new object
 =============================================*/
 
 $(document).on("click",".addObject",function(){
@@ -122,7 +122,7 @@ $(document).on("click",".addObject",function(){
 
 
 /*=============================================
-Quitar un objeto
+Remove an object
 =============================================*/
 
 function removeObject(column, position, event){
@@ -141,7 +141,7 @@ function removeObject(column, position, event){
 }
 
 /*=============================================
-Función cuando cambia el objeto
+Function when the object changes
 =============================================*/
 
 function changeItemObject(column){
@@ -164,7 +164,7 @@ function changeItemObject(column){
 }
 
 /*=============================================
-Adicionar un nuevo item para el json
+Add a new item to the JSON
 =============================================*/
 
 $(document).on("click",".addJson",function(){
@@ -176,7 +176,7 @@ $(document).on("click",".addJson",function(){
 })
 
 /*=============================================
-Quitar un objeto
+Remove an object
 =============================================*/
 
 function removeJson(column, position,event){
@@ -195,7 +195,7 @@ function removeJson(column, position,event){
 }
 
 /*=============================================
-Adicionar un grupo de objetos
+Add a group of objects
 =============================================*/
 
 $(document).on("click",".addJsonGroup",function(){
@@ -207,7 +207,7 @@ $(document).on("click",".addJsonGroup",function(){
 })
 
 /*=============================================
-Remover un grupo de objetos
+Remove a group of objects
 =============================================*/
 function removeJsonGroup(column, position, event){
 
@@ -226,7 +226,7 @@ function removeJsonGroup(column, position, event){
 }
 
 /*=============================================
-Función cuando cambia el Json
+Function when JSON changes
 =============================================*/
 
 function changeItemJson(column){
@@ -260,7 +260,7 @@ function changeItemJson(column){
 }
 
 /*=============================================
-Abrir ventana modal de archivos
+Open files modal window
 =============================================*/
 
 $(document).on("click",".myFiles",function(){
@@ -291,7 +291,7 @@ $(document).on("click",".myFiles",function(){
 })
 
 /*=============================================
-Cambiar la tabla de relaciones
+Change the relations table
 =============================================*/
 
 $(document).on("change",".changeRelations",function(){
@@ -306,7 +306,7 @@ $(document).on("change",".changeRelations",function(){
 	var data = new FormData();
 	data.append("table",table);
 	data.append("id_column",id_column);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", window.CMS_TOKEN || '');
 
 	$.ajax({
 		url: CMS_AJAX_PATH + "/dynamic-forms.ajax.php",
@@ -338,7 +338,7 @@ $(document).on("change",".changeRelations",function(){
 })
 
 /*=============================================
-Actualizar la matriz de ChatGPT
+Update the ChatGPT matrix
 =============================================*/
 
 $(document).on("change",".changeChatGPT",function(){
@@ -353,7 +353,7 @@ $(document).on("change",".changeChatGPT",function(){
 	var data = new FormData();
 	data.append("matrix_prompt",matrix_prompt);
 	data.append("id_prompt",id_prompt);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", window.CMS_TOKEN || '');
 
 	$.ajax({
 		url: CMS_AJAX_PATH + "/dynamic-forms.ajax.php",

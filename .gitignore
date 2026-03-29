@@ -44,6 +44,7 @@ CLAUDE.md
 # Configuration files (use .example files as templates)
 api/config.php
 cms/config.php
+web/config.php
 plugins/payku/config.php
 plugins/*/config.php
 

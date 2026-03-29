@@ -173,7 +173,7 @@ function uploadFiles(event, type, time){
 	})
 
 	/*=============================================
-	Recorriendo los archivos
+	Iterating through the files
 	=============================================*/
 
 	Array.from(files.files).forEach((file,i)=>{
@@ -283,7 +283,7 @@ function uploadFiles(event, type, time){
 			}
 
 			/*=============================================
-			Capturar la miniatura de PDF
+			Capture PDF thumbnail
 			=============================================*/
 
 			if(file.type.split("/")[1] == "pdf"){
@@ -295,7 +295,7 @@ function uploadFiles(event, type, time){
 			}
 
 			/*=============================================
-			Capturar la miniatura de ZIP
+			Capture ZIP thumbnail
 			=============================================*/
 
 			if(file.type.split("/")[1] == "zip"){	
@@ -425,7 +425,7 @@ function uploadFiles(event, type, time){
 				fncSweetAlert("close", "", "");
 
 				/*=============================================
-				Ejecutar función ajuste de imagen
+				Execute image adjustment function
 				=============================================*/
 
 				imgAdjustGrid();
@@ -500,7 +500,7 @@ $(document).on("click","#startAll",function(){
 	Validate if user is admin
 	=============================================*/
 
-	if(localStorage.getItem("tokenAdmin") == null){
+	if(window.CMS_TOKEN || '' == null){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
@@ -546,7 +546,7 @@ function uploadFilesAjax(folder){
 	var countFiles = 0;
 
 	/*=============================================
-	Recorriendo los archivos
+	Iterating through the files
 	=============================================*/
 
 	Array.from(files.files).forEach((file,i)=>{
@@ -554,7 +554,7 @@ function uploadFilesAjax(folder){
 		var data = new FormData();
 		data.append("file", file);
 		data.append("folder", folder.split("_")[0]);
-		data.append("token", localStorage.getItem("tokenAdmin"));
+		data.append("token", window.CMS_TOKEN || '');
 
 		$.ajax({
 
@@ -569,7 +569,7 @@ function uploadFilesAjax(folder){
 						var completePercent = (e.loaded / e.total) * 100;
 
 						/*=============================================
-						Precarga individual en la lista
+						Individual preload in list view
 						=============================================*/			
 
 						$(".progressList"+i).find(".progress-spinner").html(`<div class="spinner-border spinner-border-sm me-1"></div><small>Uploading file to server...</small>`)
@@ -579,7 +579,7 @@ function uploadFilesAjax(folder){
 						$(".progressList"+i).find(".progress-bar").html(completePercent.toFixed(2)+"%");
 
 						/*=============================================
-						Precarga individual en la cuadrícula
+						Individual preload in grid view
 						=============================================*/			
 
 						$(".progressGrid"+i).find(".progress-spinner").html(`<div class="spinner-border spinner-border-sm"></div>`)
@@ -690,7 +690,7 @@ function uploadFilesAjax(folder){
 
 						var data = new FormData();
 						data.append("idFolder", folder.split("_")[0]);
-						data.append("token", localStorage.getItem("tokenAdmin"));
+						data.append("token", window.CMS_TOKEN || '');
 
 						$.ajax({
 
@@ -776,7 +776,7 @@ $(document).on("click",".deleteFile",function(){
 	Confirmar si esta como administrador
 	=============================================*/
 
-	if(localStorage.getItem("tokenAdmin") == null){
+	if(window.CMS_TOKEN || '' == null){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
@@ -823,7 +823,7 @@ $(document).on("click",".deleteFile",function(){
 			var data = new FormData();
 			data.append("idFileDelete", idFile);
 			data.append("idFolderDelete", idFolder);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -880,7 +880,7 @@ $(document).on("click",".clearFile",function(){
 	}	
 
 	/*=============================================
-	Recorriendo los archivos
+	Iterating through the files
 	=============================================*/
 
 	Array.from(files.files).forEach((file,i)=>{
@@ -961,7 +961,7 @@ $(document).on("change",".changeName", function(){
 	Confirmar si esta como administrador
 	=============================================*/
 
-	if(localStorage.getItem("tokenAdmin") == null){
+	if(window.CMS_TOKEN || '' == null){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
@@ -977,7 +977,7 @@ $(document).on("change",".changeName", function(){
 	var data = new FormData();
 	data.append("name", name);
 	data.append("idFile", idFile);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", window.CMS_TOKEN || '');
 
 	$.ajax({
 
@@ -1039,7 +1039,7 @@ function fncSearch(search){
 }
 
 /*=============================================
-Cambio de órden, filtrar formato o filtrar servidor
+Change sort order, filter by format or server
 =============================================*/
 
 $(document).on("change",".changeFilters",function(){
@@ -1054,7 +1054,7 @@ $(document).on("change",".changeFilters",function(){
 })
 
 /*=============================================
-Cambio de órden, filtrar formato o filtrar servidor
+Change sort order, filter by format or server
 =============================================*/
 
 $(document).on("change",".changeFolders",function(){
@@ -1212,7 +1212,7 @@ function loadFiles(search,sortBy,filterBy,folders,startAt,endAt){
 					if(startAt == 0){
 					
 						/*=============================================
-						Limpiar la lista y la cuadrícula
+						Clear the list and the grid
 						=============================================*/
 
 						$("#list table tbody").html('<tr></tr>');
@@ -1221,7 +1221,7 @@ function loadFiles(search,sortBy,filterBy,folders,startAt,endAt){
 					}
 
 					/*=============================================
-					Pintar la lista y la cuadrícula con lo que viene de AJAX
+					Render the list and grid with AJAX response data
 					=============================================*/
 
 					$("#list table tbody").append(JSON.parse(response).htmlList);

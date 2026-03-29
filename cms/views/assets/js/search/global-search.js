@@ -134,7 +134,7 @@ var GlobalSearch = {
             method: 'POST',
             data: {
                 term: term,
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function(response) {
                 try {

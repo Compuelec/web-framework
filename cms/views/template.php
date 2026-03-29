@@ -194,11 +194,8 @@ if($adminTable !== null && is_object($adminTable)){
 		window.CMS_AJAX_PATH = (window.CMS_BASE_PATH || "") + "/ajax";
 		window.CMS_ASSETS_PATH = (window.CMS_BASE_PATH || "") + "/views/assets";
 		<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && isset($_SESSION["admin"]->token_admin)): ?>
+		// Token available only for this page session — NOT stored in localStorage to reduce XSS exposure
 		window.CMS_TOKEN = <?php echo json_encode($_SESSION["admin"]->token_admin); ?>;
-		// Sync with localStorage
-		if (typeof(Storage) !== "undefined") {
-			localStorage.setItem("tokenAdmin", window.CMS_TOKEN);
-		}
 		<?php endif ?>
 	</script>
 

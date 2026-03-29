@@ -102,8 +102,7 @@ class DynamicController{
 
 				if($value->type_column == "password" && !empty($fieldValue)){
 
-					$passwordSalt = TemplateController::getPasswordSalt();
-					$fields.= $value->title_column."=".crypt(trim($fieldValue), $passwordSalt)."&";
+					$fields.= $value->title_column."=".password_hash(trim($fieldValue), PASSWORD_BCRYPT)."&";
 
 				}else if($value->type_column == "email"){
 
@@ -247,8 +246,7 @@ class DynamicController{
 
 					// Only process password if value is provided
 					if(!empty($fieldValue)){
-						$passwordSalt = TemplateController::getPasswordSalt();
-						$fields[$value->title_column] = crypt(trim($fieldValue), $passwordSalt);
+						$fields[$value->title_column] = password_hash(trim($fieldValue), PASSWORD_BCRYPT);
 					}
 
 				}else if($value->type_column == "email"){

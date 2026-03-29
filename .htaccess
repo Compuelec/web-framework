@@ -12,7 +12,13 @@ Options All -Indexes
 # Protect sensitive directories
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
+
+    # Force HTTPS — skip on localhost to avoid breaking local development
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} !^localhost$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Redirect root to /cms (backup - index.php handles this primarily)
     # Only redirect if accessing the exact root and index.php doesn't exist
     RewriteCond %{REQUEST_URI} ^/chatcenter/?$ [OR]
@@ -56,9 +62,12 @@ Options All -Indexes
     
     # Prevent clickjacking
     Header set X-Frame-Options "SAMEORIGIN"
-    
+
     # Referrer policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # HSTS — only activate after confirming HTTPS works in production
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
 # Disable server signature

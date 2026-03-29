@@ -77,7 +77,7 @@ class AdminsController{
 				</script>';
 
 				/*=============================================
-				Generar y enviar código de seguridad al correo
+				Generate and send security code to email
 				=============================================*/
 				/*
 				$securityCode = TemplateController::genPassword(6);
@@ -259,22 +259,21 @@ class AdminsController{
 			if($admin->status == 200){
 
 				/*=============================================
-				Si hay cambio de contraseña
+				If there is a password change
 				=============================================*/
 
 				if(!empty($_POST["password_admin"])){
 
-					$passwordSalt = TemplateController::getPasswordSalt();
-					$crypt = crypt($_POST["password_admin"], $passwordSalt);
+					$crypt = password_hash($_POST["password_admin"], PASSWORD_BCRYPT);
 
 				}else{
 
 					$crypt = $admin->results[0]->password_admin;
-					
+
 				}
 
 				/*=============================================
-				Subir cambios a base de datos
+				Upload changes to database
 				=============================================*/
 
 				$url = "admins?id=".$admin->results[0]->id_admin."&nameId=id_admin&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";	
@@ -340,7 +339,7 @@ class AdminsController{
 	}
 
 	/*=============================================
-	Recuperar contraseña
+	Reset Password
 	=============================================*/
 
 	public function resetPassword(){
@@ -355,8 +354,8 @@ class AdminsController{
 			</script>';
 
 			/*=============================================
-			Preguntamos primero si el usuario está registrado
-			=============================================*/	
+			First check if the user is registered
+			=============================================*/
 
 			$url = "admins?linkTo=email_admin&equalTo=".$_POST["resetPassword"]."&select=id_admin";
 			$method = "GET";
@@ -367,8 +366,7 @@ class AdminsController{
 			if($admin->status == 200){
 
 				$newPassword = TemplateController::genPassword(11);
-				$passwordSalt = TemplateController::getPasswordSalt();
-				$crypt = crypt($newPassword, $passwordSalt);
+				$crypt = password_hash($newPassword, PASSWORD_BCRYPT);
 
 				/*=============================================
 				Update password in database

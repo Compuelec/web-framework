@@ -1,5 +1,5 @@
 /*=============================================
-Formatear envío de formulario lado servidor
+Format server-side form submission
 =============================================*/
 
 function fncFormatInputs(){
@@ -12,7 +12,7 @@ function fncFormatInputs(){
 
 
 /*=============================================
-Alerta SweetAlert
+SweetAlert Alert
 =============================================*/
 function fncSweetAlert(type, text, url){
 
@@ -130,7 +130,7 @@ function fncSweetAlert(type, text, url){
 
 
 /*=============================================
-Alerta Toastr
+Toastr Alert
 =============================================*/
 
 function fncToastr(type, text){
@@ -156,7 +156,7 @@ function fncToastr(type, text){
 }
 
 /*=============================================
-Alerta Línea Precarga
+Preloader Line Alert
 =============================================*/
 
 function fncMatPreloader(type){
@@ -187,7 +187,7 @@ function fncMatPreloader(type){
 }
 
 /*=============================================
-Función para alertar luego de un click
+Function to show alert after a click
 =============================================*/
 
 function alertClick(text){

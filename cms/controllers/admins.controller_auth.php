@@ -50,11 +50,13 @@ class AdminsController{
 				Generate and send security code to email
 				=============================================*/
 
-				$securityCode = TemplateController::genPassword(6);
+				// Generate 8-character security code and set 15-minute expiration
+				$securityCode = TemplateController::genPassword(8);
+				$scodeExp = time() + (15 * 60);
 
-				$url = "admins?id=".$login->results[0]->id_admin."&nameId=id_admin&token=no&except=scode_admin";
+				$url = "admins?id=".$login->results[0]->id_admin."&nameId=id_admin&token=no&except=scode_admin,scode_exp_admin,scode_attempts_admin";
 				$method = "PUT";
-				$fields = "scode_admin=".$securityCode;
+				$fields = "scode_admin=".$securityCode."&scode_exp_admin=".$scodeExp."&scode_attempts_admin=0";
 
 				$updateAdmin = CurlController::request($url,$method,$fields);
 
@@ -64,7 +66,7 @@ class AdminsController{
 					$email = $login->results[0]->email_admin;
 					$title = 'CÓDIGO DE SEGURIDAD';
 					$message = '<h4 style="font-weight: 100; color:#999; padding:0px 20px"><strong>Su código de seguridad: '.$securityCode.'</strong></4><h4 style="font-weight: 100; color:#999; padding:0px 20px">Ingrese nuevamente al sitio con este código de seguridad</4>';
-					$link = $_SERVER["REQUEST_SCHEME"]."://".$_SERVER["SERVER_NAME"]."?scode=".base64_encode($login->results[0]->email_admin);
+					$link = $_SERVER["REQUEST_SCHEME"]."://".$_SERVER["SERVER_NAME"]."?scode=".urlencode($login->results[0]->email_admin);
 
 					$sendEmail = TemplateController::sendEmail($subject, $email, $title, $message, $link);
 
@@ -74,9 +76,9 @@ class AdminsController{
 
 								fncFormatInputs();
 								fncMatPreloader("off");
-								fncSweetAlert("success", 
+								fncSweetAlert("success",
 								"Se ha enviado un código de seguridad para ingresar al sistema, por favor revise su correo electrónico o bandeja SPAM",
-								setTimeout(()=>window.location="'.$_SERVER["REQUEST_SCHEME"].'://'.$_SERVER["SERVER_NAME"].'?scode='.base64_encode($login->results[0]->email_admin).'",2000));
+								setTimeout(()=>window.location="'.$_SERVER["REQUEST_SCHEME"].'://'.$_SERVER["SERVER_NAME"].'?scode='.urlencode($login->results[0]->email_admin).'",2000));
 
 							</script>
 						';
@@ -147,34 +149,49 @@ class AdminsController{
 			$fields = array();
 
 			$admin = CurlController::request($url,$method,$fields);
-			
+
 			if($admin->status == 200){
 
-				/*=============================================
-				Create Session variable
-				=============================================*/
+				$adminData = $admin->results[0];
+				$now = time();
+				$attempts = (int)($adminData->scode_attempts_admin ?? 0);
+				$exp = (int)($adminData->scode_exp_admin ?? 0);
 
-				$_SESSION["admin"] = $admin->results[0];
+				// Check if code has expired (15 minutes)
+				if($exp > 0 && $now > $exp){
+					echo '<div class="alert alert-danger mt-3 rounded">Código de seguridad expirado. Por favor inicie sesión nuevamente.</div>
+					<script>fncMatPreloader("off");fncFormatInputs();fncToastr("error","Código expirado");</script>';
+					return;
+				}
+
+				// Block after 3 failed attempts
+				if($attempts >= 3){
+					echo '<div class="alert alert-danger mt-3 rounded">Demasiados intentos fallidos. Por favor inicie sesión nuevamente.</div>
+					<script>fncMatPreloader("off");fncFormatInputs();fncToastr("error","Demasiados intentos");</script>';
+					return;
+				}
+
+				// Create session and clear 2FA fields
+				$_SESSION["admin"] = $adminData;
+
+				$clearUrl = "admins?id=".$adminData->id_admin."&nameId=id_admin&token=no&except=scode_admin,scode_exp_admin,scode_attempts_admin";
+				CurlController::request($clearUrl, "PUT", "scode_admin=&scode_exp_admin=0&scode_attempts_admin=0");
 
 				echo '<script>
-
-					localStorage.setItem("tokenAdmin","'.$admin->results[0]->token_admin.'");
 					fncMatPreloader("off");
 					fncFormatInputs();
 					location.reload();
-
 				</script>';
+				// Note: token is set via window.CMS_TOKEN from the session in template.php — never stored in localStorage
 
 			}else{
 
+				// Increment failed attempts counter if we can identify the admin by email in session
 				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: Código de seguridad no coincide</div>
-
 				<script>
-
 					fncMatPreloader("off");
 					fncFormatInputs();
 					fncToastr("error", "Error al ingresar: Código de seguridad no coincide");
-
 				</script>';
 			}
 
@@ -205,7 +222,13 @@ class AdminsController{
 			Validate admin
 			=============================================*/
 
-			$url = "admins?linkTo=id_admin&equalTo=".base64_decode($_POST["id_admin"])."&select=id_admin,password_admin,rol_admin";
+			// id_admin from POST is the actual numeric ID — validate as integer
+			$idAdmin = (int)$_POST["id_admin"];
+			if ($idAdmin <= 0) {
+				echo '<script>fncToastr("error","ID inválido");fncMatPreloader("off");fncFormatInputs();</script>';
+				return;
+			}
+			$url = "admins?linkTo=id_admin&equalTo=".$idAdmin."&select=id_admin,password_admin,rol_admin";
 			$method = "GET";
 			$fields = array();
 
@@ -219,8 +242,7 @@ class AdminsController{
 
 				if(!empty($_POST["password_admin"])){
 
-					$passwordSalt = TemplateController::getPasswordSalt();
-					$crypt = crypt($_POST["password_admin"], $passwordSalt);
+					$crypt = password_hash($_POST["password_admin"], PASSWORD_BCRYPT);
 
 				}else{
 
@@ -229,7 +251,7 @@ class AdminsController{
 				}
 
 				/*=============================================
-				Subir cambios a base de datos
+				Upload changes to database
 				=============================================*/
 
 				$url = "admins?id=".$admin->results[0]->id_admin."&nameId=id_admin&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";	
@@ -286,7 +308,7 @@ class AdminsController{
 	}
 
 	/*=============================================
-	Recuperar contraseña
+	Reset Password
 	=============================================*/
 
 	public function resetPassword(){
@@ -301,8 +323,8 @@ class AdminsController{
 			</script>';
 
 			/*=============================================
-			Preguntamos primero si el usuario está registrado
-			=============================================*/	
+			First check if the user is registered
+			=============================================*/
 
 			$url = "admins?linkTo=email_admin&equalTo=".$_POST["resetPassword"]."&select=id_admin";
 			$method = "GET";
@@ -313,11 +335,10 @@ class AdminsController{
 			if($admin->status == 200){
 
 				$newPassword = TemplateController::genPassword(11);
-				$passwordSalt = TemplateController::getPasswordSalt();
-				$crypt = crypt($newPassword, $passwordSalt);
+				$crypt = password_hash($newPassword, PASSWORD_BCRYPT);
 
 				/*=============================================
-				Actualizar contraseña en base de datos
+				Update password in database
 				=============================================*/
 				$url = "admins?id=".$admin->results[0]->id_admin."&nameId=id_admin&token=no&except=password_admin";
 				$method = "PUT";

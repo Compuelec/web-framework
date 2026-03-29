@@ -6,7 +6,7 @@ require_once "controllers/template.controller.php";
 class ModulesController{
 
 	/*=============================================
-	Gestionar un módulo
+	Manage a module
 	=============================================*/
 
 	public function manageModule(){
@@ -24,7 +24,7 @@ class ModulesController{
 			</script>';
 
 			/*=============================================
-			Editando Módulo
+			Editing Module
 			=============================================*/
 
 			if(isset($_POST["id_module"])){
@@ -118,7 +118,7 @@ class ModulesController{
 										if($createColumn->status == 200){
 
 											/*=============================================
-											Crear columnas en BD MySQL
+											Create columns in MySQL database
 											=============================================*/
 
 											if($key == 0){
@@ -437,7 +437,7 @@ class ModulesController{
 											$type = TemplateController::typeColumn($_POST["type_column_".$value]);
 
 											/*=============================================
-											Crear columnas en BD MySQL
+											Create columns in MySQL database
 											=============================================*/
 
 											if($key == 0){

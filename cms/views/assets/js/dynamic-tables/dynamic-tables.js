@@ -1,5 +1,5 @@
 /*=============================================
-Paginación
+Pagination
 =============================================*/
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
@@ -53,7 +53,7 @@ function initPagination(){
 initPagination();
 
 /*=============================================
-Cambio de límite de registros
+Change records limit
 =============================================*/
 
 $(document).on("change",".changeLimit",function(){
@@ -69,7 +69,7 @@ $(document).on("change",".changeLimit",function(){
 	var between2 = $("#between2").val();
 
 	/*=============================================
-	Actualizamos el límite en el input oculto
+	Update the limit in the hidden input
 	=============================================*/
 
 	$("#limitTable").val(limit);
@@ -80,7 +80,7 @@ $(document).on("change",".changeLimit",function(){
 
 
 /*=============================================
-Cambio de órden de registros
+Change records sort order
 =============================================*/
 
 $(document).on("click",".orderFilter",function(){
@@ -96,14 +96,14 @@ $(document).on("click",".orderFilter",function(){
 	var between2 = $("#between2").val();
 
 	/*=============================================
-	Actualizamos el orderBy y el orderMode en el input oculto
+	Update orderBy and orderMode in the hidden inputs
 	=============================================*/
 
 	$("#orderByTable").val(orderBy);
 	$("#orderModeTable").val(orderMode);
 
 	/*=============================================
-	Cambiar dirección de flecha
+	Change arrow direction
 	=============================================*/
 
 	if(orderMode == "ASC"){
@@ -124,7 +124,7 @@ $(document).on("click",".orderFilter",function(){
 })
 
 /*=============================================
-Búsqueda de registros
+Record search
 =============================================*/
 
 $(document).on("keyup","#searchItem",function(){
@@ -140,7 +140,7 @@ $(document).on("keyup","#searchItem",function(){
 	var between2 = $("#between2").val();
 
 	/*=============================================
-	Actualizamos la búsqueda en el input oculto
+	Update the search in the hidden input
 	=============================================*/
 
 	$("#searchTable").val(search);
@@ -150,7 +150,7 @@ $(document).on("keyup","#searchItem",function(){
 })
 
 /*=============================================
-Filtrar por fechas
+Filter by dates
 =============================================*/
 
 $('#daterange-btn').daterangepicker({
@@ -273,7 +273,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 			}
 
 			/*=============================================
-			Limpiar la selección de items
+			Clear the item selection
 			=============================================*/
 
 			$("#checkItems").val("");
@@ -282,13 +282,13 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 			if(JSON.parse(response).HTMLTable != ""){
 
 				/*=============================================
-				Aparecer filtros y paginación
+				Show filters and pagination
 				=============================================*/
 
 				$(".blockFooter").show();
 
 				/*=============================================
-				Actualizamos la tabla
+				Update the table
 				=============================================*/
 
 				$("#loadTable").html(JSON.parse(response).HTMLTable);
@@ -296,7 +296,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 				if(filter == "limit" || filter == "order" || filter == "search" || filter == "range" ){
 
 					/*=============================================
-					Actualizamos la paginación
+					Update the pagination
 					=============================================*/
 
 					$("#cont-pagination").html(`
@@ -313,7 +313,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 				}
 
 				/*=============================================
-				Actualizamos los registros
+				Update the records count
 				=============================================*/
 
 				$("#startItems").html(((page-1)*limit)+1);
@@ -333,7 +333,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 			}else{
 
 				/*=============================================
-				Actualizamos la tabla
+				Update the table
 				=============================================*/
 
 				$("#loadTable").html(`
@@ -345,7 +345,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 				 `);
 
 				/*=============================================
-				Esconder filtros y paginación
+				Hide filters and pagination
 				=============================================*/
 
 				$(".blockFooter").hide();
@@ -461,7 +461,7 @@ $(document).on("click",".checkAllItems",function(){
 
 
 /*=============================================
-Eliminar Item Individual
+Delete Individual Item
 =============================================*/
 
 $(document).on("click",".deleteItem",function(){
@@ -481,7 +481,7 @@ $(document).on("click",".deleteItem",function(){
 			data.append("idItemDelete", idItem);
 			data.append("tableDelete", table);
 			data.append("suffixDelete", suffix);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -509,7 +509,7 @@ $(document).on("click",".deleteItem",function(){
 })
 
 /*=============================================
-Eliminar items de forma masiva
+Delete items in bulk
 =============================================*/
 
 $(document).on("click",".deleteAllItems",function(){
@@ -537,7 +537,7 @@ $(document).on("click",".deleteAllItems",function(){
 			data.append("idItemDelete", idItems);
 			data.append("tableDelete", table);
 			data.append("suffixDelete", suffix);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -565,7 +565,7 @@ $(document).on("click",".deleteAllItems",function(){
 })
 
 /*=============================================
-Cambiar estado de un registro boolean
+Change boolean record status
 =============================================*/
 
 $(document).on("click",".changeBoolean",function(){
@@ -592,7 +592,7 @@ $(document).on("click",".changeBoolean",function(){
 	data.append("tableChange", table);
 	data.append("suffixChange", suffix);
 	data.append("columnChange", column);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", window.CMS_TOKEN || '');
 
 	$.ajax({
 
@@ -616,7 +616,7 @@ $(document).on("click",".changeBoolean",function(){
 })
 
 /*=============================================
-Cambiar estado boleano masivo
+Bulk change boolean status
 =============================================*/
 
 $(document).on("click",".myBooleans",function(){
@@ -651,7 +651,7 @@ $(document).on("click",".myBooleans",function(){
 			data.append("tableChange", table);
 			data.append("suffixChange", suffix);
 			data.append("columnChange", column);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -681,7 +681,7 @@ $(document).on("click",".myBooleans",function(){
 })
 
 /*=============================================
-Cambiar selección masiva
+Bulk change selection
 =============================================*/
 
 $(document).on("click",".mySelects",function(){
@@ -723,7 +723,7 @@ $(document).on("click",".mySelects",function(){
 			data.append("tableSelect", table);
 			data.append("suffixSelect", suffix);
 			data.append("columnSelect", column);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -770,7 +770,7 @@ $(document).on("change",".changeOrder",function(){
 	data.append("tableOrder", table);
 	data.append("suffixOrder", suffix);
 	data.append("columnOrder", column);
-	data.append("token", localStorage.getItem("tokenAdmin"));
+	data.append("token", window.CMS_TOKEN || '');
 
 	$.ajax({
 

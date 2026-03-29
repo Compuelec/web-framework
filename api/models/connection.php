@@ -101,8 +101,32 @@ class Connection{
 
 	}
 
+	/**
+	 * Validate that a string is a safe SQL identifier (table/column name).
+	 * Only allows alphanumeric characters and underscores.
+	 */
+	static public function sanitizeIdentifier($name) {
+		if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+			return null;
+		}
+		return $name;
+	}
+
+	/**
+	 * Validate orderMode value — only ASC or DESC allowed.
+	 */
+	static public function sanitizeOrderMode($mode) {
+		$mode = strtoupper((string)$mode);
+		return in_array($mode, ['ASC', 'DESC'], true) ? $mode : null;
+	}
+
 	// Validate table and columns existence
 	static public function getColumnsData($table, $columns){
+
+		// Validate table name before using in query
+		if (Connection::sanitizeIdentifier($table) === null) {
+			return null;
+		}
 
 		$database = Connection::infoDatabase()["database"];
 
@@ -110,8 +134,9 @@ class Connection{
 		if ($link === null) {
 			return null;
 		}
-		$validate = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
-		->fetchAll(PDO::FETCH_OBJ);
+		$stmt = $link->prepare("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = :db AND table_name = :table");
+		$stmt->execute([':db' => $database, ':table' => $table]);
+		$validate = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 		if(empty($validate)){
 

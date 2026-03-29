@@ -26,7 +26,12 @@ return [
     // API Configuration
     'api' => [
         'key' => 'your-api-key-here',
-        'public_access_tables' => ['']
+        'public_access_tables' => [''],
+        // Allowed CORS origins — add your domain(s) here. Never use '*' in production.
+        'allowed_origins' => [
+            'http://localhost',
+            'http://localhost/web-framework',
+        ]
     ],
 
     // JWT Configuration
