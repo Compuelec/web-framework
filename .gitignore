@@ -38,6 +38,8 @@ php_error_log
 config.local.php
 *.key
 *.pem
+.claude/
+CLAUDE.md
 
 # Configuration files (use .example files as templates)
 api/config.php
