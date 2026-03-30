@@ -45,9 +45,6 @@ CLAUDE.md
 api/config.php
 cms/config.php
 web/config.php
-plugins/payku/config.php
-plugins/*/config.php
-
 # Temporary files
 *.tmp
 *.temp
