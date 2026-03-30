@@ -338,23 +338,23 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php
 		// Auto-setup Activity Logs System (runs automatically on every page load)
 		require_once __DIR__ . '/../controllers/activity_logs.controller.php';
-		
+
 		// Ensure table exists (creates automatically if needed)
 		ActivityLogsController::getLogs([], 1, 0);
-		
+
 		// Ensure page exists in database (creates automatically if needed)
 		$url = "pages?linkTo=url_page&equalTo=activity_logs";
 		$method = "GET";
 		$fields = array();
 		$pageCheck = CurlController::request($url, $method, $fields);
-		
+
 		$pageExists = false;
 		if ($pageCheck && is_object($pageCheck) && isset($pageCheck->status) && $pageCheck->status == 200) {
 			if (isset($pageCheck->results) && is_array($pageCheck->results) && count($pageCheck->results) > 0) {
 				$pageExists = true;
 			}
 		}
-		
+
 		if (!$pageExists) {
 			// Create the page automatically
 			$url = "pages?token=no&except=id_page";
@@ -368,6 +368,44 @@ if($adminTable !== null && is_object($adminTable)){
 				"date_created_page" => date("Y-m-d")
 			);
 			CurlController::request($url, $method, $fields);
+		}
+
+		// Auto-setup RBAC Manager page — always a child of the admins menu page
+		$rbacPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=rbac-manager", "GET", array());
+		$rbacPageExists = (
+			$rbacPageCheck &&
+			is_object($rbacPageCheck) &&
+			isset($rbacPageCheck->status) &&
+			$rbacPageCheck->status == 200 &&
+			isset($rbacPageCheck->results) &&
+			is_array($rbacPageCheck->results) &&
+			count($rbacPageCheck->results) > 0
+		);
+
+		if (!$rbacPageExists) {
+			// Find the admins menu page to use as parent
+			$adminsPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=admins", "GET", array());
+			$adminsPageId = 0;
+			if (
+				$adminsPageCheck && is_object($adminsPageCheck) &&
+				isset($adminsPageCheck->status) && $adminsPageCheck->status == 200 &&
+				isset($adminsPageCheck->results[0]->id_page)
+			) {
+				$adminsPageId = $adminsPageCheck->results[0]->id_page;
+			}
+
+			$rbacFields = array(
+				"title_page"        => "Roles y Permisos",
+				"url_page"          => "rbac-manager",
+				"icon_page"         => "bi bi-shield-lock",
+				"type_page"         => "custom",
+				"order_page"        => 2,
+				"date_created_page" => date("Y-m-d")
+			);
+			if ($adminsPageId > 0) {
+				$rbacFields["parent_page"] = $adminsPageId;
+			}
+			CurlController::request("pages?token=no&except=id_page", "POST", $rbacFields);
 		}
 		?>
 
@@ -407,7 +445,34 @@ if($adminTable !== null && is_object($adminTable)){
 						Validate permissions
 						===========================================-->
 
-						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"))): ?>
+						<?php
+						// RBAC: check if plugin applies for this admin
+						$_rbac_access = null;
+						if (
+							isset($_SESSION["admin"]) &&
+							is_object($_SESSION["admin"]) &&
+							!in_array($_SESSION["admin"]->rol_admin ?? '', ['superadmin', 'admin']) &&
+							!empty($_SESSION["admin"]->id_role_admin)
+						) {
+							$_rbac_plugin = __DIR__ . '/../../../../plugins/rbac-manager/controllers/rbac-manager.controller.php';
+							if (file_exists($_rbac_plugin)) {
+								require_once $_rbac_plugin;
+								$_rbac_access = RBACManagerController::canAccessPage($routesArray[0]);
+							}
+						}
+						?>
+						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && (
+							$_SESSION["admin"]->rol_admin == "superadmin" ||
+							$_SESSION["admin"]->rol_admin == "admin" ||
+							$_rbac_access === true ||
+							(
+								$_SESSION["admin"]->rol_admin == "editor" &&
+								empty($_SESSION["admin"]->id_role_admin) &&
+								isset($_SESSION["admin"]->permissions_admin) &&
+								isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) &&
+								json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"
+							)
+						)): ?>
 
 							<!--=========================================
 							Add dynamic and custom pages
