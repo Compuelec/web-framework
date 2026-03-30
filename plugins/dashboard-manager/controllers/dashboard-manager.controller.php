@@ -65,7 +65,15 @@ class DashboardManagerController {
             default:           $data = [];
         }
 
-        return ['success' => true, 'data' => $data, 'type' => $widget->type_widget, 'config' => $config];
+        return [
+            'success' => true,
+            'data'    => $data,
+            'type'    => $widget->type_widget,
+            'config'  => $config,
+            'title'   => $widget->title_widget   ?? '',
+            'width'   => $widget->width_widget   ?? 'col-md-4',
+            'refresh' => (int)($widget->refresh_widget ?? 0),
+        ];
     }
 
     // Metric: count/sum/avg of a column in a table

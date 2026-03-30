@@ -83,11 +83,9 @@ try {
             
         case 'mark_all_read':
             // Mark all notifications as read for current user
-            // Note: This would need a bulk update endpoint in the API
-            // For now, we'll get all unread and update them individually
-            $urlGet = "notifications?linkTo=id_admin_notification,read_notification&equalTo=" . 
+            $urlGet = "notifications?linkTo=id_admin_notification,read_notification&equalTo=" .
                      $_SESSION["admin"]->id_admin . ",0&select=id_notification";
-            $unread = CurlController::request($urlGet, $method, array());
+            $unread = CurlController::request($urlGet, "GET", array());
             
             $updated = 0;
             if ($unread->status == 200 && isset($unread->results)) {
@@ -107,6 +105,37 @@ try {
             ]);
             break;
             
+        case 'create':
+            // Create a notification for a specific admin (or all admins if id_admin = 0)
+            $targetAdminId = isset($_POST['id_admin'])   ? (int)$_POST['id_admin']   : (int)$_SESSION["admin"]->id_admin;
+            $title         = isset($_POST['title'])      ? trim($_POST['title'])      : '';
+            $message       = isset($_POST['message'])    ? trim($_POST['message'])    : '';
+            $type          = isset($_POST['type'])       ? trim($_POST['type'])       : 'info';
+            $icon          = isset($_POST['icon'])       ? trim($_POST['icon'])       : 'bi-info-circle';
+            $url           = isset($_POST['url'])        ? trim($_POST['url'])        : '';
+
+            if (empty($title) || empty($message)) {
+                echo json_encode(['success' => false, 'error' => 'title and message are required']);
+                exit;
+            }
+
+            $fields = http_build_query([
+                'id_admin_notification'   => $targetAdminId,
+                'title_notification'      => $title,
+                'message_notification'    => $message,
+                'type_notification'       => $type,
+                'icon_notification'       => $icon,
+                'url_notification'        => $url,
+                'read_notification'       => 0,
+            ]);
+
+            $result = CurlController::request("notifications?token=" . $token . "&table=admins&suffix=admin", "POST", $fields);
+
+            echo json_encode([
+                'success' => isset($result->status) && $result->status == 200,
+            ]);
+            break;
+
         default:
             echo json_encode([
                 'success' => false,

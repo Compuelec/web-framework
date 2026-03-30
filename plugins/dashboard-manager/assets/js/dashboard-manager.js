@@ -407,6 +407,7 @@
         // Pre-load tables when modal opens for add
         document.getElementById('dm-add-btn').addEventListener('click', function () {
             _editingId = null;
+            _tables    = null; // Invalidate cache so new tables are picked up
             resetModal();
             loadTables();
         });
@@ -424,9 +425,9 @@
             _selectedType = res.type;
             loadTables(function () {
                 goToStep2(res.type, res.config, {
-                    title:   res.config._title   || '',
-                    width:   res.config._width   || 'col-md-4',
-                    refresh: res.config._refresh || 0,
+                    title:   res.title   || '',
+                    width:   res.width   || 'col-md-4',
+                    refresh: res.refresh || 0,
                 });
             });
             _addModal.show();

@@ -285,6 +285,56 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/chat/chat.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css">
 
+	<?php
+	// Inject CMS theme CSS variables from cms_settings table
+	// Cache in session to avoid a DB query on every request
+	if (!isset($_SESSION['cms_theme'])) {
+		try {
+			require_once __DIR__ . '/../../api/models/connection.php';
+			$_themeLink = Connection::connect();
+			if ($_themeLink) {
+				$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+				$_themeRows = $_themeStmt ? $_themeStmt->fetchAll(PDO::FETCH_OBJ) : [];
+				$_SESSION['cms_theme'] = [];
+				foreach ($_themeRows as $_r) {
+					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+				}
+			}
+		} catch (Exception $_e) {
+			// Silently use defaults if table doesn't exist yet
+		}
+	}
+	$_t = array_merge([
+		'theme_primary'       => '#6c5ffc',
+		'theme_sidebar_bg'    => '#ffffff',
+		'theme_active_bg'     => '#eff6ff',
+		'theme_active_color'  => '#1e40af',
+		'theme_active_border' => '#3b82f6',
+	], $_SESSION['cms_theme'] ?? []);
+	// Validate all values are hex colors
+	foreach ($_t as $_k => $_v) {
+		if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $_v)) $_t[$_k] = '#6c5ffc';
+	}
+	?>
+	<style id="cms-theme-vars">
+		:root {
+			--tp-primary:       <?php echo $_t['theme_primary'] ?>;
+			--tp-sidebar-bg:    <?php echo $_t['theme_sidebar_bg'] ?>;
+			--tp-active-bg:     <?php echo $_t['theme_active_bg'] ?>;
+			--tp-active-color:  <?php echo $_t['theme_active_color'] ?>;
+			--tp-active-border: <?php echo $_t['theme_active_border'] ?>;
+		}
+		.bg-primary  { background: <?php echo $_t['theme_primary'] ?> !important; }
+		.text-primary { color: <?php echo $_t['theme_primary'] ?> !important; }
+		.btn-primary  { background: <?php echo $_t['theme_primary'] ?> !important; border-color: <?php echo $_t['theme_primary'] ?> !important; }
+		#sidebar-wrapper { background: <?php echo $_t['theme_sidebar_bg'] ?> !important; }
+		#sidebar-wrapper a.bg-transparent.active {
+			background: <?php echo $_t['theme_active_bg'] ?> !important;
+			color: <?php echo $_t['theme_active_color'] ?> !important;
+			border-left-color: <?php echo $_t['theme_active_border'] ?> !important;
+		}
+		#sidebar-wrapper a.bg-transparent.active i { color: <?php echo $_t['theme_active_border'] ?> !important; }
+	</style>
 
 </head>
 <body>
@@ -429,6 +479,25 @@ if($adminTable !== null && is_object($adminTable)){
 				$rbacFields["parent_page"] = $adminsPageId;
 			}
 			CurlController::request("pages?token=no&except=id_page", "POST", $rbacFields);
+		}
+
+		// Auto-setup Apariencia page
+		$aparienciaCheck = CurlController::request("pages?linkTo=url_page&equalTo=apariencia", "GET", array());
+		$aparienciaExists = (
+			$aparienciaCheck && is_object($aparienciaCheck) &&
+			isset($aparienciaCheck->status) && $aparienciaCheck->status == 200 &&
+			isset($aparienciaCheck->results) && is_array($aparienciaCheck->results) &&
+			count($aparienciaCheck->results) > 0
+		);
+		if (!$aparienciaExists) {
+			CurlController::request("pages?token=no&except=id_page", "POST", array(
+				"title_page"        => "Apariencia",
+				"url_page"          => "apariencia",
+				"icon_page"         => "bi bi-palette",
+				"type_page"         => "custom",
+				"order_page"        => 99,
+				"date_created_page" => date("Y-m-d"),
+			));
 		}
 		?>
 
