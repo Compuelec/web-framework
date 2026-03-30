@@ -370,6 +370,29 @@ if($adminTable !== null && is_object($adminTable)){
 			CurlController::request($url, $method, $fields);
 		}
 
+		// Auto-setup Dashboard Manager page (order_page=0 so it becomes the home)
+		$dashboardPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=dashboard", "GET", array());
+		$dashboardPageExists = (
+			$dashboardPageCheck &&
+			is_object($dashboardPageCheck) &&
+			isset($dashboardPageCheck->status) &&
+			$dashboardPageCheck->status == 200 &&
+			isset($dashboardPageCheck->results) &&
+			is_array($dashboardPageCheck->results) &&
+			count($dashboardPageCheck->results) > 0
+		);
+
+		if (!$dashboardPageExists) {
+			CurlController::request("pages?token=no&except=id_page", "POST", array(
+				"title_page"        => "Dashboard",
+				"url_page"          => "dashboard",
+				"icon_page"         => "bi bi-speedometer2",
+				"type_page"         => "custom",
+				"order_page"        => 0,
+				"date_created_page" => date("Y-m-d")
+			));
+		}
+
 		// Auto-setup RBAC Manager page — always a child of the admins menu page
 		$rbacPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=rbac-manager", "GET", array());
 		$rbacPageExists = (
@@ -604,11 +627,11 @@ if($adminTable !== null && is_object($adminTable)){
 
 						<?php 
 
-							$url = "pages?linkTo=order_page&equalTo=1";
-							$method = "GET";
-							$fields = array();
-
-							$page = CurlController::request($url,$method,$fields);
+							// Try order_page=0 first (dashboard), then fall back to order_page=1
+							$page = CurlController::request("pages?linkTo=order_page&equalTo=0", "GET", array());
+							if (!$page || !is_object($page) || $page->status != 200 || empty($page->results)) {
+								$page = CurlController::request("pages?linkTo=order_page&equalTo=1", "GET", array());
+							}
 
 							if($page->status == 200 && $page->results[0]->type_page == "modules"){
 
