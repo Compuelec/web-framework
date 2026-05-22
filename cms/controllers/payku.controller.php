@@ -66,7 +66,7 @@ class PaykuController {
         // Ensure directory exists with proper permissions
         if (!is_dir($configDir)) {
             // Create directory with full permissions
-            if (!@mkdir($configDir, 0777, true)) {
+            if (!@mkdir($configDir, 0755, true)) {
                 $errorMsg = "No se pudo crear el directorio: " . $configDir;
                 error_log("Payku config error: " . $errorMsg);
                 echo '<script>
@@ -76,18 +76,18 @@ class PaykuController {
                 return;
             }
             // Set permissions after creation
-            @chmod($configDir, 0777);
+            @chmod($configDir, 0755);
         }
         
         // Always ensure directory is writable (fix permissions if necessary)
         if (!is_writable($configDir)) {
             // Try to make it writable
-            @chmod($configDir, 0777);
+            @chmod($configDir, 0755);
             
             // Also ensure parent directories are writable
             $parentDir = dirname($configDir);
             if (is_dir($parentDir) && !is_writable($parentDir)) {
-                @chmod($parentDir, 0777);
+                @chmod($parentDir, 0755);
             }
             
             // Verify again after fixing permissions

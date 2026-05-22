@@ -69,7 +69,6 @@ class AdminsController{
 
 				echo '<script>
 
-					localStorage.setItem("tokenAdmin","'.$login->results[0]->token_admin.'");
 					fncMatPreloader("off");
 					fncFormatInputs();
 					location.reload();
@@ -132,13 +131,16 @@ class AdminsController{
 
 			}else{
 
-				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: '.$login->results.'</div>
+				$loginError = htmlspecialchars((string)($login->results ?? 'Unknown error'), ENT_QUOTES, 'UTF-8');
+				error_log("Failed CMS login attempt for email=" . ($_POST['email_admin'] ?? '') . " ip=" . ($_SERVER['REMOTE_ADDR'] ?? ''));
+
+				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: ' . $loginError . '</div>
 
 				<script>
 
 					fncMatPreloader("off");
 					fncFormatInputs();
-					fncToastr("error", "Error al ingresar: '.$login->results.'");
+					fncToastr("error", "Error al ingresar");
 
 				</script>';
 			}
@@ -203,7 +205,6 @@ class AdminsController{
 
 				echo '<script>
 
-					localStorage.setItem("tokenAdmin","'.$admin->results[0]->token_admin.'");
 					fncMatPreloader("off");
 					fncFormatInputs();
 					location.reload();
@@ -250,7 +251,7 @@ class AdminsController{
 			Validate admin
 			=============================================*/
 
-			$url = "admins?linkTo=id_admin&equalTo=".base64_decode($_POST["id_admin"])."&select=id_admin,password_admin,rol_admin";
+			$url = "admins?linkTo=id_admin&equalTo=".(int)base64_decode($_POST["id_admin"], true)."&select=id_admin,password_admin,rol_admin";
 			$method = "GET";
 			$fields = array();
 

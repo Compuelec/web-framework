@@ -71,6 +71,13 @@ class DynamicController{
 
 		if(isset($_POST["module"])){
 
+			// Validate CSRF token
+			require_once __DIR__ . '/session.controller.php';
+			if (!SessionController::validateCsrfToken($_POST['_csrf_token'] ?? '')) {
+				echo '<script>fncSweetAlert("error", "Solicitud inválida", "Token de seguridad incorrecto. Recargue la página e intente nuevamente.");</script>';
+				return;
+			}
+
 			echo '<script>
 
 				fncMatPreloader("on");
@@ -84,9 +91,16 @@ class DynamicController{
 
 			if(isset($_POST["idItem"])){
 
+				// Validate the decoded ID is a positive integer before using it
+				$decodedId = base64_decode($_POST["idItem"], true);
+				if ($decodedId === false || !preg_match('/^\d+$/', $decodedId)) {
+					echo '<script>fncSweetAlert("error", "Error", "Identificador de registro inválido.");</script>';
+					return;
+				}
+
 				// Update data
 
-				$url = $module->title_module."?id=".base64_decode($_POST["idItem"])."&nameId=id_".$module->suffix_module."&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
+				$url = $module->title_module."?id=".(int)$decodedId."&nameId=id_".$module->suffix_module."&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
 				$fields = "";
 				$count = 0;
@@ -140,7 +154,7 @@ class DynamicController{
 							=============================================*/
 							
 							if (function_exists('logActivity')) {
-								$entityId = base64_decode($_POST["idItem"]);
+								$entityId = (int)$decodedId;
 								logActivity('update', $module->title_module, $entityId, 'Record update in module ' . $module->title_module);
 							}
 

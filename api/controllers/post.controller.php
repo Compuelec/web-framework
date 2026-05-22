@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 require_once __DIR__ . "/../models/get.model.php";
 require_once __DIR__ . "/../models/post.model.php";
@@ -8,6 +8,60 @@ require_once __DIR__ . "/../vendor/autoload.php";
 use Firebase\JWT\JWT;
 
 require_once __DIR__ . "/../models/put.model.php";
+
+// File-based rate limiter for login endpoints
+class LoginRateLimiter {
+
+    private static $maxAttempts  = 10;
+    private static $windowSeconds = 900; // 15 minutes
+    private static $lockSeconds   = 900; // 15-minute lockout
+
+    private static function filePath($ip, $suffix) {
+        $key = 'ratelimit_' . hash('sha256', $ip . '|login|' . $suffix);
+        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $key . '.json';
+    }
+
+    public static function isBlocked($ip, $suffix) {
+        $file = self::filePath($ip, $suffix);
+        if (!file_exists($file)) return false;
+        $data = json_decode(@file_get_contents($file), true);
+        if (!$data) return false;
+        $now = time();
+        if (!empty($data['locked_until']) && $now < $data['locked_until']) return true;
+        if ($now - ($data['first_attempt_at'] ?? 0) > self::$windowSeconds) {
+            @unlink($file);
+            return false;
+        }
+        return false;
+    }
+
+    public static function remainingLockSeconds($ip, $suffix) {
+        $file = self::filePath($ip, $suffix);
+        if (!file_exists($file)) return 0;
+        $data = json_decode(@file_get_contents($file), true);
+        return (!$data || empty($data['locked_until'])) ? 0 : max(0, $data['locked_until'] - time());
+    }
+
+    public static function recordFailure($ip, $suffix) {
+        $file = self::filePath($ip, $suffix);
+        $now  = time();
+        $data = file_exists($file) ? (json_decode(@file_get_contents($file), true) ?: []) : [];
+        if (empty($data) || $now - ($data['first_attempt_at'] ?? 0) > self::$windowSeconds) {
+            $data = ['attempts' => 1, 'first_attempt_at' => $now];
+        } else {
+            $data['attempts'] = ($data['attempts'] ?? 0) + 1;
+        }
+        if ($data['attempts'] >= self::$maxAttempts) {
+            $data['locked_until'] = $now + self::$lockSeconds;
+            error_log("Login rate limit hit: IP={$ip} suffix={$suffix} locked until " . date('Y-m-d H:i:s', $data['locked_until']));
+        }
+        @file_put_contents($file, json_encode($data), LOCK_EX);
+    }
+
+    public static function clearFailures($ip, $suffix) {
+        @unlink(self::filePath($ip, $suffix));
+    }
+}
 
 class PostController{
 
@@ -30,11 +84,8 @@ class PostController{
 		
 		// Check if response is an error array (from errorInfo())
 		if (is_array($response) && isset($response[0]) && is_numeric($response[0]) && isset($response[2])) {
-			// This is a PDO errorInfo array
-			$json = array(
-				'status' => 500,
-				'results' => 'Database error: ' . $response[2]
-			);
+			error_log("PostController DB error: " . ($response[2] ?? 'unknown'));
+			$json = array('status' => 500, 'results' => 'Database error');
 			http_response_code(500);
 			echo json_encode($json);
 			return;
@@ -144,16 +195,29 @@ class PostController{
 
 	static public function postLogin($table, $data, $suffix){
 
+		$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+		// Rate limit check before any DB query
+		if (LoginRateLimiter::isBlocked($ip, $suffix)) {
+			$remaining = ceil(LoginRateLimiter::remainingLockSeconds($ip, $suffix) / 60);
+			$json = ['status' => 429, 'results' => "Too many failed attempts. Try again in {$remaining} minute(s)."];
+			http_response_code(429);
+			echo json_encode($json);
+			return;
+		}
+
 		// Validate user exists in database
 
 		$response = GetModel::getDataFilter($table, "*", "email_".$suffix, $data["email_".$suffix], null,null,null,null);
-		
-		if(!empty($response)){	
+
+		if(!empty($response)){
 
 			if($response[0]->{"password_".$suffix} != null)	{
-			
+
 				// Verify password using bcrypt — compatible with both old crypt() and new password_hash() hashes
 				if(password_verify($data["password_".$suffix], $response[0]->{"password_".$suffix})){
+
+					LoginRateLimiter::clearFailures($ip, $suffix);
 
 					$token = Connection::jwt($response[0]->{"id_".$suffix}, $response[0]->{"email_".$suffix});
 
@@ -181,10 +245,12 @@ class PostController{
 						$return -> fncResponse($response, null,$suffix);
 
 					}
-					
-					
+
+
 				}else{
 
+					LoginRateLimiter::recordFailure($ip, $suffix);
+					error_log("Failed login (wrong password): table={$table} suffix={$suffix} ip={$ip}");
 					$response = null;
 					$return = new PostController();
 					$return -> fncResponse($response, "Wrong password",$suffix);
@@ -195,11 +261,13 @@ class PostController{
 
 				// Update token for users logged in from external apps
 
+				LoginRateLimiter::clearFailures($ip, $suffix);
+
 				$token = Connection::jwt($response[0]->{"id_".$suffix}, $response[0]->{"email_".$suffix});
 
 				$config = Connection::getConfig();
 				$jwtSecret = $config['jwt']['secret'] ?? '';
-				$jwt = JWT::encode($token, $jwtSecret);				
+				$jwt = JWT::encode($token, $jwtSecret);
 
 				$data = array(
 
@@ -224,6 +292,8 @@ class PostController{
 
 		}else{
 
+			LoginRateLimiter::recordFailure($ip, $suffix);
+			error_log("Failed login (wrong email): table={$table} suffix={$suffix} ip={$ip}");
 			$response = null;
 			$return = new PostController();
 			$return -> fncResponse($response, "Wrong email",$suffix);

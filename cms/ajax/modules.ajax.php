@@ -41,7 +41,7 @@ class ModulesAjax{
 		Traer la info del módulo para saber si es tabla
 		=============================================*/
 
-		$url = "modules?linkTo=id_module&equalTo=".base64_decode($this->idModuleDelete)."&select=type_module,title_module";
+		$url = "modules?linkTo=id_module&equalTo=".(int)base64_decode($this->idModuleDelete, true)."&select=type_module,title_module";
 		$method = "GET";
 		$fields = array();
 
@@ -65,7 +65,7 @@ class ModulesAjax{
 			Obtener todas las columnas vinculadas al módulo
 			=============================================*/
 
-			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
 			$method = "GET";
 			$fields = array();
 
@@ -153,7 +153,7 @@ class ModulesAjax{
 			Para otros tipos de módulos, validar columnas vinculadas
 			=============================================*/
 
-			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
 			$method = "GET";
 			$fields = array();
 
@@ -171,7 +171,7 @@ class ModulesAjax{
 		Eliminar el módulo
 		=============================================*/
 
-		$url = "modules?id=".base64_decode($this->idModuleDelete)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
+		$url = "modules?id=".(int)base64_decode($this->idModuleDelete, true)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
 		$method = "DELETE";
 		$fields = array();
 

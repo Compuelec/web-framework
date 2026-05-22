@@ -134,7 +134,7 @@ class FilesController{
 				
 				// Ensure directory exists
 				if(!file_exists($filesDir)){
-					if(!@mkdir($filesDir, 0777, true)){
+					if(!@mkdir($filesDir, 0755, true)){
 						$response = array(
 							"status" => 500,
 							"error" => "Error creating files directory. Check write permissions."
@@ -145,18 +145,18 @@ class FilesController{
 						return;
 					}
 					// Set permissions after creation
-					@chmod($filesDir, 0777);
+					@chmod($filesDir, 0755);
 				}
 				
 				// Check if directory is writable
 				if(!is_writable($filesDir)){
 					// Try to change permissions
-					@chmod($filesDir, 0777);
+					@chmod($filesDir, 0755);
 					
 					// Also try to change permissions of parent directories if needed
 					$parentDir = dirname($filesDir);
 					if(!is_writable($parentDir)){
-						@chmod($parentDir, 0777);
+						@chmod($parentDir, 0755);
 					}
 					
 					if(!is_writable($filesDir)){

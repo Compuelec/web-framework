@@ -46,17 +46,17 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 
 	// Validate API key
 	if(!$authorization || $authorization != Connection::apikey()){
-		
-		if(in_array($table, Connection::publicAccess()) == 0){
-	
+
+		if(!in_array($table, Connection::publicAccess(), true)){
+
 			$json = array(
-		
+
 				'status' => 400,
 				"results" => "You are not authorized to make this request"
 			);
 
 			http_response_code($json["status"]);
-	echo json_encode($json);
+			echo json_encode($json);
 
 			return;
 
@@ -67,7 +67,7 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 
 			return;
 		}
-	
+
 	}
 
 	// GET requests

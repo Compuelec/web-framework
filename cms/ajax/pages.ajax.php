@@ -15,7 +15,7 @@ class PagesAjax{
 
 	public function updatePageOrder(){
 
-		$url = "pages?id=".base64_decode($this->idPage)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
+		$url = "pages?id=".(int)base64_decode($this->idPage, true)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
 		$method = "PUT";
 		$fields = "order_page=".$this->index;
 
@@ -41,7 +41,7 @@ class PagesAjax{
 		Validar módulos vinculados a la página
 		=============================================*/
 
-		$url = "modules?linkTo=id_page_module&equalTo=".base64_decode($this->idPageDelete);
+		$url = "modules?linkTo=id_page_module&equalTo=".(int)base64_decode($this->idPageDelete, true);
 		$method = "GET";
 		$fields = array();
 
@@ -53,7 +53,7 @@ class PagesAjax{
 		
 		}else{
 
-			$url = "pages?id=".base64_decode($this->idPageDelete)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
+			$url = "pages?id=".(int)base64_decode($this->idPageDelete, true)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
 			$method = "DELETE";
 			$fields = array();
 

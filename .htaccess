@@ -9,6 +9,12 @@ Options All -Indexes
     Deny from all
 </FilesMatch>
 
+# Block CLI-only utility scripts from HTTP access
+<FilesMatch "^(run_migration\.php|package\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
 # Protect sensitive directories
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -52,22 +58,28 @@ Options All -Indexes
     RewriteRule .*package(-lock)?\.json$ - [F,L]
 </IfModule>
 
-# Additional security headers (optional but recommended)
+# Security headers
 <IfModule mod_headers.c>
     # Prevent MIME type sniffing
     Header set X-Content-Type-Options "nosniff"
-    
+
     # Enable XSS protection
     Header set X-XSS-Protection "1; mode=block"
-    
+
     # Prevent clickjacking
     Header set X-Frame-Options "SAMEORIGIN"
 
     # Referrer policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # HSTS — only activate after confirming HTTPS works in production
-    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Content Security Policy
+    # unsafe-inline/unsafe-eval required for inline PHP-generated script blocks
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://app.payku.cl https://des.payku.cl; frame-ancestors 'self'; object-src 'none'"
+
+    # HSTS — skip on localhost to avoid breaking local dev
+    <If "%{HTTP_HOST} != 'localhost' && %{HTTP_HOST} != '127.0.0.1'">
+        Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    </If>
 </IfModule>
 
 # Disable server signature

@@ -34,21 +34,13 @@ try {
 	$index = new RoutesController();
 	$index -> index();
 } catch (Exception $e) {
-	// Return error response
-	$json = array(
-		'status' => 500,
-		'results' => 'Internal server error: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')
-	);
-	http_response_code(500);
-	echo json_encode($json);
 	error_log("API Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
-} catch (Error $e) {
-	// Return error response
-	$json = array(
-		'status' => 500,
-		'results' => 'Internal server error: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')
-	);
+	$json = array('status' => 500, 'results' => 'Internal server error');
 	http_response_code(500);
 	echo json_encode($json);
+} catch (Error $e) {
 	error_log("API Fatal Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+	$json = array('status' => 500, 'results' => 'Internal server error');
+	http_response_code(500);
+	echo json_encode($json);
 }

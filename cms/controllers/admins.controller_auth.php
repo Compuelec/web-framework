@@ -104,13 +104,16 @@ class AdminsController{
 
 			}else{
 
-				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: '.$login->results.'</div>
+				$loginAuthError = htmlspecialchars((string)($login->results ?? 'Unknown error'), ENT_QUOTES, 'UTF-8');
+				error_log("Failed CMS auth login ip=" . ($_SERVER['REMOTE_ADDR'] ?? ''));
+
+				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: ' . $loginAuthError . '</div>
 
 				<script>
 
 					fncMatPreloader("off");
 					fncFormatInputs();
-					fncToastr("error", "Error al ingresar: '.$login->results.'");
+					fncToastr("error", "Error al ingresar");
 
 				</script>';
 			}

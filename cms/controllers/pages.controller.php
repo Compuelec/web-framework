@@ -12,7 +12,7 @@ class PagesController{
 
 			if(isset($_POST["id_page"])){
 
-				$url = "pages?id=".base64_decode($_POST["id_page"])."&nameId=id_page&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
+				$url = "pages?id=".(int)base64_decode($_POST["id_page"], true)."&nameId=id_page&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
 				
 				$parentPage = isset($_POST["parent_page"]) && $_POST["parent_page"] != "0" ? $_POST["parent_page"] : 0;
@@ -166,17 +166,17 @@ class PagesController{
 								$pluginDir = $projectRoot . '/plugins/' . $urlPage;
 								
 								if(!file_exists($pluginDir)){
-									@mkdir($pluginDir, 0777, true);
-									@chmod($pluginDir, 0777);
+									@mkdir($pluginDir, 0755, true);
+									@chmod($pluginDir, 0755);
 								} else {
 									// Ensure permissions even if directory already exists
-									@chmod($pluginDir, 0777);
+									@chmod($pluginDir, 0755);
 								}
 								
 								// Also ensure parent plugins directory permissions
 								$pluginsDir = $projectRoot . '/plugins';
 								if(file_exists($pluginsDir)){
-									@chmod($pluginsDir, 0777);
+									@chmod($pluginsDir, 0755);
 								}
 								
 								/*=============================================

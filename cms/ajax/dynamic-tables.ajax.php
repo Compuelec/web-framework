@@ -22,7 +22,7 @@ class DynamicTablesController{
 
     	foreach ($idItems as $key => $value) {
     		
-    		$url = $this->tableDelete."?id=".base64_decode($value)."&nameId=id_".$this->suffixDelete."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableDelete."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixDelete."&token=".$this->token."&table=admins&suffix=admin";
 			$method = "DELETE";
 			$fields = array();
 
@@ -35,7 +35,7 @@ class DynamicTablesController{
 				=============================================*/
 				
 				if (function_exists('logActivity')) {
-					$entityId = base64_decode($value);
+					$entityId = (int)base64_decode($value, true);
 					logActivity('delete', $this->tableDelete, $entityId, 'Record deletion in table ' . $this->tableDelete);
 				}
 
@@ -433,7 +433,7 @@ class DynamicTablesController{
     			$this->boolChange = 1;
     		}
 
-    		$url = $this->tableChange."?id=".base64_decode($value)."&nameId=id_".$this->suffixChange."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableChange."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixChange."&token=".$this->token."&table=admins&suffix=admin";
     		$method = "PUT";
     		$fields = $this->columnChange."=".$this->boolChange;
 
@@ -468,7 +468,7 @@ class DynamicTablesController{
 
 		foreach ($idItems as $key => $value) {
 
-    		$url = $this->tableSelect."?id=".base64_decode($value)."&nameId=id_".$this->suffixSelect."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableSelect."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixSelect."&token=".$this->token."&table=admins&suffix=admin";
     		$method = "PUT";
     		$fields = $this->columnSelect."=".$this->itemSelect;
 
@@ -499,7 +499,7 @@ class DynamicTablesController{
 
 	public function changeOrderItems(){
 
-		$url = $this->tableOrder."?id=".base64_decode($this->idItemOrder)."&nameId=id_".$this->suffixOrder."&token=".$this->token."&table=admins&suffix=admin";
+		$url = $this->tableOrder."?id=".(int)base64_decode($this->idItemOrder, true)."&nameId=id_".$this->suffixOrder."&token=".$this->token."&table=admins&suffix=admin";
 		$method = "PUT";
 		$fields = $this->columnOrder."=".$this->numOrder;
 

@@ -443,26 +443,26 @@ class GetModel{
 
 
 
-			$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText";
+			$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE :search $linkToText";
 
 
 			if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText ORDER BY $orderBy $orderMode";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE :search $linkToText ORDER BY $orderBy $orderMode";
 
 			}
 
 
 			if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE :search $linkToText ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
 
 			}
 
 
 			if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE '%$searchArray[0]%' $linkToText LIMIT $startAt, $endAt";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkToArray[0] LIKE :search $linkToText LIMIT $startAt, $endAt";
 
 			}
 
@@ -472,10 +472,13 @@ class GetModel{
 		}
 		$stmt = $link->prepare($sql);
 
+			$likeValue = '%' . $searchArray[0] . '%';
+			$stmt->bindParam(':search', $likeValue, PDO::PARAM_STR);
+
 			foreach ($linkToArray as $key => $value) {
 
 				if($key > 0){
-				
+
 					$stmt -> bindParam(":".$value, $searchArray[$key], PDO::PARAM_STR);
 
 				}
@@ -601,11 +604,17 @@ class GetModel{
 		}
 
 		$filter = "";
+		$filterParams = [];
 
 		if($filterTo != null && $inTo != null){
-
-			$filter = 'AND '.$filterTo.' IN ('.$inTo.')';
-
+			$inValues = explode(",", $inTo);
+			$placeholders = [];
+			foreach ($inValues as $i => $val) {
+				$k = ':rel_in_' . $i;
+				$placeholders[] = $k;
+				$filterParams[$k] = $val;
+			}
+			$filter = 'AND ' . $filterTo . ' IN (' . implode(',', $placeholders) . ')';
 		}
 
 		$relArray = explode(",", $rel);
@@ -617,14 +626,14 @@ class GetModel{
 			foreach ($relArray as $key => $value) {
 
 		// Validate table existence
-				
+
 				if(empty(Connection::getColumnsData($value, ["*"]))){
 
 					return null;
 
 				}
 
-				
+
 				if($key > 0){
 
 					$innerJoinText .= "INNER JOIN ".$value." ON ".$relArray[0].".id_".$typeArray[$key]."_".$typeArray[0]." = ".$value.".id_".$typeArray[$key]." ";
@@ -632,26 +641,26 @@ class GetModel{
 			}
 
 
-			$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter";
+			$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN :between1 AND :between2 $filter";
 
 
 			if($orderBy != null && $orderMode != null && $startAt == null && $endAt == null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter ORDER BY $orderBy $orderMode";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN :between1 AND :between2 $filter ORDER BY $orderBy $orderMode";
 
 			}
 
 
 			if($orderBy != null && $orderMode != null && $startAt != null && $endAt != null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN :between1 AND :between2 $filter ORDER BY $orderBy $orderMode LIMIT $startAt, $endAt";
 
 			}
 
 
 			if($orderBy == null && $orderMode == null && $startAt != null && $endAt != null){
 
-				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN '$between1' AND '$between2' $filter LIMIT $startAt, $endAt";
+				$sql = "SELECT $select FROM $relArray[0] $innerJoinText WHERE $linkTo BETWEEN :between1 AND :between2 $filter LIMIT $startAt, $endAt";
 
 			}
 
@@ -660,6 +669,11 @@ class GetModel{
 			return null;
 		}
 		$stmt = $link->prepare($sql);
+			$stmt->bindParam(':between1', $between1, PDO::PARAM_STR);
+			$stmt->bindParam(':between2', $between2, PDO::PARAM_STR);
+			foreach ($filterParams as $k => $val) {
+				$stmt->bindValue($k, $val, PDO::PARAM_STR);
+			}
 
 			try{
 
@@ -668,7 +682,7 @@ class GetModel{
 			}catch(PDOException $Exception){
 
 				return null;
-			
+
 			}
 
 			return $stmt -> fetchAll(PDO::FETCH_CLASS);
