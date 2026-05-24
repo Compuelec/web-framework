@@ -53,11 +53,13 @@ web/config.php
 *.old
 *.orig
 
-# Database files
-*.sql
+# Database files (allow migration files to be tracked)
 *.db
 *.sqlite
 *.sqlite3
+# Ignore loose SQL files but not versioned migrations
+*.sql
+!migrations/*.sql
 
 # Upload files (if they shouldn't be versioned)
 uploads/
@@ -84,3 +86,7 @@ backups/*
 # Temporary files directory
 tmp/
 web/config.php
+# Generated sitemap cache — rebuilt automatically on page save
+web/sitemap.xml
+.specify/
+specs/

@@ -106,6 +106,39 @@ switch ($action) {
         echo json_encode(['success' => true, 'theme' => $defaults]);
         break;
 
+    case 'get_seo':
+        $stmt = $link->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'seo_%'");
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $seo  = [];
+        foreach ($rows as $row) {
+            $seo[$row->key_setting] = $row->value_setting;
+        }
+        echo json_encode(['success' => true, 'seo' => $seo]);
+        break;
+
+    case 'save_seo':
+        if (!$isSuperadmin) {
+            echo json_encode(['success' => false, 'error' => 'Solo el superadmin puede cambiar la configuración SEO']);
+            exit;
+        }
+
+        $allowedSeo = ['seo_default_title', 'seo_default_description', 'seo_canonical_base_url'];
+        $stmt = $link->prepare("
+            INSERT INTO cms_settings (key_setting, value_setting)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE value_setting = VALUES(value_setting)
+        ");
+
+        foreach ($allowedSeo as $key) {
+            if (isset($_POST[$key])) {
+                $val = trim($_POST[$key]);
+                $stmt->execute([$key, $val]);
+            }
+        }
+
+        echo json_encode(['success' => true]);
+        break;
+
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
 }

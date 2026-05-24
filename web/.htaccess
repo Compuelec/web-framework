@@ -1,0 +1,10 @@
+Options -Indexes
+RewriteEngine On
+
+# Route sitemap.xml to sitemap.php
+RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
+
+# Route slug-based URLs to page.php (e.g. /about-us → page.php?slug=about-us)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z0-9-]+)/?$ page.php?slug=$1 [L,QSA]
