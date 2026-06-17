@@ -134,8 +134,16 @@ class GetModel{
 
 	static public function getRelData($rel, $type, $select, $orderBy,$orderMode,$startAt,$endAt){
 
+		// Reject unsafe identifiers before building the SQL (SQLi guard)
+		if(!Connection::validIdentifierList($select)){ return null; }
+		if(!Connection::validIdentifierList($type)){ return null; }
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeQualifiedIdentifier($orderBy) : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode) : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
+
 		// Validate columns existence
-	
+
 		$relArray = explode(",", $rel);
 		$typeArray = explode(",", $type);
 		$innerJoinText = "";
@@ -214,6 +222,14 @@ class GetModel{
 
 	static public function getRelDataFilter($rel, $type, $select, $linkTo, $equalTo, $orderBy,$orderMode,$startAt,$endAt){
 
+		// Reject unsafe identifiers before building the SQL (SQLi guard)
+		if(!Connection::validIdentifierList($select)){ return null; }
+		if(!Connection::validIdentifierList($type)){ return null; }
+		if(!Connection::validIdentifierList($linkTo)){ return null; }
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeQualifiedIdentifier($orderBy) : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode) : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
 
 		// Organize filters
 
@@ -399,6 +415,14 @@ class GetModel{
 
 	static public function getRelDataSearch($rel, $type, $select, $linkTo, $search, $orderBy,$orderMode,$startAt,$endAt){
 
+		// Reject unsafe identifiers before building the SQL (SQLi guard)
+		if(!Connection::validIdentifierList($select)){ return null; }
+		if(!Connection::validIdentifierList($type)){ return null; }
+		if(!Connection::validIdentifierList($linkTo)){ return null; }
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeQualifiedIdentifier($orderBy) : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode) : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
 
 		// Organize filters
 		$linkToArray = explode(",",$linkTo);
@@ -592,6 +616,16 @@ class GetModel{
 	// GET requests for range selection with relations
 
 	static public function getRelDataRange($rel,$type,$select,$linkTo,$between1,$between2,$orderBy,$orderMode,$startAt,$endAt, $filterTo, $inTo){
+
+		// Reject unsafe identifiers before building the SQL (SQLi guard)
+		if(!Connection::validIdentifierList($select)){ return null; }
+		if(!Connection::validIdentifierList($type)){ return null; }
+		if(!Connection::validIdentifierList($linkTo)){ return null; }
+		if($filterTo !== null && !Connection::validIdentifierList($filterTo)){ return null; }
+		$orderBy   = $orderBy   !== null ? Connection::sanitizeQualifiedIdentifier($orderBy) : null;
+		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode) : null;
+		$startAt   = $startAt   !== null ? (int)$startAt : null;
+		$endAt     = $endAt     !== null ? (int)$endAt   : null;
 
 		// Validate table and columns existence
 

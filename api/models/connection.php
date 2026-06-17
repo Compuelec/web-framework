@@ -129,6 +129,39 @@ class Connection{
 	}
 
 	/**
+	 * Validate a single (optionally table-qualified) SQL identifier used in
+	 * relational queries. Allows only: *, col, table.col, table.*
+	 * Returns the name when safe, or null otherwise.
+	 */
+	static public function sanitizeQualifiedIdentifier($name) {
+		$name = trim((string)$name);
+		if ($name === '*') {
+			return $name;
+		}
+		if (preg_match('/^[a-zA-Z0-9_]+(\.([a-zA-Z0-9_]+|\*))?$/', $name)) {
+			return $name;
+		}
+		return null;
+	}
+
+	/**
+	 * Validate a comma-separated list of identifiers (select/linkTo/type/
+	 * filterTo) used in relational queries. Returns false if any item is
+	 * not a safe SQL identifier, so the caller can reject the request.
+	 */
+	static public function validIdentifierList($list) {
+		if ($list === null || $list === '') {
+			return false;
+		}
+		foreach (explode(",", $list) as $item) {
+			if (self::sanitizeQualifiedIdentifier($item) === null) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * Validate orderMode value — only ASC or DESC allowed.
 	 */
 	static public function sanitizeOrderMode($mode) {
