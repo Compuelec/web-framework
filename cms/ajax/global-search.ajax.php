@@ -152,9 +152,10 @@ try {
     ]);
     
 } catch (Exception $e) {
+    error_log("Global search AJAX error: " . $e->getMessage());
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
+        'error' => 'Internal server error',
         'results' => []
     ]);
 }

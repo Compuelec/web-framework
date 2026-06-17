@@ -878,9 +878,10 @@ if(isset($_FILES["file"])){
 		$ajax -> ajaxUploadFiles();
 	} catch(Exception $e) {
 		// Catch any unexpected errors and return JSON
+		error_log("Files upload AJAX error: " . $e->getMessage());
 		$response = array(
 			"status" => 500,
-			"error" => "Error uploading file: " . $e->getMessage()
+			"error" => "Internal server error"
 		);
 		ob_clean();
 		echo json_encode($response);

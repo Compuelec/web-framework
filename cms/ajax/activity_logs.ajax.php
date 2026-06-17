@@ -111,6 +111,6 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Error interno del servidor: ' . $e->getMessage()
+        'error' => 'Internal server error'
     ], JSON_UNESCAPED_UNICODE);
 }

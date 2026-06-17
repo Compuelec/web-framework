@@ -136,8 +136,9 @@ try {
     }
     
 } catch (Exception $e) {
+    error_log("Export AJAX error: " . $e->getMessage());
     header('HTTP/1.1 500 Internal Server Error');
-    echo "Error: " . $e->getMessage();
+    echo "Internal server error";
 }
 
 function exportCSV($data, $filename, $addBOM = true) {
