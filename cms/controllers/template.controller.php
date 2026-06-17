@@ -1,7 +1,15 @@
-<?php 
+<?php
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+
+/**
+ * Escape a string for safe HTML output.
+ * Use this everywhere a variable is echoed into HTML.
+ */
+function h($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 
 class TemplateController{
 

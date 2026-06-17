@@ -1,0 +1,82 @@
+/* RBAC Manager - Styles */
+
+/* Role list */
+.rbac-role-item {
+    cursor: pointer;
+    transition: background 0.15s;
+    border-left: 3px solid transparent;
+}
+
+.rbac-role-item:hover {
+    background-color: #f8f9fa;
+}
+
+.rbac-role-item.active {
+    background-color: #e8f0fe;
+    border-left-color: #4e73df;
+}
+
+/* Permission matrix */
+.permission-matrix th,
+.permission-matrix td {
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.permission-matrix thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.permission-matrix td.action-col {
+    text-align: center;
+}
+
+.permission-matrix .page-icon {
+    font-size: 1rem;
+    margin-right: 6px;
+}
+
+/* Toggle all row */
+.toggle-all-row td {
+    background-color: #f1f3f4;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #666;
+}
+
+/* Admin assignments */
+.admin-row td {
+    vertical-align: middle;
+}
+
+.role-badge {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background-color: #e8f0fe;
+    color: #4e73df;
+    font-weight: 500;
+}
+
+.role-badge.no-role {
+    background-color: #f1f3f4;
+    color: #888;
+}
+
+/* Empty state */
+.rbac-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #aaa;
+}
+
+.rbac-empty i {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 0.75rem;
+}

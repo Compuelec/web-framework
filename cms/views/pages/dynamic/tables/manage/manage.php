@@ -9,7 +9,7 @@ $data = null;
 if(!empty($routesArray[2])){
 	
 
-	$url = $module->title_module."?linkTo=id_".$module->suffix_module."&equalTo=".base64_decode($routesArray[2]);
+	$url = $module->title_module."?linkTo=id_".$module->suffix_module."&equalTo=".(int)base64_decode($routesArray[2], true);
 	$method = "GET";
 	$fields = Array();
 
@@ -47,6 +47,7 @@ $block2 = count($module->columns) - $block1;
 		<div class="card rounded">
 
 			<input type="hidden" name="module" value='<?php echo json_encode($module) ?>'>
+			<input type="hidden" name="_csrf_token" value="<?php echo htmlspecialchars(SessionController::getCsrfToken(), ENT_QUOTES, 'UTF-8'); ?>"><?php // CSRF protection ?>
 
 			<?php if (!empty($data) && empty($routesArray[3])): ?>
 			

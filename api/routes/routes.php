@@ -44,19 +44,20 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 	$headers = function_exists("getallheaders") ? getallheaders() : [];
 	$authorization = $headers["Authorization"] ?? ($_SERVER["HTTP_AUTHORIZATION"] ?? ($_SERVER["REDIRECT_HTTP_AUTHORIZATION"] ?? null));
 
-	// Validate API key
-	if(!$authorization || $authorization != Connection::apikey()){
-		
-		if(in_array($table, Connection::publicAccess()) == 0){
-	
+	// Validate API key using a constant-time comparison to avoid timing attacks
+	$apiKey = Connection::apikey();
+	if(!$authorization || !is_string($apiKey) || $apiKey === "" || !hash_equals($apiKey, (string)$authorization)){
+
+		if(!in_array($table, Connection::publicAccess(), true)){
+
 			$json = array(
-		
+
 				'status' => 400,
 				"results" => "You are not authorized to make this request"
 			);
 
 			http_response_code($json["status"]);
-	echo json_encode($json);
+			echo json_encode($json);
 
 			return;
 
@@ -67,7 +68,7 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 
 			return;
 		}
-	
+
 	}
 
 	// GET requests

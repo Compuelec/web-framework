@@ -41,8 +41,8 @@ if($pages->status == 200){
 <div class="bg-white shadow" id="sidebar-wrapper">
 
 	<div class="sidebar-heading bg-white text-dark my-2">
-		<i class="<?php echo $_SESSION["admin"]->symbol_admin ?> textColor"></i>
-		<span class="menu-text"><?php echo $_SESSION["admin"]->title_admin ?></span>
+		<i class="<?php echo h($_SESSION["admin"]->symbol_admin) ?> textColor"></i>
+		<span class="menu-text"><?php echo h($_SESSION["admin"]->title_admin) ?></span>
 	</div>
 
 	<hr class="mt-0 borderDashboard">

@@ -5,7 +5,24 @@
  * Handles AJAX requests for workflow operations
  */
 
-session_start();
+// Authentication guard — require a valid admin session (validates token expiration)
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+    header('Content-Type: application/json');
+    http_response_code(401);
+    echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+    exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+    header('Content-Type: application/json');
+    http_response_code(403);
+    echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+    exit;
+}
 
 require_once "../controllers/workflow.controller.php";
 require_once "../controllers/curl.controller.php";

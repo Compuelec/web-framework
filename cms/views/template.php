@@ -193,17 +193,16 @@ if($adminTable !== null && is_object($adminTable)){
 		window.CMS_BASE_PATH = <?php echo json_encode($cmsBasePath); ?>;
 		window.CMS_AJAX_PATH = (window.CMS_BASE_PATH || "") + "/ajax";
 		window.CMS_ASSETS_PATH = (window.CMS_BASE_PATH || "") + "/views/assets";
+		// CSRF token sent as the X-CSRF-Token header on every AJAX request
+		window.CMS_CSRF_TOKEN = <?php echo json_encode(SessionController::getCsrfToken()); ?>;
 		<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && isset($_SESSION["admin"]->token_admin)): ?>
+		// Token available only for this page session — NOT stored in localStorage to reduce XSS exposure
 		window.CMS_TOKEN = <?php echo json_encode($_SESSION["admin"]->token_admin); ?>;
-		// Sync with localStorage
-		if (typeof(Storage) !== "undefined") {
-			localStorage.setItem("tokenAdmin", window.CMS_TOKEN);
-		}
 		<?php endif ?>
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js?v=csrf2"></script>
 
 	<!--=============================================
 	PLUGINS CSS
@@ -288,6 +287,56 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/chat/chat.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css">
 
+	<?php
+	// Inject CMS theme CSS variables from cms_settings table
+	// Cache in session to avoid a DB query on every request
+	if (!isset($_SESSION['cms_theme'])) {
+		try {
+			require_once __DIR__ . '/../../api/models/connection.php';
+			$_themeLink = Connection::connect();
+			if ($_themeLink) {
+				$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+				$_themeRows = $_themeStmt ? $_themeStmt->fetchAll(PDO::FETCH_OBJ) : [];
+				$_SESSION['cms_theme'] = [];
+				foreach ($_themeRows as $_r) {
+					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+				}
+			}
+		} catch (Exception $_e) {
+			// Silently use defaults if table doesn't exist yet
+		}
+	}
+	$_t = array_merge([
+		'theme_primary'       => '#6c5ffc',
+		'theme_sidebar_bg'    => '#ffffff',
+		'theme_active_bg'     => '#eff6ff',
+		'theme_active_color'  => '#1e40af',
+		'theme_active_border' => '#3b82f6',
+	], $_SESSION['cms_theme'] ?? []);
+	// Validate all values are hex colors
+	foreach ($_t as $_k => $_v) {
+		if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $_v)) $_t[$_k] = '#6c5ffc';
+	}
+	?>
+	<style id="cms-theme-vars">
+		:root {
+			--tp-primary:       <?php echo $_t['theme_primary'] ?>;
+			--tp-sidebar-bg:    <?php echo $_t['theme_sidebar_bg'] ?>;
+			--tp-active-bg:     <?php echo $_t['theme_active_bg'] ?>;
+			--tp-active-color:  <?php echo $_t['theme_active_color'] ?>;
+			--tp-active-border: <?php echo $_t['theme_active_border'] ?>;
+		}
+		.bg-primary  { background: <?php echo $_t['theme_primary'] ?> !important; }
+		.text-primary { color: <?php echo $_t['theme_primary'] ?> !important; }
+		.btn-primary  { background: <?php echo $_t['theme_primary'] ?> !important; border-color: <?php echo $_t['theme_primary'] ?> !important; }
+		#sidebar-wrapper { background: <?php echo $_t['theme_sidebar_bg'] ?> !important; }
+		#sidebar-wrapper a.bg-transparent.active {
+			background: <?php echo $_t['theme_active_bg'] ?> !important;
+			color: <?php echo $_t['theme_active_color'] ?> !important;
+			border-left-color: <?php echo $_t['theme_active_border'] ?> !important;
+		}
+		#sidebar-wrapper a.bg-transparent.active i { color: <?php echo $_t['theme_active_border'] ?> !important; }
+	</style>
 
 </head>
 <body>
@@ -341,23 +390,23 @@ if($adminTable !== null && is_object($adminTable)){
 		<?php
 		// Auto-setup Activity Logs System (runs automatically on every page load)
 		require_once __DIR__ . '/../controllers/activity_logs.controller.php';
-		
+
 		// Ensure table exists (creates automatically if needed)
 		ActivityLogsController::getLogs([], 1, 0);
-		
+
 		// Ensure page exists in database (creates automatically if needed)
 		$url = "pages?linkTo=url_page&equalTo=activity_logs";
 		$method = "GET";
 		$fields = array();
 		$pageCheck = CurlController::request($url, $method, $fields);
-		
+
 		$pageExists = false;
 		if ($pageCheck && is_object($pageCheck) && isset($pageCheck->status) && $pageCheck->status == 200) {
 			if (isset($pageCheck->results) && is_array($pageCheck->results) && count($pageCheck->results) > 0) {
 				$pageExists = true;
 			}
 		}
-		
+
 		if (!$pageExists) {
 			// Create the page automatically
 			$url = "pages?token=no&except=id_page";
@@ -371,6 +420,86 @@ if($adminTable !== null && is_object($adminTable)){
 				"date_created_page" => date("Y-m-d")
 			);
 			CurlController::request($url, $method, $fields);
+		}
+
+		// Auto-setup Dashboard Manager page (order_page=0 so it becomes the home)
+		$dashboardPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=dashboard", "GET", array());
+		$dashboardPageExists = (
+			$dashboardPageCheck &&
+			is_object($dashboardPageCheck) &&
+			isset($dashboardPageCheck->status) &&
+			$dashboardPageCheck->status == 200 &&
+			isset($dashboardPageCheck->results) &&
+			is_array($dashboardPageCheck->results) &&
+			count($dashboardPageCheck->results) > 0
+		);
+
+		if (!$dashboardPageExists) {
+			CurlController::request("pages?token=no&except=id_page", "POST", array(
+				"title_page"        => "Dashboard",
+				"url_page"          => "dashboard",
+				"icon_page"         => "bi bi-speedometer2",
+				"type_page"         => "custom",
+				"order_page"        => 0,
+				"date_created_page" => date("Y-m-d")
+			));
+		}
+
+		// Auto-setup RBAC Manager page — always a child of the admins menu page
+		$rbacPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=rbac-manager", "GET", array());
+		$rbacPageExists = (
+			$rbacPageCheck &&
+			is_object($rbacPageCheck) &&
+			isset($rbacPageCheck->status) &&
+			$rbacPageCheck->status == 200 &&
+			isset($rbacPageCheck->results) &&
+			is_array($rbacPageCheck->results) &&
+			count($rbacPageCheck->results) > 0
+		);
+
+		if (!$rbacPageExists) {
+			// Find the admins menu page to use as parent
+			$adminsPageCheck = CurlController::request("pages?linkTo=url_page&equalTo=admins", "GET", array());
+			$adminsPageId = 0;
+			if (
+				$adminsPageCheck && is_object($adminsPageCheck) &&
+				isset($adminsPageCheck->status) && $adminsPageCheck->status == 200 &&
+				isset($adminsPageCheck->results[0]->id_page)
+			) {
+				$adminsPageId = $adminsPageCheck->results[0]->id_page;
+			}
+
+			$rbacFields = array(
+				"title_page"        => "Roles y Permisos",
+				"url_page"          => "rbac-manager",
+				"icon_page"         => "bi bi-shield-lock",
+				"type_page"         => "custom",
+				"order_page"        => 2,
+				"date_created_page" => date("Y-m-d")
+			);
+			if ($adminsPageId > 0) {
+				$rbacFields["parent_page"] = $adminsPageId;
+			}
+			CurlController::request("pages?token=no&except=id_page", "POST", $rbacFields);
+		}
+
+		// Auto-setup Apariencia page
+		$aparienciaCheck = CurlController::request("pages?linkTo=url_page&equalTo=apariencia", "GET", array());
+		$aparienciaExists = (
+			$aparienciaCheck && is_object($aparienciaCheck) &&
+			isset($aparienciaCheck->status) && $aparienciaCheck->status == 200 &&
+			isset($aparienciaCheck->results) && is_array($aparienciaCheck->results) &&
+			count($aparienciaCheck->results) > 0
+		);
+		if (!$aparienciaExists) {
+			CurlController::request("pages?token=no&except=id_page", "POST", array(
+				"title_page"        => "Apariencia",
+				"url_page"          => "apariencia",
+				"icon_page"         => "bi bi-palette",
+				"type_page"         => "custom",
+				"order_page"        => 99,
+				"date_created_page" => date("Y-m-d"),
+			));
 		}
 		?>
 
@@ -410,7 +539,34 @@ if($adminTable !== null && is_object($adminTable)){
 						Validate permissions
 						===========================================-->
 
-						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"))): ?>
+						<?php
+						// RBAC: check if plugin applies for this admin
+						$_rbac_access = null;
+						if (
+							isset($_SESSION["admin"]) &&
+							is_object($_SESSION["admin"]) &&
+							!in_array($_SESSION["admin"]->rol_admin ?? '', ['superadmin', 'admin']) &&
+							!empty($_SESSION["admin"]->id_role_admin)
+						) {
+							$_rbac_plugin = __DIR__ . '/../../../../plugins/rbac-manager/controllers/rbac-manager.controller.php';
+							if (file_exists($_rbac_plugin)) {
+								require_once $_rbac_plugin;
+								$_rbac_access = RBACManagerController::canAccessPage($routesArray[0]);
+							}
+						}
+						?>
+						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && (
+							$_SESSION["admin"]->rol_admin == "superadmin" ||
+							$_SESSION["admin"]->rol_admin == "admin" ||
+							$_rbac_access === true ||
+							(
+								$_SESSION["admin"]->rol_admin == "editor" &&
+								empty($_SESSION["admin"]->id_role_admin) &&
+								isset($_SESSION["admin"]->permissions_admin) &&
+								isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]]) &&
+								json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$routesArray[0]] == "on"
+							)
+						)): ?>
 
 							<!--=========================================
 							Add dynamic and custom pages
@@ -542,11 +698,11 @@ if($adminTable !== null && is_object($adminTable)){
 
 						<?php 
 
-							$url = "pages?linkTo=order_page&equalTo=1";
-							$method = "GET";
-							$fields = array();
-
-							$page = CurlController::request($url,$method,$fields);
+							// Try order_page=0 first (dashboard), then fall back to order_page=1
+							$page = CurlController::request("pages?linkTo=order_page&equalTo=0", "GET", array());
+							if (!$page || !is_object($page) || $page->status != 200 || empty($page->results)) {
+								$page = CurlController::request("pages?linkTo=order_page&equalTo=1", "GET", array());
+							}
 
 							if($page->status == 200 && $page->results[0]->type_page == "modules"){
 
@@ -700,7 +856,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/workflow.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js?v=csrf1"></script>
 	
 	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>

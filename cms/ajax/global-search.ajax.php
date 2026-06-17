@@ -63,11 +63,11 @@ try {
             
             if ($hasPermission) {
                 $results[] = [
-                    'type' => 'page',
-                    'title' => $page->title_page,
-                    'description' => 'Page: ' . $page->url_page,
-                    'url' => $cmsBasePath . '/' . $page->url_page,
-                    'icon' => 'bi-file-text'
+                    'type'        => 'page',
+                    'title'       => $page->title_page,
+                    'description' => 'Página: ' . $page->url_page,
+                    'url'         => $cmsBasePath . '/' . $page->url_page,
+                    'icon'        => 'bi-file-text',
                 ];
             }
         }
@@ -81,11 +81,11 @@ try {
         if ($modules->status == 200 && isset($modules->results)) {
             foreach ($modules->results as $module) {
                 $results[] = [
-                    'type' => 'module',
-                    'title' => $module->title_module,
-                    'description' => 'Module in: ' . $module->url_page,
-                    'url' => $cmsBasePath . '/' . $module->url_page,
-                    'icon' => 'bi-grid'
+                    'type'        => 'module',
+                    'title'       => $module->title_module,
+                    'description' => 'Módulo en: ' . $module->url_page,
+                    'url'         => $cmsBasePath . '/' . $module->url_page,
+                    'icon'        => 'bi-grid',
                 ];
             }
         }
@@ -131,11 +131,11 @@ try {
                         }
                         
                         $results[] = [
-                            'type' => 'data',
-                            'title' => $title,
-                            'description' => 'In: ' . $module->title_module,
-                            'url' => $cmsBasePath . '/' . $module->url_page . '/manage/' . base64_encode($row->{'id_' . $module->suffix_module}),
-                            'icon' => 'bi-database'
+                            'type'        => 'data',
+                            'title'       => $title,
+                            'description' => 'En: ' . $module->title_module,
+                            'url'         => $cmsBasePath . '/' . $module->url_page . '/manage/' . base64_encode($row->{'id_' . $module->suffix_module}),
+                            'icon'        => 'bi-database',
                         ];
                     }
                 }
@@ -152,9 +152,10 @@ try {
     ]);
     
 } catch (Exception $e) {
+    error_log("Global search AJAX error: " . $e->getMessage());
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
+        'error' => 'Internal server error',
         'results' => []
     ]);
 }

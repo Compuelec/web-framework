@@ -197,31 +197,27 @@ var NotificationSystem = {
     
     checkNotifications: function() {
         var self = this;
-        
+
         $.ajax({
             url: CMS_AJAX_PATH + '/notifications.ajax.php',
             method: 'POST',
             data: {
                 action: 'get',
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || ''
             },
             success: function(response) {
                 try {
                     var data = typeof response === 'string' ? JSON.parse(response) : response;
                     if (data.success) {
-                        // Update regular notifications
                         self.updateNotifications(data.notifications || []);
-                        // Update count (will include updates automatically)
                         self.updateUnreadCount(data.unread_count || 0);
-                        // Re-check for updates periodically
-                        self.checkForUpdates();
                     }
                 } catch (e) {
-                    console.error('Error parsing notifications:', e);
+                    // Silently fail
                 }
             },
             error: function() {
-                // Silently fail - don't break the page
+                // Silently fail
             }
         });
     },
@@ -374,7 +370,7 @@ var NotificationSystem = {
             data: {
                 action: 'mark_read',
                 id: id,
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function() {
                 // Update locally
@@ -398,7 +394,7 @@ var NotificationSystem = {
             method: 'POST',
             data: {
                 action: 'mark_all_read',
-                token: localStorage.getItem('tokenAdmin') || ''
+                token: window.CMS_TOKEN || '' || ''
             },
             success: function() {
                 self.notifications.forEach(function(n) {
@@ -412,24 +408,24 @@ var NotificationSystem = {
     
     formatDate: function(dateString) {
         if (!dateString) return '';
-        
+
         var date = new Date(dateString);
-        var now = new Date();
-        var diff = now - date;
+        var now  = new Date();
+        var diff    = now - date;
         var minutes = Math.floor(diff / 60000);
-        var hours = Math.floor(diff / 3600000);
-        var days = Math.floor(diff / 86400000);
-        
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return minutes + ' minute' + (minutes > 1 ? 's' : '') + ' ago';
-        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
-        if (days < 7) return days + ' day' + (days > 1 ? 's' : '') + ' ago';
-        
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
+        var hours   = Math.floor(diff / 3600000);
+        var days    = Math.floor(diff / 86400000);
+
+        if (minutes < 1)  return 'Ahora mismo';
+        if (minutes < 60) return 'Hace ' + minutes + ' minuto' + (minutes > 1 ? 's' : '');
+        if (hours < 24)   return 'Hace ' + hours   + ' hora'   + (hours   > 1 ? 's' : '');
+        if (days < 7)     return 'Hace ' + days    + ' día'    + (days    > 1 ? 's' : '');
+
+        return date.toLocaleDateString('es-CL', {
+            year:   'numeric',
+            month:  'short',
+            day:    'numeric',
+            hour:   '2-digit',
             minute: '2-digit'
         });
     }

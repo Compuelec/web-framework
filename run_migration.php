@@ -5,6 +5,12 @@
  * Execute from command line: php run_migration.php
  */
 
+// Block HTTP access — CLI only
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden: this script must be run from the command line.');
+}
+
 // Load configuration
 $configPath = __DIR__ . '/cms/config.php';
 if (!file_exists($configPath)) {

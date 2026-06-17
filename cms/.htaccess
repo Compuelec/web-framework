@@ -9,6 +9,12 @@ RewriteEngine On
     Deny from all
 </FilesMatch>
 
+# Block development-only test scripts from HTTP access
+<FilesMatch "^(test-email\.php|test-email-simple\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
 # Protect sensitive directories
 RewriteRule ^(config|vendor|backups|migrations|\.cursor|\.git|extensions/vendor) - [F,L]
 

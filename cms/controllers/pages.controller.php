@@ -12,7 +12,7 @@ class PagesController{
 
 			if(isset($_POST["id_page"])){
 
-				$url = "pages?id=".base64_decode($_POST["id_page"])."&nameId=id_page&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
+				$url = "pages?id=".(int)base64_decode($_POST["id_page"], true)."&nameId=id_page&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
 				
 				$parentPage = isset($_POST["parent_page"]) && $_POST["parent_page"] != "0" ? $_POST["parent_page"] : 0;
@@ -22,13 +22,24 @@ class PagesController{
 
 				if($update->status == 200){
 
+					// Save SEO data if slug field is present in the form submission
+					if(isset($_POST['slug_seo'])){
+						require_once __DIR__ . '/seo.controller.php';
+						$pageId  = (int)base64_decode($_POST['id_page'], true);
+						$seoResult = SeoController::saveSeo($pageId, $_POST);
+						if(isset($seoResult['error'])){
+							echo '<script>fncMatPreloader("off");fncFormatInputs();fncToastr("error","SEO: ' . addslashes($seoResult['error']) . '");</script>';
+							return;
+						}
+					}
+
 					echo '
 
 					<script>
 
 						fncMatPreloader("off");
 						fncFormatInputs();
-					    fncSweetAlert("success","La página ha sido actualizada con éxito",setTimeout(()=>location.reload(),1250));	
+					    fncSweetAlert("success","La página ha sido actualizada con éxito",setTimeout(()=>location.reload(),1250));
 
 					</script>
 
@@ -127,6 +138,15 @@ class PagesController{
 
 				if($create->status == 200){
 
+					// Save SEO data for the newly created page
+					if(isset($_POST['slug_seo']) && $create->id ?? null){
+						require_once __DIR__ . '/seo.controller.php';
+						$seoResult = SeoController::saveSeo($create->id, array_merge($_POST, ['title_page' => $fields['title_page']]));
+						if(isset($seoResult['error'])){
+							echo '<script>fncMatPreloader("off");fncFormatInputs();fncToastr("warning","Página creada pero SEO no guardado: ' . addslashes($seoResult['error']) . '");</script>';
+						}
+					}
+
 					// Get CMS base path for proper redirects
 					require_once __DIR__ . '/template.controller.php';
 					$cmsBasePath = TemplateController::cmsBasePath();
@@ -166,17 +186,17 @@ class PagesController{
 								$pluginDir = $projectRoot . '/plugins/' . $urlPage;
 								
 								if(!file_exists($pluginDir)){
-									@mkdir($pluginDir, 0777, true);
-									@chmod($pluginDir, 0777);
+									@mkdir($pluginDir, 0755, true);
+									@chmod($pluginDir, 0755);
 								} else {
 									// Ensure permissions even if directory already exists
-									@chmod($pluginDir, 0777);
+									@chmod($pluginDir, 0755);
 								}
 								
 								// Also ensure parent plugins directory permissions
 								$pluginsDir = $projectRoot . '/plugins';
 								if(file_exists($pluginsDir)){
-									@chmod($pluginsDir, 0777);
+									@chmod($pluginsDir, 0755);
 								}
 								
 								/*=============================================

@@ -188,9 +188,18 @@
 
         </div>
 
+        <!-- SEO Panel -->
+        <div class="modal-body px-4 pt-0">
+          <?php
+          $seoData = null;
+          require_once __DIR__ . '/../../../controllers/seo.controller.php';
+          require_once __DIR__ . '/../seo-panel.php';
+          ?>
+        </div>
+
         <!-- Modal footer -->
         <div class="modal-footer d-flex justify-content-between">
-          
+
           <div><button type="button" class="btn btn-dark rounded" data-bs-dismiss="modal">Cerrar</button></div>
           <div><button type="submit" class="btn btn-default backColor rounded">Guardar</button></div>
           

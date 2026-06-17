@@ -96,7 +96,7 @@
                           class="form-control form-control-sm rounded" 
                           id="title_admin"
                           name="title_admin"
-                          value="<?php echo $_SESSION["admin"]->title_admin ?>"
+                          value="<?php echo h($_SESSION["admin"]->title_admin) ?>"
                           placeholder="Nombre del dashboard"
                           required
                         >
@@ -124,7 +124,7 @@
                         <label for="symbol_admin" class="form-label small fw-semibold">Símbolo<sup>*</sup></label>
                         <div class="input-group input-group-sm">
                           <span class="input-group-text bg-white">
-                            <i class="bi <?php echo $_SESSION["admin"]->symbol_admin ?>" id="iconPreviewPlaceholder"></i>
+                            <i class="bi <?php echo h($_SESSION["admin"]->symbol_admin) ?>" id="iconPreviewPlaceholder"></i>
                           </span>
                           <input 
                             type="text"
@@ -152,7 +152,7 @@
                             class="form-control form-control-color"
                             id="color_admin"
                             name="color_admin"
-                            value="<?php echo $_SESSION["admin"]->color_admin ?>"
+                            value="<?php echo h($_SESSION["admin"]->color_admin) ?>"
                             title="Seleccionar color"
                             style="width: 60px; height: 38px;"
                           >
@@ -160,7 +160,7 @@
                             type="text"
                             class="form-control form-control-sm rounded"
                             id="color_admin_text"
-                            value="<?php echo $_SESSION["admin"]->color_admin ?>"
+                            value="<?php echo h($_SESSION["admin"]->color_admin) ?>"
                             readonly
                             style="max-width: 120px;"
                           >
@@ -230,7 +230,7 @@
                           class="form-control form-control-sm rounded" 
                           id="back_admin"
                           name="back_admin"
-                          value="<?php echo $_SESSION["admin"]->back_admin ?>"
+                          value="<?php echo h($_SESSION["admin"]->back_admin) ?>"
                           placeholder="URL de la imagen"
                         >
                       </div>

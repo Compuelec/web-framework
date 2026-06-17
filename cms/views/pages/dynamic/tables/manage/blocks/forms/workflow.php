@@ -38,7 +38,7 @@ if ($workflow) {
 $allowedTransitions = [];
 $recordId = '';
 if ($workflow && !empty($data) && isset($routesArray[2])) {
-    $recordId = base64_decode($routesArray[2]);
+    $recordId = (int)base64_decode($routesArray[2], true);
     $userRole = $_SESSION["admin"]->rol_admin ?? 'guest';
     $allowedTransitions = WorkflowController::getAllowedTransitions($workflow, $currentState, $userRole);
 }

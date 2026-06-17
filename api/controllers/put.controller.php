@@ -5,7 +5,7 @@ require_once "models/put.model.php";
 class PutController{
 
 	/*=============================================
-	Peticion Put para editar datos
+	PUT request to edit data
 	=============================================*/
 
 	static public function putData($table, $data, $id, $nameId){
@@ -18,7 +18,7 @@ class PutController{
 	}
 
 	/*=============================================
-	Respuestas del controlador
+	Controller responses
 	=============================================*/
 
 	public function fncResponse($response){

@@ -1,8 +1,10 @@
 <?php 
-// Error handling
+// Error handling — display errors only in local development
 define('DIR',__DIR__);
 
-ini_set("display_errors", 1);
+$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true)
+    || str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost:');
+ini_set("display_errors", $isLocal ? 1 : 0);
 ini_set("log_errors", 1);
 ini_set("error_log", DIR."/php_error_log");
 
@@ -25,6 +27,7 @@ date_default_timezone_set($timezone);
 
 require_once "controllers/template.controller.php";
 require_once "controllers/curl.controller.php";
+require_once "controllers/token.service.php";
 require_once "extensions/vendor/autoload.php";
 require_once __DIR__ . "/../core/activity_log.php";
 

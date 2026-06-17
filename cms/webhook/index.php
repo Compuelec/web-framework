@@ -20,16 +20,18 @@ $token = $config['webhook']['token'] ?? '';
 
 if($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["hub_verify_token"])){
 
-	if($_GET["hub_verify_token"] == $token){
+	// Use hash_equals to prevent timing attacks when comparing tokens
+	if(!empty($token) && hash_equals($token, $_GET["hub_verify_token"])){
 
 		echo $_GET["hub_challenge"];
 
 		exit;
-	
+
 	}else{
 
-		echo "Token inválido";
-        exit;
+		http_response_code(403);
+		echo "Invalid token";
+		exit;
 	}
 
 }
@@ -38,9 +40,10 @@ if($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["hub_verify_token"])){
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	// Get JSON content
-    $input = file_get_contents('php://input');
+	$input = file_get_contents('php://input');
 
-    file_put_contents("webhook_log.txt", $input."\n\n", FILE_APPEND); 
+	// Log to PHP error log instead of a file inside the web root
+	error_log("[webhook] " . $input);
 
 }
 

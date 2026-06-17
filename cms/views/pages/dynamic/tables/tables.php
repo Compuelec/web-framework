@@ -264,7 +264,7 @@ Load table module
 			<input type="hidden" id="orderByTable" value="id_<?php echo $module->suffix_module ?>">
 			<input type="hidden" id="orderModeTable" value="DESC">
 		    <input type="hidden" id="limitTable" value="<?php echo $limit ?>">
-		    <input type="hidden" id="rolAdmin" value="<?php echo $_SESSION["admin"]->rol_admin ?>">
+		    <input type="hidden" id="rolAdmin" value="<?php echo h($_SESSION["admin"]->rol_admin) ?>">
 		    <input type="hidden" id="searchTable" value="">
 		    <input type="hidden" id="between1" value="<?php echo date("Y-m-d", 0) ?>">
 		    <input type="hidden" id="between2" value="<?php echo date("Y-m-d") ?>">

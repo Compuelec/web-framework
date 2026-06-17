@@ -1,5 +1,5 @@
 /*=============================================
-Abrir ventana modal de páginas
+Open pages modal window
 =============================================*/
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
@@ -123,7 +123,7 @@ $(document).on("click",".myModule",function(){
 		$("input[name='id_module']").remove();
 
 		/*=============================================
-		Capturar el Id de la página
+		Capture the page ID
 		=============================================*/
 
 		$("#type_module").before(`
@@ -137,7 +137,7 @@ $(document).on("click",".myModule",function(){
 		$("#columnsBlock").hide();
 
 		/*=============================================
-		tipo de módulo seleccionado
+		Selected module type
 		=============================================*/
 
 		$(document).on("change","#type_module",function(){
@@ -149,7 +149,7 @@ $(document).on("click",".myModule",function(){
 			$("#columnsBlock").hide();
 
 			/*=============================================
-			Aparecer campos de métricas
+			Show metrics fields
 			=============================================*/
 
 			if($(this).val() == "metrics"){
@@ -165,7 +165,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			Aparecer campos de gráficos
+			Show chart fields
 			=============================================*/
 
 			if($(this).val() == "graphics"){
@@ -180,7 +180,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			Aparecer campos de tablas
+			Show table fields
 			=============================================*/
 
 			if($(this).val() == "tables"){
@@ -195,7 +195,7 @@ $(document).on("click",".myModule",function(){
 		
 
 		/*=============================================
-		Estamos editando módulo
+		We are editing a module
 		=============================================*/
 
 		if(item != undefined){
@@ -205,7 +205,7 @@ $(document).on("click",".myModule",function(){
 			`)
 
 			/*=============================================
-			tipo breadcrumbs
+			Breadcrumbs type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "breadcrumbs"){
@@ -218,7 +218,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo metrics
+			Metrics type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "metrics"){
@@ -284,7 +284,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo gráfico
+			Chart type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "graphics"){
@@ -340,7 +340,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo tables
+			Tables type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "tables"){
@@ -372,7 +372,7 @@ $(document).on("click",".myModule",function(){
 				JSON.parse(item).columns.forEach((e,i)=>{
 
 					/*=============================================
-					Marcar tipo de columna seleccionado
+					Mark selected column type
 					=============================================*/
 
 					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow"];
@@ -393,7 +393,7 @@ $(document).on("click",".myModule",function(){
 					// Labels are always visible in the new design
 
 					/*=============================================
-					Marcar la selección de visibilidad
+					Mark the visibility selection
 					=============================================*/
 
 					var selectOn = "";
@@ -562,7 +562,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo personalizable
+			Custom type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "custom"){
@@ -575,7 +575,7 @@ $(document).on("click",".myModule",function(){
 
 
 		/*=============================================
-		Estamos creando módulo
+		We are creating a module
 		=============================================*/
 		
 		}else{
@@ -587,7 +587,7 @@ $(document).on("click",".myModule",function(){
 	})
 
 	/*=============================================
-	Cuando se cierra la ventana modal
+	When the modal window is closed
 	=============================================*/
 
 	$("#myModule").on('hidden.bs.modal', function (){
@@ -600,7 +600,7 @@ $(document).on("click",".myModule",function(){
 })
 
 /*=============================================
-Eliminar un módulo
+Delete a module
 =============================================*/
 
 $(document).on("click",".deleteModule",function(){
@@ -619,7 +619,7 @@ $(document).on("click",".deleteModule",function(){
 			
 			var data = new FormData();
 			data.append("idModuleDelete",idModule);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -649,7 +649,7 @@ $(document).on("click",".deleteModule",function(){
 })
 
 /*=============================================
-Cambio en datos de métricas
+Change in metrics data
 =============================================*/
 
 $(document).on("change",".changeMetric",function(e){
@@ -717,7 +717,7 @@ $(document).on("change",".changeMetric",function(e){
 })
 
 /*=============================================
-Cambio en datos de gráficos
+Change in chart data
 =============================================*/
 
 $(document).on("change",".changeGraphic",function(){
@@ -894,7 +894,7 @@ $(document).on("click",".addColumn",function(){
 })
 
 /*=============================================
-Eliminar columnas
+Delete columns
 =============================================*/
 
 $(document).on("click",".deleteColumn",function(){
@@ -908,7 +908,7 @@ $(document).on("click",".deleteColumn",function(){
 			$(elem).parent().parent().remove();
 
 			/*=============================================
-			 ID de columnas a borrar
+			ID of columns to delete
 			=============================================*/
 			
 			if($(elem).attr("idItem") > 0){
@@ -921,7 +921,7 @@ $(document).on("click",".deleteColumn",function(){
 			}
 
 			/*=============================================
-			Actualizar el Índice de columnas
+			Update the column index
 			=============================================*/
 
 			var indexColumns = JSON.parse($("#indexColumns").val());

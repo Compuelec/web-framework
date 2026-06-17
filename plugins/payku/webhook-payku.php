@@ -1,8 +1,12 @@
 <?php
 
 /**
- * Manejador de Webhook Payku
- * Recibe notificaciones de pago de Payku
+ * Payku Webhook Handler
+ * Receives payment notifications from Payku and verifies them via API before updating order status.
+ *
+ * Security note: Payku does not provide HMAC signatures.
+ * All success/completed events MUST be verified against the Payku API before updating order status.
+ * Never trust the webhook payload alone for payment confirmation.
  */
 
 if (!defined('DIR')) {
@@ -73,72 +77,56 @@ if ($status == "rejected" || $status == "failed") {
         'verification_key' => $verification_key,
         'payku_response' => json_encode($data)
     ]);
-} else if ($status == "success" || $status == "completed") {
-    // Verify payment with Payku API if payment_key is available
-    if (!empty($payment_key)) {
+} elseif ($status == "success" || $status == "completed") {
+    // Security: never trust webhook payload alone for payment confirmation.
+    // Always verify against Payku API before marking as completed.
+    if (empty($payment_key)) {
+        // Cannot verify without payment_key — leave in pending for manual review
+        error_log("Payku webhook: Success status received but no payment_key for order: " . $order_id . ". Cannot verify. Order left in pending state.");
+    } else {
         $token = $payku->getPrivateToken();
         $response = $payku->datosGet($payment_key, $token, $data_action);
-        
-        if ($response && isset($response->amount)) {
-            // Verify that amount matches
-            if ($response->amount != $order_total) {
-                error_log("Payku webhook: Amount mismatch for order: " . $order_id . ". Expected: " . $order_total . ", Received: " . $response->amount);
-                PaykuPlugin::updateOrderStatus($order_id, 'failed', [
-                    'transaction_id' => $transaction_id,
-                    'payment_key' => $payment_key,
-                    'transaction_key' => $transaction_key,
-                    'verification_key' => $verification_key,
-                    'payku_response' => json_encode($data)
-                ]);
-            } else {
-                // Verify final status from API response
-                $finalStatus = $response->status ?? $status;
-                
-                if ($finalStatus == 'success' || $finalStatus == 'completed') {
-                    PaykuPlugin::updateOrderStatus($order_id, 'completed', [
-                        'transaction_id' => $transaction_id ?? ($response->transaction_id ?? ''),
-                        'payment_key' => $payment_key,
-                        'transaction_key' => $transaction_key ?? ($response->transaction_key ?? ''),
-                        'verification_key' => $verification_key ?? ($response->verification_key ?? ''),
-                        'payku_response' => json_encode($response)
-                    ]);
-                    error_log("Payku webhook: Payment verified and completed for order: " . $order_id);
-                } else {
-                    PaykuPlugin::updateOrderStatus($order_id, 'failed', [
-                        'transaction_id' => $transaction_id,
-                        'payment_key' => $payment_key,
-                        'transaction_key' => $transaction_key,
-                        'verification_key' => $verification_key,
-                        'payku_response' => json_encode($response)
-                    ]);
-                    error_log("Payku webhook: Payment verification failed for order: " . $order_id . " - Final status: " . $finalStatus);
-                }
-            }
-        } else {
-            // If we can't verify but status is success, update anyway
-            error_log("Payku webhook: Could not verify payment via API, but status is success. Updating order: " . $order_id);
-            PaykuPlugin::updateOrderStatus($order_id, 'completed', [
+
+        if (!$response || !isset($response->amount)) {
+            // API call failed — do NOT mark as completed based on unverified webhook data
+            error_log("Payku webhook: API verification call failed for order: " . $order_id . ". Order left in pending state.");
+        } elseif ($response->amount != $order_total) {
+            // Amount mismatch — possible partial payment fraud attempt
+            error_log("Payku webhook: Amount mismatch for order: " . $order_id . ". Expected: " . $order_total . ", Received: " . $response->amount);
+            PaykuPlugin::updateOrderStatus($order_id, 'failed', [
                 'transaction_id' => $transaction_id,
                 'payment_key' => $payment_key,
                 'transaction_key' => $transaction_key,
                 'verification_key' => $verification_key,
                 'payku_response' => json_encode($data)
             ]);
+        } else {
+            // Use the API response status as authoritative — not the webhook payload
+            $finalStatus = $response->status ?? '';
+
+            if ($finalStatus == 'success' || $finalStatus == 'completed') {
+                PaykuPlugin::updateOrderStatus($order_id, 'completed', [
+                    'transaction_id' => $transaction_id ?? ($response->transaction_id ?? ''),
+                    'payment_key' => $payment_key,
+                    'transaction_key' => $transaction_key ?? ($response->transaction_key ?? ''),
+                    'verification_key' => $verification_key ?? ($response->verification_key ?? ''),
+                    'payku_response' => json_encode($response)
+                ]);
+                error_log("Payku webhook: Payment verified and completed for order: " . $order_id);
+            } else {
+                PaykuPlugin::updateOrderStatus($order_id, 'failed', [
+                    'transaction_id' => $transaction_id,
+                    'payment_key' => $payment_key,
+                    'transaction_key' => $transaction_key,
+                    'verification_key' => $verification_key,
+                    'payku_response' => json_encode($response)
+                ]);
+                error_log("Payku webhook: API verification rejected order: " . $order_id . " - API status: " . $finalStatus);
+            }
         }
-    } else {
-        // No payment_key but status is success - update anyway
-        error_log("Payku webhook: Status is success but no payment_key. Updating order: " . $order_id);
-        PaykuPlugin::updateOrderStatus($order_id, 'completed', [
-            'transaction_id' => $transaction_id,
-            'payment_key' => $payment_key,
-            'transaction_key' => $transaction_key,
-            'verification_key' => $verification_key,
-            'payku_response' => json_encode($data)
-        ]);
     }
 } else {
     error_log("Payku webhook: Unknown status for order: " . $order_id . " - Status: " . $status);
-    // Update with received data anyway
     PaykuPlugin::updateOrderStatus($order_id, 'pending', [
         'transaction_id' => $transaction_id,
         'payment_key' => $payment_key,

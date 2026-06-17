@@ -5,7 +5,7 @@ class RoutesController{
 
 
 	/*=============================================
-	Ruta Principal
+	Main Route
 	=============================================*/
 	
 	public function index(){

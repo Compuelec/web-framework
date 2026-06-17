@@ -2,6 +2,25 @@
 
 require_once "../controllers/curl.controller.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	header('Content-Type: application/json');
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	exit;
+}
+
 class DynamicFormsController{
 
 	public $matrix_column;
@@ -73,7 +92,7 @@ class DynamicFormsController{
 	}
 
 	/*=============================================
-	Devolver información de la tabla
+	Return the table information
 	=============================================*/
 
 	public $table;
@@ -105,7 +124,7 @@ class DynamicFormsController{
 
 
 	/*=============================================
-	Actualizar matrix y Devolver consulta chatgpt
+	Update matrix and return the chatgpt query
 	=============================================*/
 
 	public $matrix_prompt;
@@ -122,7 +141,7 @@ class DynamicFormsController{
 		if($updateMatrix->status == 200 && !empty($this->matrix_prompt)){
 
 			/*=============================================
-			Traer info del administrador
+			Fetch the administrator info
 			=============================================*/
 
 			$url = "admins?linkTo=token_admin&equalTo=".$this->token."&select=chatgpt_admin";
@@ -149,7 +168,7 @@ class DynamicFormsController{
 }
 
 /*=============================================
-Variables POST
+POST variables
 =============================================*/ 
 
 if(isset($_POST["matrix_column"])){
