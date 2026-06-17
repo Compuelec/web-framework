@@ -1,6 +1,17 @@
-<?php 
+<?php
 
 require_once "../controllers/curl.controller.php";
+
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
 
 
 class PagesAjax{
@@ -47,11 +58,9 @@ class PagesAjax{
 
 		$getModule = CurlController::request($url,$method,$fields);
 
-		if($getModule->status == 200){
-
-			echo "error";
-		
-		}else{
+		// Only delete when the API explicitly confirms there are no linked
+		// modules (404). A transient/error status must NOT delete the page.
+		if($getModule->status == 404){
 
 			$url = "pages?id=".(int)base64_decode($this->idPageDelete, true)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
 			$method = "DELETE";
@@ -63,6 +72,10 @@ class PagesAjax{
 
 				echo $deletePage->status;
 			}
+
+		}else{
+
+			echo "error";
 
 		}
 

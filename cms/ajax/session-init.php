@@ -43,10 +43,11 @@ if (isset($_SESSION['admin']) && is_object($_SESSION['admin'])) {
                 ]);
                 exit();
             }
-            // If included, the calling code should handle authentication
-            // We'll just skip session initialization
+            // If included, drop the admin object so the caller's
+            // isset($_SESSION['admin']) guard fails for expired tokens
+            unset($_SESSION['admin']);
         }
-        
+
         if ($tokenValidation == "no-auth") {
             // Only output if this is a direct request, not an include
             if (!defined('SESSION_INIT_INCLUDED')) {
@@ -58,8 +59,9 @@ if (isset($_SESSION['admin']) && is_object($_SESSION['admin'])) {
                 ]);
                 exit();
             }
-            // If included, the calling code should handle authentication
-            // We'll just skip session initialization
+            // If included, drop the admin object so the caller's
+            // isset($_SESSION['admin']) guard fails for unauthorized tokens
+            unset($_SESSION['admin']);
         }
     }
 }

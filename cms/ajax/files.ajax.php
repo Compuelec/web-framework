@@ -16,6 +16,18 @@ header('Content-Type: application/json');
 require_once "../controllers/template.controller.php";
 require_once "../controllers/curl.controller.php";
 
+// Authentication guard — every action in this endpoint requires a valid admin session
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	ob_clean();
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	ob_end_flush();
+	exit;
+}
+
 // Function to get base URL (protocol + host + base path)
 function getBaseUrl(){
 	$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -111,12 +123,58 @@ class FilesController{
 			=============================================*/
 
 			$extension = explode(".",$this->file["name"]);
+			$ext = strtolower(end($extension));
+
+			/*=============================================
+			Validate the extension against a strict whitelist
+			to block executable/script uploads (RCE prevention)
+			=============================================*/
+
+			$allowedExtensions = array(
+				"jpg","jpeg","png","gif","webp","svg","bmp","ico",
+				"pdf","doc","docx","xls","xlsx","ppt","pptx","txt","csv","rtf","odt",
+				"mp4","webm","ogg","mp3","wav","mov","avi",
+				"zip","rar"
+			);
+
+			if(!in_array($ext, $allowedExtensions, true)){
+				$response = array(
+					"status" => 415,
+					"error" => "File type not allowed: .".$ext
+				);
+				ob_clean();
+				echo json_encode($response);
+				ob_end_flush();
+				return;
+			}
+
+			/*=============================================
+			Validate the real MIME type to reject files that
+			disguise executable content under a safe extension
+			=============================================*/
+
+			if(function_exists("finfo_open")){
+				$finfo = finfo_open(FILEINFO_MIME_TYPE);
+				$realMime = finfo_file($finfo, $this->file["tmp_name"]);
+				finfo_close($finfo);
+
+				if($realMime !== false && stripos($realMime, "php") !== false){
+					$response = array(
+						"status" => 415,
+						"error" => "File content not allowed"
+					);
+					ob_clean();
+					echo json_encode($response);
+					ob_end_flush();
+					return;
+				}
+			}
 
 			/*=============================================
 			Creamos el nombre del archivo
 			=============================================*/
 
-			$fileName = uniqid().getdate()["seconds"].".".end($extension);
+			$fileName = uniqid().getdate()["seconds"].".".$ext;
 	
 			/*=============================================
 			Subiendo archivos al servidor propio
@@ -479,10 +537,23 @@ class FilesController{
 		if($this->idFolderDelete == 1){
 
 			/*=============================================
-			Borrar archivo del servidor
+			Delete the physical file, confining the resolved
+			path to the uploads directory (path-traversal safe).
+			link_file is stored as a relative path, so we rebuild
+			the absolute path the same way the upload does.
 			=============================================*/
-			unlink(str_replace($_SERVER["HTTP_ORIGIN"],"..",$getFile->link_file));
-			
+			$filesBaseDir = realpath(dirname(__DIR__)."/views/assets/files");
+
+			if($filesBaseDir !== false && isset($getFile->link_file)){
+
+				$relative = ltrim(str_replace("\\", "/", $getFile->link_file), "/");
+				$targetPath = realpath($filesBaseDir."/".basename($relative));
+
+				if($targetPath !== false && strpos($targetPath, $filesBaseDir) === 0 && is_file($targetPath)){
+					@unlink($targetPath);
+				}
+			}
+
 		}
 
 		/*=============================================

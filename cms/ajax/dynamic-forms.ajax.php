@@ -2,6 +2,17 @@
 
 require_once "../controllers/curl.controller.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
 class DynamicFormsController{
 
 	public $matrix_column;

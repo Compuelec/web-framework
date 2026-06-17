@@ -4,6 +4,17 @@ require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";
 require_once __DIR__ . "/../../core/activity_log.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
 class DynamicTablesController{
 
 	/*=============================================
@@ -74,7 +85,9 @@ class DynamicTablesController{
 		$module = (json_decode($this->contentModule));
 		// Ensure page and limit are integers
 		$page = (int)($this->page ?? 1);
+		if($page < 1){ $page = 1; }
 		$limit = (int)($this->limit ?? 10);
+		if($limit < 1){ $limit = 10; }
 		$startAt = ($page - 1) * $limit;
 		$table = array(); 
 		$totalPages = 0;
@@ -166,7 +179,7 @@ class DynamicTablesController{
 				
 				$url = $module->title_module."?linkTo=date_created_".$module->suffix_module."&between1=".$this->between1."&between2=".$this->between2."&select=id_".$module->suffix_module;
 				$totalData = CurlController::request($url,$method,$fields)->total;
-				$totalPages = ceil($totalData/$this->limit);
+				$totalPages = $limit > 0 ? ceil($totalData/$limit) : 0;
 				
 			}else{
 

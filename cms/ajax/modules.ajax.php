@@ -3,6 +3,17 @@
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/install.controller.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
 class ModulesAjax{
 
 	/*=============================================
@@ -54,6 +65,16 @@ class ModulesAjax{
 
 		$moduleType = $module->results[0]->type_module;
 		$moduleTitle = $module->results[0]->title_module;
+
+		/*=============================================
+		Validate the table name as a safe SQL identifier
+		before it is ever interpolated into a DROP TABLE
+		=============================================*/
+
+		if(!preg_match('/^[a-zA-Z0-9_]+$/', (string)$moduleTitle)){
+			echo "error";
+			return;
+		}
 
 		/*=============================================
 		Si es módulo de tipo tabla, eliminar columnas primero
@@ -160,6 +181,14 @@ class ModulesAjax{
 			$getColumn = CurlController::request($url,$method,$fields);
 
 			if($getColumn->status == 200){
+
+				echo "error";
+				return;
+			}
+
+			// Only proceed when the API explicitly confirms there are no
+			// linked records (404). A transient/error status must NOT delete.
+			if($getColumn->status != 404){
 
 				echo "error";
 				return;
@@ -283,8 +312,9 @@ class ModulesAjax{
 		try{
 
 			$database = InstallController::infoDatabase()["database"];
-			$columns = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '".$this->tableName."' ORDER BY ORDINAL_POSITION")
-				->fetchAll(PDO::FETCH_OBJ);
+			$stmt = $link->prepare("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = :db AND table_name = :table ORDER BY ORDINAL_POSITION");
+			$stmt->execute([':db' => $database, ':table' => $this->tableName]);
+			$columns = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 			$columnNames = array_map(function($col) {
 				return $col->item;
