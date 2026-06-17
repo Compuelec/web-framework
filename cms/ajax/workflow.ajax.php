@@ -16,6 +16,14 @@ if(!isset($_SESSION["admin"])){
     exit;
 }
 
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+    header('Content-Type: application/json');
+    http_response_code(403);
+    echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+    exit;
+}
+
 require_once "../controllers/workflow.controller.php";
 require_once "../controllers/curl.controller.php";
 

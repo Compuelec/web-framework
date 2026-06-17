@@ -13,6 +13,14 @@ if(!isset($_SESSION["admin"])){
 	exit;
 }
 
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	header('Content-Type: application/json');
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	exit;
+}
+
 class DynamicFormsController{
 
 	public $matrix_column;

@@ -196,5 +196,24 @@ class SessionController {
         $stored = $_SESSION['_csrf_token'] ?? '';
         return !empty($stored) && hash_equals($stored, (string)$token);
     }
+
+    /**
+     * Validate the CSRF token for the current request.
+     *
+     * Safe HTTP methods (GET/HEAD/OPTIONS) do not mutate state and are
+     * exempt. For state-changing methods the token is read from the
+     * X-CSRF-Token header (sent by the global AJAX interceptor) or from
+     * the _csrf_token POST field (classic form submissions).
+     *
+     * @return bool
+     */
+    public static function validateCsrfRequest() {
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+            return true;
+        }
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_csrf_token'] ?? '');
+        return self::validateCsrfToken($token);
+    }
 }
 

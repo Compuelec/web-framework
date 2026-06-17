@@ -8,7 +8,15 @@ var AuthInterceptor = {
     
     init: function() {
         var self = this;
-        
+
+        // Attach the CSRF token as a header on every AJAX request (FormData-safe)
+        $(document).ajaxSend(function(event, xhr, settings) {
+            var token = window.CMS_CSRF_TOKEN || '';
+            if (token) {
+                xhr.setRequestHeader('X-CSRF-Token', token);
+            }
+        });
+
         $(document).ajaxComplete(function(event, xhr, settings) {
             self.handleResponse(xhr, settings);
         });

@@ -28,6 +28,15 @@ if(!isset($_SESSION["admin"])){
 	exit;
 }
 
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	ob_clean();
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	ob_end_flush();
+	exit;
+}
+
 // Function to get base URL (protocol + host + base path)
 function getBaseUrl(){
 	$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
