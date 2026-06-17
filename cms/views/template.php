@@ -202,7 +202,7 @@ if($adminTable !== null && is_object($adminTable)){
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js?v=csrf1"></script>
 
 	<!--=============================================
 	PLUGINS CSS
@@ -856,7 +856,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/workflow.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js?v=csrf1"></script>
 	
 	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>

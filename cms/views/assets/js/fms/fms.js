@@ -500,7 +500,7 @@ $(document).on("click","#startAll",function(){
 	Validate if user is admin
 	=============================================*/
 
-	if(window.CMS_TOKEN || '' == null){
+	if(!window.CMS_TOKEN){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
@@ -776,7 +776,7 @@ $(document).on("click",".deleteFile",function(){
 	Confirmar si esta como administrador
 	=============================================*/
 
-	if(window.CMS_TOKEN || '' == null){
+	if(!window.CMS_TOKEN){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
@@ -961,7 +961,7 @@ $(document).on("change",".changeName", function(){
 	Confirmar si esta como administrador
 	=============================================*/
 
-	if(window.CMS_TOKEN || '' == null){
+	if(!window.CMS_TOKEN){
 
 		fncToastr("error", "Debe iniciar sesión para realizar esta acción");
 		return;
