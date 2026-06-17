@@ -18,7 +18,20 @@ class LoginRateLimiter {
 
     private static function filePath($ip, $suffix) {
         $key = 'ratelimit_' . hash('sha256', $ip . '|login|' . $suffix);
-        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $key . '.json';
+        // Prefer a project-local, non-web-accessible directory over the shared
+        // system temp dir (which other local users can read/tamper with on
+        // shared hosting). Fall back to sys_get_temp_dir() if it is unavailable
+        // so login rate-limiting keeps working.
+        $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'ratelimit';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0700, true);
+            // Deny any direct web access to this runtime directory
+            @file_put_contents(dirname($dir) . DIRECTORY_SEPARATOR . '.htaccess', "Require all denied\n");
+        }
+        if (!is_writable($dir)) {
+            $dir = sys_get_temp_dir();
+        }
+        return $dir . DIRECTORY_SEPARATOR . $key . '.json';
     }
 
     public static function isBlocked($ip, $suffix) {

@@ -3,6 +3,37 @@ Global Authentication Interceptor
 Automatically handles expired tokens
 =============================================*/
 
+/*=============================================
+Attach the CSRF token to native fetch() requests.
+jQuery requests are covered by ajaxSend (see init);
+this covers same-origin, state-changing fetch() calls.
+=============================================*/
+(function(){
+    if (!window.fetch || window.__csrfFetchPatched) { return; }
+    window.__csrfFetchPatched = true;
+
+    var _origFetch = window.fetch;
+
+    window.fetch = function(input, init){
+        init = init || {};
+
+        var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+        var url = (typeof input === 'string') ? input : ((input && input.url) || '');
+        var sameOrigin = (url.indexOf('://') === -1) || (url.indexOf(window.location.origin) === 0);
+        var token = window.CMS_CSRF_TOKEN || '';
+
+        if (token && sameOrigin && method !== 'GET' && method !== 'HEAD') {
+            var headers = new Headers(init.headers || (input && input.headers) || {});
+            if (!headers.has('X-CSRF-Token')) {
+                headers.set('X-CSRF-Token', token);
+            }
+            init.headers = headers;
+        }
+
+        return _origFetch.call(this, input, init);
+    };
+})();
+
 var AuthInterceptor = {
     isLoggingOut: false,
     

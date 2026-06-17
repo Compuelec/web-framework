@@ -73,6 +73,12 @@ class GetModel{
 			return null;
 		}
 
+		// Defense-in-depth: linkTo is already validated against the schema
+		// above; also enforce a safe-identifier syntax before interpolation.
+		if(!Connection::validIdentifierList($linkTo)){
+			return null;
+		}
+
 		// Sanitize ORDER BY and LIMIT to prevent SQL injection
 		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
 		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
@@ -347,6 +353,11 @@ class GetModel{
 			return null;
 		}
 
+		// Defense-in-depth: enforce safe-identifier syntax on linkTo
+		if(!Connection::validIdentifierList($linkTo)){
+			return null;
+		}
+
 		// Sanitize ORDER BY and LIMIT to prevent SQL injection
 		$orderBy   = $orderBy   !== null ? Connection::sanitizeIdentifier($orderBy)   : null;
 		$orderMode = $orderMode !== null ? Connection::sanitizeOrderMode($orderMode)   : null;
@@ -554,6 +565,14 @@ class GetModel{
 		$selectArray = array_unique($selectArray);
 
 		if(empty(Connection::getColumnsData($table,$selectArray))){
+			return null;
+		}
+
+		// Defense-in-depth: enforce safe-identifier syntax on linkTo/filterTo
+		if(!Connection::validIdentifierList($linkTo)){
+			return null;
+		}
+		if($filterTo !== null && !Connection::validIdentifierList($filterTo)){
 			return null;
 		}
 

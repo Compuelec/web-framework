@@ -139,8 +139,11 @@ class FilesController{
 			to block executable/script uploads (RCE prevention)
 			=============================================*/
 
+			// NOTE: 'svg' is intentionally excluded — SVG files can carry
+			// embedded JavaScript and would lead to stored XSS when opened
+			// directly. Convert to a raster format before uploading instead.
 			$allowedExtensions = array(
-				"jpg","jpeg","png","gif","webp","svg","bmp","ico",
+				"jpg","jpeg","png","gif","webp","bmp","ico",
 				"pdf","doc","docx","xls","xlsx","ppt","pptx","txt","csv","rtf","odt",
 				"mp4","webm","ogg","mp3","wav","mov","avi",
 				"zip","rar"
@@ -558,7 +561,12 @@ class FilesController{
 				$relative = ltrim(str_replace("\\", "/", $getFile->link_file), "/");
 				$targetPath = realpath($filesBaseDir."/".basename($relative));
 
-				if($targetPath !== false && strpos($targetPath, $filesBaseDir) === 0 && is_file($targetPath)){
+				// Append a trailing separator to the base dir so a sibling
+				// directory sharing the prefix (e.g. ".../files_backup")
+				// cannot satisfy the containment check.
+				$baseWithSep = rtrim($filesBaseDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+
+				if($targetPath !== false && strpos($targetPath, $baseWithSep) === 0 && is_file($targetPath)){
 					@unlink($targetPath);
 				}
 			}

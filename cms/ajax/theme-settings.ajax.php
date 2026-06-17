@@ -20,6 +20,19 @@ if (!isset($_SESSION['admin'])) {
 $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
 
 $action = $_POST['action'] ?? $_GET['action'] ?? 'get';
+
+// CSRF protection for state-changing actions. The token is sent via the
+// X-CSRF-Token header (native fetch is patched in auth-interceptor.js) or
+// the _csrf_token POST field.
+$mutatingActions = ['save', 'reset', 'save_seo'];
+if (in_array($action, $mutatingActions, true)) {
+    $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_csrf_token'] ?? '');
+    if (!SessionController::validateCsrfToken($csrfToken)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
+
 $link   = Connection::connect();
 
 if (!$link) {

@@ -202,7 +202,7 @@ if($adminTable !== null && is_object($adminTable)){
 	</script>
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/alerts/alerts.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js?v=csrf1"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/auth/auth-interceptor.js?v=csrf2"></script>
 
 	<!--=============================================
 	PLUGINS CSS

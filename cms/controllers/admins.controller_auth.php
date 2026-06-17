@@ -189,7 +189,23 @@ class AdminsController{
 
 			}else{
 
-				// Increment failed attempts counter if we can identify the admin by email in session
+				// Wrong code: increment the failed-attempt counter for the
+				// targeted admin (identified by email from the ?scode= URL),
+				// so the lockout after 3 failures actually takes effect and
+				// the 2FA code cannot be brute-forced.
+				if(isset($_GET["scode"])){
+
+					$emailUrl = "admins?linkTo=email_admin&equalTo=".base64_decode($_GET["scode"])."&select=id_admin,scode_attempts_admin";
+					$targetAdmin = CurlController::request($emailUrl, "GET", array());
+
+					if($targetAdmin->status == 200 && isset($targetAdmin->results[0])){
+
+						$newAttempts = (int)($targetAdmin->results[0]->scode_attempts_admin ?? 0) + 1;
+						$incUrl = "admins?id=".$targetAdmin->results[0]->id_admin."&nameId=id_admin&token=no&except=scode_attempts_admin";
+						CurlController::request($incUrl, "PUT", "scode_attempts_admin=".$newAttempts);
+					}
+				}
+
 				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: Código de seguridad no coincide</div>
 				<script>
 					fncMatPreloader("off");
