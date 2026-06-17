@@ -26,7 +26,7 @@ if(!SessionController::validateCsrfRequest()){
 class DynamicTablesController{
 
 	/*=============================================
-    Eliminar Items
+    Delete items
     =============================================*/
 
 	public $idItemDelete;
@@ -73,7 +73,7 @@ class DynamicTablesController{
 	}
 
 	/*=============================================
-    Devolver tabla filtrada
+    Return filtered table
     =============================================*/
 
     public $contentModule;
@@ -103,13 +103,13 @@ class DynamicTablesController{
 
 
     	/*=============================================
-		Filtro por búsqueda
+		Filter by search
 		=============================================*/
 
 		if($this->search != ""){
 
 			/*=============================================
-			Columnas de búsqueda
+			Search columns
 			=============================================*/
 
 			$linkTo = array();
@@ -137,7 +137,7 @@ class DynamicTablesController{
 			}
 
 			/*=============================================
-			Itineración de búsqueda
+			Search iteration
 			=============================================*/
 			foreach ($linkTo as $key => $value) {
 
@@ -152,7 +152,7 @@ class DynamicTablesController{
 					$table = $table->results;
 
 					/*=============================================
-					Traemos contenido total de la tabla
+					Fetch the total content of the table
 					=============================================*/
 					
 					$url = $module->title_module."?linkTo=".$value."&search=".str_replace(" ", "_", $this->search)."&select=id_".$module->suffix_module;
@@ -182,7 +182,7 @@ class DynamicTablesController{
 				$table = $table->results;
 
 				/*=============================================
-				Traemos contenido total de la tabla
+				Fetch the total content of the table
 				=============================================*/
 				
 				$url = $module->title_module."?linkTo=date_created_".$module->suffix_module."&between1=".$this->between1."&between2=".$this->between2."&select=id_".$module->suffix_module;
@@ -197,7 +197,7 @@ class DynamicTablesController{
 		}
 	
 		/*=============================================
-    	Devolver la tabla en formato HTML
+    	Return the table in HTML format
     	=============================================*/
 
     	$HTMLTable = "";
@@ -227,7 +227,7 @@ class DynamicTablesController{
     							$HTMLTable .= '<td>';
 
 								/*=============================================
-								Contenido tipo Imagen
+								Image-type content
 								=============================================*/
 
 								if($item->type_column == "image"){
@@ -244,7 +244,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Video
+								Video-type content
 								=============================================*/
 
 								}else if($item->type_column == "video"){
@@ -254,7 +254,7 @@ class DynamicTablesController{
 									</a>';
 
 								/*=============================================
-								Contenido tipo otros Archivos
+								Other files content type
 								=============================================*/
 
 								}else if($item->type_column == "file"){
@@ -265,7 +265,7 @@ class DynamicTablesController{
 
 
 								/*=============================================
-								Contenido tipo Boleano
+								Boolean-type content
 								=============================================*/
 
 								}else if($item->type_column == "boolean"){
@@ -295,7 +295,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Array
+								Array-type content
 								=============================================*/
 							    }else if($item->type_column == "array" && !empty($value[$item->title_column])){
 
@@ -308,7 +308,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Objetos
+								Object-type content
 								=============================================*/
 
 								}else if($item->type_column == "object" && !empty($value[$item->title_column])){
@@ -322,7 +322,7 @@ class DynamicTablesController{
 							    	}
 
 							    /*=============================================
-								Contenido tipo Enlace
+								Link-type content
 								=============================================*/
 
 								}else if($item->type_column == "link"){
@@ -330,7 +330,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '<a href="'.$value[$item->title_column].'" target="_blank" class="badge badge-default border rounded bg-indigo">'.TemplateController::reduceText(urldecode($value[$item->title_column]), 20).'</a>';
 
 								/*=============================================
-								Contenido tipo Color
+								Color-type content
 								=============================================*/
 
 								}else if($item->type_column == "color"){
@@ -338,7 +338,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '<div class="rounded border" style="width:25px; height:25px; background:'.urldecode($value[$item->title_column]).'"></div>';
 
 							    /*=============================================
-								Contenido tipo Double
+								Double-type content
 								=============================================*/
 
 								}else if($item->type_column == "money"){
@@ -346,7 +346,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '$'.number_format(urldecode($value[$item->title_column]),2);
 
 								/*=============================================
-								Contenido tipo Relaciones
+								Relations-type content
 								=============================================*/
 
 								}else if($item->type_column == "relations"){
@@ -373,7 +373,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Órden
+								Order-type content
 								=============================================*/
 
 								}else if($item->type_column == "order"){
@@ -430,7 +430,7 @@ class DynamicTablesController{
 	}
 
 	/*=============================================
-    Cambiar estado Boleano
+    Toggle boolean state
     =============================================*/
     public $boolChange;
     public $idItemChange;
@@ -474,7 +474,7 @@ class DynamicTablesController{
 	}
 
 	/*=============================================
-    Cambiar selección
+    Change selection
     =============================================*/
     public $itemSelect;
     public $idItemSelect;
@@ -509,7 +509,7 @@ class DynamicTablesController{
 	}
 
 	/*=============================================
-    Cambiar orden
+    Change order
     =============================================*/
 
     public $numOrder;
@@ -537,7 +537,7 @@ class DynamicTablesController{
 }
 
 /*=============================================
-Variables POST
+POST variables
 =============================================*/ 
 
 if(isset($_POST["idItemDelete"])){
@@ -552,7 +552,7 @@ if(isset($_POST["idItemDelete"])){
 }
 
 /*=============================================
-Devolver tabla filtrada
+Return filtered table
 =============================================*/
 
 if(isset($_POST["contentModule"])){
@@ -573,7 +573,7 @@ if(isset($_POST["contentModule"])){
 
 
 /*=============================================
-Cambiar estado Boleano
+Toggle boolean state
 =============================================*/
 
 if(isset($_POST["tableChange"])){
@@ -590,7 +590,7 @@ if(isset($_POST["tableChange"])){
 }
 
 /*=============================================
-Cambiar selección
+Change selection
 =============================================*/
 
 if(isset($_POST["tableSelect"])){
@@ -607,7 +607,7 @@ if(isset($_POST["tableSelect"])){
 }
 
 /*=============================================
-Cambiar orden
+Change order
 =============================================*/
 
 if(isset($_POST["tableOrder"])){

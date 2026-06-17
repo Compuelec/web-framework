@@ -25,7 +25,7 @@ if(!SessionController::validateCsrfRequest()){
 class PagesAjax{
 
 	/*=============================================
-	Cambiar el orden de página
+	Change the page order
 	=============================================*/ 
 
 	public $idPage;
@@ -49,7 +49,7 @@ class PagesAjax{
 	}
 
 	/*=============================================
-	Eliminar Página
+	Delete page
 	=============================================*/ 
 
 	public $idPageDelete;
@@ -57,7 +57,7 @@ class PagesAjax{
 	public function deletePage(){
 
 		/*=============================================
-		Validar módulos vinculados a la página
+		Validate the modules linked to the page
 		=============================================*/
 
 		$url = "modules?linkTo=id_page_module&equalTo=".(int)base64_decode($this->idPageDelete, true);

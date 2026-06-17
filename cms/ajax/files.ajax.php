@@ -55,7 +55,7 @@ function getBaseUrl(){
 class FilesController{
 
 	/*=============================================
-	Subir Archivos a los Servidores
+	Upload files to the servers
 	=============================================*/
 
 	public $file;
@@ -71,7 +71,7 @@ class FilesController{
 		ob_clean();
 
 		/*=============================================
-		Traer info del folder
+		Fetch the folder info
 		=============================================*/
 
 		$url = "folders?linkTo=id_folder&equalTo=".$this->folder;
@@ -109,7 +109,7 @@ class FilesController{
 			$folder = $folder->results[0];
 
 			/*=============================================
-			Validar el peso máximo del archivo de acuerdo al servidor
+			Validate the maximum file size according to the server
 			=============================================*/
 
 			if($this->file["size"] > $folder->max_upload_folder){
@@ -128,7 +128,7 @@ class FilesController{
 			}
 
 			/*=============================================
-			Capturamos la extensión del archivo
+			Capture the file extension
 			=============================================*/
 
 			$extension = explode(".",$this->file["name"]);
@@ -180,19 +180,19 @@ class FilesController{
 			}
 
 			/*=============================================
-			Creamos el nombre del archivo
+			Create the file name
 			=============================================*/
 
 			$fileName = uniqid().getdate()["seconds"].".".$ext;
 	
 			/*=============================================
-			Subiendo archivos al servidor propio
+			Uploading files to our own server
 			=============================================*/
 
 			if($this->folder == 1){
 
 				/*=============================================
-				Capturar ruta donde guardaremos el archivo
+				Capture the path where the file will be stored
 				=============================================*/
 
 				// Use absolute path to avoid path resolution issues
@@ -243,13 +243,13 @@ class FilesController{
 				$path = $filesDir . $fileName;
 
 				/*=============================================
-				Movemos archivo temporal a esa ruta
+				Move the temporary file to that path
 				=============================================*/
 
 				if(move_uploaded_file($this->file["tmp_name"], $path)){
 
 					/*=============================================
-					Subimos información de archivos a la base de datos
+					Upload the file information to the database
 					=============================================*/
 
 					$url = "files?token=".$this->token."&table=admins&suffix=admin";
@@ -300,7 +300,7 @@ class FilesController{
 					if($uploadData->status == 200){
 
 						/*=============================================
-						Devolvemos la información a javascript
+						Return the information to javascript
 						=============================================*/
 
 						// Handle different response structures from API
@@ -449,7 +449,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Calcular el peso total de archivos de un folder
+	Calculate the total size of a folder's files
 	=============================================*/
 
 	public $idFolder;
@@ -457,7 +457,7 @@ class FilesController{
 	public function updateServer(){
 
 		/*=============================================
-		Traer todos los archivos vinculados al folder
+		Fetch all the files linked to the folder
 		=============================================*/
 
 		$url = "files?linkTo=id_folder_file&equalTo=".$this->idFolder."&select=size_file";
@@ -480,7 +480,7 @@ class FilesController{
 				if($countFiles == count($files)){
 
 					/*=============================================
-					Actualizar Folders
+					Update folders
 					=============================================*/
 
 					$url = 	"folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
@@ -501,7 +501,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Eliminar archivo del servidor y de la BD
+	Delete the file from the server and the database
 	=============================================*/
 
 	public $idFileDelete;
@@ -510,7 +510,7 @@ class FilesController{
 	public function deleteFile(){
 
 		/*=============================================
-		Traer la data del archivo
+		Fetch the file data
 		=============================================*/
 
 		$url = "files?linkTo=id_file&equalTo=".$this->idFileDelete;
@@ -526,7 +526,7 @@ class FilesController{
 		}
 
 		/*=============================================
-		Traer la data del folder
+		Fetch the folder data
 		=============================================*/
 
 		$url = "folders?linkTo=id_folder&equalTo=".$this->idFolderDelete;
@@ -566,7 +566,7 @@ class FilesController{
 		}
 
 		/*=============================================
-		Actualizar capacidad total del servidor
+		Update the total server capacity
 		=============================================*/
 
 		$url = "folders?id=".$this->idFolderDelete."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
@@ -576,7 +576,7 @@ class FilesController{
 		$updateFolder = CurlController::request($url,$method,$fields);
 
 		/*=============================================
-		Eliminar registro de la base de datos
+		Delete the record from the database
 		=============================================*/
 
 		$url = "files?id=".$this->idFileDelete."&nameId=id_file&token=".$this->token."&table=admins&suffix=admin";
@@ -593,7 +593,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Actualizar el nombre del Archivo
+	Update the file name
 	=============================================*/
 
 	public $name;
@@ -615,7 +615,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Función para cargar archivos
+	Function to load files
 	=============================================*/
 
 	public $search;
@@ -727,7 +727,7 @@ class FilesController{
 				$countFiles++;
 
 				/*=============================================
-				Organizar la vista de la lista
+				Arrange the list view
 				=============================================*/
 
 				$pathList = TemplateController::returnThumbnailList($value);
@@ -770,7 +770,7 @@ class FilesController{
 					</tr>';
 
 				/*=============================================
-				Organizar la vista de la cuadrícula
+				Arrange the grid view
 				=============================================*/
 
 				$pathGrid = TemplateController::returnThumbnailGrid($value);
@@ -834,7 +834,7 @@ class FilesController{
 				 		</div>';
 
 				/*=============================================
-				Finaliza el recorrido Foreach
+				End of the foreach loop
 				=============================================*/
 
 				if($countFiles == count($load)){
@@ -874,7 +874,7 @@ class FilesController{
 }
 
 /*=============================================
-Subir Archivos a los Servidores
+Upload files to the servers
 =============================================*/
 
 if(isset($_FILES["file"])){
@@ -900,7 +900,7 @@ if(isset($_FILES["file"])){
 }
 
 /*=============================================
-Calcular el peso total de archivos de un folder
+Calculate the total size of a folder's files
 =============================================*/
 
 if(isset($_POST["idFolder"])){
@@ -913,7 +913,7 @@ if(isset($_POST["idFolder"])){
 }
 
 /*=============================================
-Eliminar archivo del servidor y de la BD
+Delete the file from the server and the database
 =============================================*/
 
 if(isset($_POST["idFolderDelete"])){
@@ -927,7 +927,7 @@ if(isset($_POST["idFolderDelete"])){
 }
 
 /*=============================================
-Actualizar el nombre del Archivo
+Update the file name
 =============================================*/
 
 if(isset($_POST["name"])){
@@ -941,7 +941,7 @@ if(isset($_POST["name"])){
 }
 
 /*=============================================
-Función para cargar archivos
+Function to load files
 =============================================*/
 
 if(isset($_POST["search"])){

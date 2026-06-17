@@ -25,7 +25,7 @@ if(!SessionController::validateCsrfRequest()){
 class ModulesAjax{
 
 	/*=============================================
-	Eliminar Módulo
+	Delete module
 	=============================================*/ 
 
 	public $idModuleDelete;
@@ -57,7 +57,7 @@ class ModulesAjax{
 	public function deleteModule(){
 
 		/*=============================================
-		Traer la info del módulo para saber si es tabla
+		Fetch the module info to know whether it is a table
 		=============================================*/
 
 		$url = "modules?linkTo=id_module&equalTo=".(int)base64_decode($this->idModuleDelete, true)."&select=type_module,title_module";
@@ -85,13 +85,13 @@ class ModulesAjax{
 		}
 
 		/*=============================================
-		Si es módulo de tipo tabla, eliminar columnas primero
+		If it is a table-type module, delete the columns first
 		=============================================*/
 
 		if($moduleType == "tables"){
 
 			/*=============================================
-			Obtener todas las columnas vinculadas al módulo
+			Get all the columns linked to the module
 			=============================================*/
 
 			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
@@ -103,7 +103,7 @@ class ModulesAjax{
 			if($getColumns->status == 200 && isset($getColumns->results) && is_array($getColumns->results)){
 
 				/*=============================================
-				Eliminar todas las columnas asociadas
+				Delete all the associated columns
 				=============================================*/
 
 				foreach($getColumns->results as $column){
@@ -118,7 +118,7 @@ class ModulesAjax{
 				}
 
 				/*=============================================
-				Eliminar la tabla de la BD en MySQL
+				Delete the table from the MySQL database
 				=============================================*/
 
 				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
@@ -130,7 +130,7 @@ class ModulesAjax{
 			}else{
 
 				/*=============================================
-				Si no hay columnas, solo eliminar la tabla
+				If there are no columns, just delete the table
 				=============================================*/
 
 				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
@@ -179,7 +179,7 @@ class ModulesAjax{
 		}else{
 
 			/*=============================================
-			Para otros tipos de módulos, validar columnas vinculadas
+			For other module types, validate the linked columns
 			=============================================*/
 
 			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
@@ -205,7 +205,7 @@ class ModulesAjax{
 		}
 
 		/*=============================================
-		Eliminar el módulo
+		Delete the module
 		=============================================*/
 
 		$url = "modules?id=".(int)base64_decode($this->idModuleDelete, true)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";

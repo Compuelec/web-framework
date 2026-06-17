@@ -92,7 +92,7 @@ class DynamicFormsController{
 	}
 
 	/*=============================================
-	Devolver información de la tabla
+	Return the table information
 	=============================================*/
 
 	public $table;
@@ -124,7 +124,7 @@ class DynamicFormsController{
 
 
 	/*=============================================
-	Actualizar matrix y Devolver consulta chatgpt
+	Update matrix and return the chatgpt query
 	=============================================*/
 
 	public $matrix_prompt;
@@ -141,7 +141,7 @@ class DynamicFormsController{
 		if($updateMatrix->status == 200 && !empty($this->matrix_prompt)){
 
 			/*=============================================
-			Traer info del administrador
+			Fetch the administrator info
 			=============================================*/
 
 			$url = "admins?linkTo=token_admin&equalTo=".$this->token."&select=chatgpt_admin";
@@ -168,7 +168,7 @@ class DynamicFormsController{
 }
 
 /*=============================================
-Variables POST
+POST variables
 =============================================*/ 
 
 if(isset($_POST["matrix_column"])){
