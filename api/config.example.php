@@ -27,6 +27,10 @@ return [
     'api' => [
         'key' => 'your-api-key-here',
         'public_access_tables' => [''],
+        // Tables that may be written without a user token (token=no mode).
+        // Required by internal CMS flows (login, install, 2FA). Keep this list
+        // minimal — never add public/business tables here.
+        'internal_write_tables' => ['admins', 'pages', 'modules', 'folders', 'columns'],
         // Allowed CORS origins — add your domain(s) here. Never use '*' in production.
         'allowed_origins' => [
             'http://localhost',

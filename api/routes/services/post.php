@@ -58,6 +58,21 @@ if(isset($_POST)){
 
 			if($_GET["token"] == "no" && isset($_GET["except"])){
 
+				// Restrict token-less writes to internal CMS tables only
+				if(!in_array($table, Connection::internalWriteTables(), true)){
+
+					$json = array(
+						'status' => 403,
+						'results' => "Error: token-less writes are not allowed for this table"
+					);
+
+					http_response_code($json["status"]);
+					echo json_encode($json);
+
+					return;
+
+				}
+
 				/*=============================================
 				Validar la tabla y las columnas
 				=============================================*/

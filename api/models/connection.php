@@ -1,6 +1,10 @@
 <?php
 
 require_once __DIR__ . "/get.model.php";
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\ExpiredException;
 
 class Connection{
 
@@ -68,6 +72,18 @@ class Connection{
 	static public function publicAccess(){
 		$config = self::getConfig();
 		return $config['api']['public_access_tables'];
+	}
+
+	// Tables allowed to be written without a user token (token=no mode).
+	// Used by internal CMS flows (login, install, 2FA) that run before a
+	// JWT exists. Defaults to the known CMS-internal tables when not set.
+	static public function internalWriteTables(){
+		$config = self::getConfig();
+		$tables = $config['api']['internal_write_tables'] ?? null;
+		if(!is_array($tables)){
+			$tables = ['admins', 'pages', 'modules', 'folders', 'columns'];
+		}
+		return $tables;
 	}
 
 	// Database connection
@@ -191,27 +207,39 @@ class Connection{
 	// Validate security token
 	static public function tokenValidate($token,$table,$suffix){
 
-		$user = GetModel::getDataFilter($table, "token_exp_".$suffix, "token_".$suffix, $token, null,null,null,null);
-		
-		if(!empty($user)){
+		$config = self::getConfig();
+		$jwtSecret = $config['jwt']['secret'] ?? '';
 
-			// Check if token has expired
-			$time = time();
-
-			if($time < $user[0]->{"token_exp_".$suffix}){
-
-				return "ok";
-
-			}else{
-
-				return "expired";
-			}
-
-		}else{
-
+		if(empty($token) || empty($jwtSecret)){
 			return "no-auth";
-
 		}
+
+		// 1. Cryptographically verify the token: a valid HS256 signature
+		//    and a non-expired "exp" claim. A forged or tampered token
+		//    throws here and never reaches the database lookup.
+		try{
+
+			JWT::decode($token, $jwtSecret, array('HS256'));
+
+		}catch(ExpiredException $e){
+
+			return "expired";
+
+		}catch(\Exception $e){
+
+			// Invalid signature, malformed token, wrong algorithm, etc.
+			return "no-auth";
+		}
+
+		// 2. Confirm the token still matches the one stored for the user,
+		//    so tokens can be revoked/rotated server-side (logout, reissue).
+		$user = GetModel::getDataFilter($table, "token_exp_".$suffix, "token_".$suffix, $token, null,null,null,null);
+
+		if(empty($user)){
+			return "no-auth";
+		}
+
+		return "ok";
 
 	}
 

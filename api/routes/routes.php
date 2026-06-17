@@ -44,8 +44,9 @@ if(count($routesArray) == 1 && isset($_SERVER['REQUEST_METHOD'])){
 	$headers = function_exists("getallheaders") ? getallheaders() : [];
 	$authorization = $headers["Authorization"] ?? ($_SERVER["HTTP_AUTHORIZATION"] ?? ($_SERVER["REDIRECT_HTTP_AUTHORIZATION"] ?? null));
 
-	// Validate API key
-	if(!$authorization || $authorization != Connection::apikey()){
+	// Validate API key using a constant-time comparison to avoid timing attacks
+	$apiKey = Connection::apikey();
+	if(!$authorization || !is_string($apiKey) || $apiKey === "" || !hash_equals($apiKey, (string)$authorization)){
 
 		if(!in_array($table, Connection::publicAccess(), true)){
 
