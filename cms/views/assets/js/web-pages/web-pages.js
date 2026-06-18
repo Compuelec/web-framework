@@ -253,12 +253,12 @@ Web Pages builder (template + live preview)
                 if (!res || !res.success) { return; }
                 var roles = res.roles || [], users = res.users || [];
                 $("#wpb-roles").html(roles.length ? roles.map(function (r) {
-                    var id = "wpb-role-" + r;
-                    return '<div class="form-check form-check-inline"><input class="form-check-input wpb-role" type="checkbox" value="' + escapeHtml(r) + '" id="' + escapeHtml(id) + '"><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(r) + "</label></div>";
+                    return '<label class="d-inline-flex align-items-center gap-2 me-3 mb-1 small" style="cursor:pointer">' +
+                        '<input type="checkbox" class="form-check-input m-0 wpb-role" value="' + escapeHtml(r) + '"><span>' + escapeHtml(r) + "</span></label>";
                 }).join("") : '<span class="text-muted small">No hay roles</span>');
                 $("#wpb-users").html(users.length ? users.map(function (u) {
-                    var id = "wpb-user-" + u.id;
-                    return '<div class="form-check"><input class="form-check-input wpb-user" type="checkbox" value="' + escapeHtml(u.id) + '" id="' + escapeHtml(id) + '"><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(u.email) + "</label></div>";
+                    return '<label class="d-flex align-items-center gap-2 mb-1 small" style="cursor:pointer">' +
+                        '<input type="checkbox" class="form-check-input m-0 wpb-user" value="' + escapeHtml(u.id) + '"><span>' + escapeHtml(u.email) + "</span></label>";
                 }).join("") : '<span class="text-muted small">No hay usuarios</span>');
             });
     }
