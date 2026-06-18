@@ -453,9 +453,10 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar cambios';
                 if (res.success) {
-                    // Apply immediately to the real page CSS vars
+                    // Apply immediately to the real page (colors + brand)
                     applyToPage();
-                    if (window.toastr) toastr.success('Tema guardado. Recarga la página para ver todos los cambios.');
+                    updateSidebarBrand();
+                    if (window.toastr) toastr.success('Apariencia guardada.');
                 } else {
                     if (window.toastr) toastr.error(res.error || 'Error al guardar');
                 }
@@ -482,6 +483,38 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
     });
 
     // Apply colors to live page (CSS vars) without reload
+    // Update the sidebar brand (logo / icon / name) live, without a refresh.
+    function updateSidebarBrand() {
+        var heading = document.querySelector('.sidebar-heading');
+        if (!heading) return;
+        var title  = (getVal('te-brand-title')  || '').trim();
+        var symbol = (getVal('te-brand-symbol') || '').trim();
+        var logo   = (document.getElementById('te-brand-logo').value || '').trim();
+
+        // Logo (a wrapped <img> before the icon)
+        var img = heading.querySelector('img');
+        if (logo) {
+            if (!img) {
+                var wrap = document.createElement('div');
+                wrap.className = 'mb-1';
+                img = document.createElement('img');
+                img.style.cssText = 'max-height:48px;max-width:170px;object-fit:contain;';
+                wrap.appendChild(img);
+                heading.insertBefore(wrap, heading.firstChild);
+            }
+            img.src = logo;
+            img.alt = title;
+        } else if (img && img.parentNode) {
+            img.parentNode.remove();
+        }
+        // Icon
+        var icon = heading.querySelector('i');
+        if (icon && symbol) icon.className = symbol + ' textColor';
+        // Name
+        var name = heading.querySelector('.menu-text');
+        if (name && title) name.textContent = title;
+    }
+
     function applyToPage() {
         var root  = document.documentElement;
         var primary      = getVal('te-primary');

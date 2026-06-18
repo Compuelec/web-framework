@@ -200,7 +200,7 @@ if($pages->status == 200){
 
 		<hr class="borderDashboard">
 
-		<button class="btn btn-default border rounded btn-sm ms-3 menu-text mt-2 myPage">Agregar Sección</button>
+		<button class="btn backColor rounded btn-sm ms-3 menu-text mt-2 myPage">Agregar Sección</button>
 		
 	<?php endif ?>
 
