@@ -51,6 +51,19 @@ it('rejects an unsafe table name', function() {
     assertTrue($threw, 'should reject an unsafe table name');
 });
 
+it('rejects a malformed date (no SQL-comment break-out)', function() {
+    $threw = false;
+    try { mig_resolveOptions('products', ['date' => "2026-01-01\nDROP TABLE products;"]); }
+    catch (\InvalidArgumentException $e) { $threw = true; }
+    assertTrue($threw, 'should reject a non-YYYY-MM-DD date');
+});
+
+it('treats a valueless --columns flag as no columns', function() {
+    // A bare "--columns" yields boolean true; it must not become a "1" column.
+    $o = mig_resolveOptions('products', ['columns' => true]);
+    assertSame(0, count($o['columns']));
+});
+
 it('builds a conventional CREATE TABLE migration', function() {
     $sql = buildMigrationSource(mig_resolveOptions('products', [
         'columns' => 'name:string,active:bool',

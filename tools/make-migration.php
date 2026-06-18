@@ -111,15 +111,32 @@ function mig_resolveOptions($table, array $flags) {
     if (!mig_isIdentifier($table)) {
         throw new InvalidArgumentException("Invalid table name: '{$table}'.");
     }
-    $suffix = $flags['suffix'] ?? mig_deriveSuffix($table);
+
+    // A bare --flag has the value `true`; treat such non-strings as unset so a
+    // boolean never coerces into a value (e.g. a column literally named "1").
+    $suffix = (isset($flags['suffix']) && is_string($flags['suffix'])) ? $flags['suffix'] : mig_deriveSuffix($table);
     if (!mig_isIdentifier($suffix)) {
         throw new InvalidArgumentException("Invalid suffix: '{$suffix}'.");
     }
+
+    $columnsSpec = (isset($flags['columns']) && is_string($flags['columns'])) ? $flags['columns'] : '';
+
+    // The date is written verbatim into the migration file (which is later
+    // executed), so require a strict YYYY-MM-DD to prevent breaking out of the
+    // SQL comment.
+    $date = date('Y-m-d');
+    if (isset($flags['date'])) {
+        if (!is_string($flags['date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $flags['date'])) {
+            throw new InvalidArgumentException("Invalid date: expected YYYY-MM-DD.");
+        }
+        $date = $flags['date'];
+    }
+
     return [
         'table'       => $table,
         'suffix'      => $suffix,
-        'columns'     => mig_parseColumns($flags['columns'] ?? ''),
-        'date'        => isset($flags['date']) && is_string($flags['date']) ? $flags['date'] : date('Y-m-d'),
+        'columns'     => mig_parseColumns($columnsSpec),
+        'date'        => $date,
         'description' => "Create the {$table} table",
     ];
 }
