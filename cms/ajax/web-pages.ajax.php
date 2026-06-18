@@ -227,6 +227,29 @@ $config = [
     'customJs'  => $_POST['customJs']  ?? '',
 ];
 
+// Use the table's REAL primary-key column for ordering/lookups, instead of
+// guessing it from the table name (which breaks for plural/irregular names and
+// leaves the generated page with zero records).
+if (pb_isIdentifier($config['table'])) {
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            $db = $link->query('SELECT DATABASE()')->fetchColumn();
+            $pkStmt = $link->prepare(
+                "SELECT COLUMN_NAME FROM information_schema.columns
+                 WHERE table_schema = :db AND table_name = :t AND COLUMN_KEY = 'PRI' LIMIT 1"
+            );
+            $pkStmt->execute([':db' => $db, ':t' => $config['table']]);
+            $pk = $pkStmt->fetchColumn();
+            if ($pk) {
+                $config['idColumn'] = $pk;
+            }
+        } catch (Throwable $e) {
+            Logger::warning('web-pages PK lookup failed', ['error' => $e->getMessage()]);
+        }
+    }
+}
+
 try {
     $cfg = pb_normalizeConfig($config);
 } catch (Throwable $e) {
