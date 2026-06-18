@@ -106,6 +106,7 @@ Diagnoses and repairs writable-directory permissions.
     $check.on("click", function () { run("check", $check); });
     $fix.on("click", function () { run("fix", $fix); });
 
-    // Initial check on load.
-    run("check", $check);
+    // Defer the initial check to DOM-ready so the global CSRF ajaxSend hook is
+    // active before this POST fires (otherwise it is rejected as invalid CSRF).
+    $(function () { run("check", $check); });
 })();
