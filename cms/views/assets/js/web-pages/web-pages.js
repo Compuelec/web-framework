@@ -78,6 +78,10 @@ Web Pages builder (visual, configurable)
     function loadPages() {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "list" } })
             .done(function (res) {
+                if (res && res.success === false) {
+                    $pages.html('<div class="list-group-item text-danger small">' + escapeHtml(res.error || "Error al cargar.") + "</div>");
+                    return;
+                }
                 var pages = (res && res.pages) || [];
                 if (!pages.length) {
                     $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>');
@@ -212,6 +216,11 @@ Web Pages builder (visual, configurable)
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
-    loadTables();
-    loadPages();
+    // Defer the initial loads to DOM-ready so the global CSRF ajaxSend hook
+    // (registered by auth-interceptor on DOMContentLoaded) is active before the
+    // list POST fires — otherwise it would be rejected as an invalid CSRF token.
+    $(function () {
+        loadTables();
+        loadPages();
+    });
 })();
