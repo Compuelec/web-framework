@@ -1,151 +1,26 @@
 /*=============================================
-Web Pages builder
-Visual generator for public frontend pages.
+Web Pages builder (visual, configurable)
 =============================================*/
 
 (function () {
     "use strict";
 
-    var $table    = $("#wpb-table");
-    var $title    = $("#wpb-title");
-    var $name     = $("#wpb-name");
-    var $detail   = $("#wpb-detail");
-    var $generate = $("#wpb-generate");
-    var $result   = $("#wpb-result");
+    var $ = window.jQuery;
+    var $root = $("#web-pages-builder");
+    if (!$root.length) { return; }
 
-    // Only run on the builder page.
-    if (!$table.length) {
-        return;
-    }
+    var ajaxPath = window.CMS_AJAX_PATH || "/ajax";
+    var url      = ajaxPath + "/web-pages.ajax.php";
+    var modules  = ajaxPath + "/modules.ajax.php";
 
-    var ajaxPath    = window.CMS_AJAX_PATH || "/ajax";
-    var modulesUrl  = ajaxPath + "/modules.ajax.php";
-    var generateUrl = ajaxPath + "/web-pages.ajax.php";
-
-    /*=============================================
-    Load the table list into the dropdown
-    =============================================*/
-    function loadTables() {
-        $.ajax({
-            url: modulesUrl + "?action=getTables",
-            method: "GET",
-            dataType: "json"
-        }).done(function (res) {
-            var tables = (res && res.results) || [];
-            $table.empty().append('<option value="">— Elige una tabla —</option>');
-            tables.forEach(function (t) {
-                $table.append($("<option>").val(t).text(t));
-            });
-        }).fail(function () {
-            $table.empty().append('<option value="">No se pudieron cargar las tablas</option>');
-        });
-    }
-
-    /*=============================================
-    Load the columns of the selected table
-    =============================================*/
-    function loadColumns(table) {
-        $title.prop("disabled", true).empty().append("<option>Cargando…</option>");
-        $generate.prop("disabled", true);
-
-        $.ajax({
-            url: modulesUrl,
-            method: "POST",
-            dataType: "json",
-            data: { action: "getTableColumns", tableName: table }
-        }).done(function (res) {
-            var cols = (res && res.results) || [];
-            $title.empty();
-            cols.forEach(function (c) {
-                $title.append($("<option>").val(c).text(c));
-            });
-            // Default to a name_* or title_* column if present.
-            var preferred = cols.filter(function (c) { return /^name_/.test(c) || /^title_/.test(c); })[0];
-            if (preferred) { $title.val(preferred); }
-
-            $title.prop("disabled", false);
-            $generate.prop("disabled", false);
-            $name.attr("placeholder", table);
-        }).fail(function () {
-            $title.empty().append("<option>No se pudieron cargar las columnas</option>");
-        });
-    }
-
-    /*=============================================
-    Trigger a browser download of generated source
-    =============================================*/
-    function downloadFile(fileName, contents) {
-        var blob = new Blob([contents], { type: "application/x-php" });
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    /*=============================================
-    Generate the page(s)
-    =============================================*/
-    function generate() {
-        var table = $table.val();
-        if (!table) { return; }
-
-        $generate.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Generando…');
-        $result.html("");
-
-        $.ajax({
-            url: generateUrl,
-            method: "POST",
-            dataType: "json",
-            data: {
-                action: "generate",
-                table:  table,
-                title:  $title.val(),
-                name:   $name.val(),
-                detail: $detail.is(":checked") ? 1 : 0
-            }
-        }).done(function (res) {
-            if (!res || !res.success) {
-                $result.html(alertBox("danger", "No se pudo generar", escapeHtml((res && res.error) || "Error desconocido.")));
-                return;
-            }
-
-            if (res.written) {
-                var links = res.files.map(function (f) {
-                    return '<li><code>web/pages/' + escapeHtml(f) + "</code></li>";
-                }).join("");
-                $result.html(
-                    alertBox("success", "¡Página creada!",
-                        "Se generaron estos archivos:<ul class='mt-2 mb-0'>" + links + "</ul>")
-                );
-            } else {
-                // Not writable: offer downloads.
-                var buttons = "";
-                Object.keys(res.sources).forEach(function (fname) {
-                    buttons += '<button class="btn btn-sm btn-outline-primary me-2 mb-2 wpb-dl" data-file="' +
-                        escapeHtml(fname) + '"><i class="bi bi-download me-1"></i>' + escapeHtml(fname) + "</button>";
-                });
-                var $box = $(alertBox("warning", "Generado (descarga manual)",
-                    escapeHtml(res.reason) + "<div class='mt-2'>" + buttons + "</div>"));
-                $box.on("click", ".wpb-dl", function () {
-                    var f = $(this).data("file");
-                    downloadFile(f, res.sources[f]);
-                });
-                $result.html($box);
-            }
-        }).fail(function () {
-            $result.html(alertBox("danger", "Error", "No se pudo contactar al servidor."));
-        }).always(function () {
-            $generate.prop("disabled", false).html('<i class="bi bi-magic me-1"></i>Generar página');
-        });
-    }
-
-    function alertBox(type, title, body) {
-        return '<div class="alert alert-' + type + '"><h6 class="mb-1">' + escapeHtml(title) + "</h6><div>" + body + "</div></div>";
-    }
+    var $table   = $("#wpb-table");
+    var $title   = $("#wpb-title");
+    var $cols    = $("#wpb-columns");
+    var $gen     = $("#wpb-generate");
+    var $genLbl  = $("#wpb-generate-label");
+    var $result  = $("#wpb-result");
+    var $editing = $("#wpb-editing");
+    var $pages   = $("#wpb-pages");
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -153,20 +28,187 @@ Visual generator for public frontend pages.
         });
     }
 
-    /*=============================================
-    Wire up events
-    =============================================*/
+    /* ---------- load tables ---------- */
+    function loadTables() {
+        $.ajax({ url: modules + "?action=getTables", method: "GET", dataType: "json" })
+            .done(function (res) {
+                var tables = (res && res.results) || [];
+                $table.empty().append('<option value="">— Elige una tabla —</option>');
+                tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
+            })
+            .fail(function () { $table.empty().append('<option value="">Error al cargar tablas</option>'); });
+    }
+
+    /* ---------- load columns ---------- */
+    function loadColumns(table, selected, titleCol, cb) {
+        $title.prop("disabled", true).empty().append("<option>Cargando…</option>");
+        $cols.html('<span class="text-muted small">Cargando…</span>');
+        $gen.prop("disabled", true);
+
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "columns", table: table } })
+            .done(function (res) {
+                var columns = (res && res.columns) || [];
+
+                // Title dropdown
+                $title.empty();
+                columns.forEach(function (c) { $title.append($("<option>").val(c).text(c)); });
+                var preferredTitle = titleCol || columns.filter(function (c) { return /^name_|^title_/.test(c); })[0];
+                if (preferredTitle) { $title.val(preferredTitle); }
+                $title.prop("disabled", false);
+
+                // Column checkboxes
+                var html = "";
+                columns.forEach(function (c) {
+                    var checked = selected ? (selected.indexOf(c) !== -1) : !/^id_/.test(c);
+                    var id = "wpbc-" + c;
+                    html += '<div class="form-check"><input class="form-check-input wpb-col" type="checkbox" value="' +
+                        escapeHtml(c) + '" id="' + escapeHtml(id) + '"' + (checked ? " checked" : "") +
+                        '><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(c) + "</label></div>";
+                });
+                $cols.html(html);
+
+                $gen.prop("disabled", false);
+                $("#wpb-name").attr("placeholder", table);
+                if (cb) { cb(); }
+            })
+            .fail(function () { $cols.html('<span class="text-danger small">Error al cargar columnas</span>'); });
+    }
+
+    /* ---------- existing pages ---------- */
+    function loadPages() {
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "list" } })
+            .done(function (res) {
+                var pages = (res && res.pages) || [];
+                if (!pages.length) {
+                    $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>');
+                    return;
+                }
+                $pages.empty();
+                pages.forEach(function (p) {
+                    var $a = $('<a href="#" class="list-group-item list-group-item-action">' +
+                        '<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + "</div>" +
+                        '<div class="small text-muted">' + escapeHtml(p.file) + ".php · " + escapeHtml(p.table) + "</div></a>");
+                    $a.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
+                    $pages.append($a);
+                });
+            });
+    }
+
+    /* ---------- collect / apply config ---------- */
+    function collectConfig() {
+        var columns = $cols.find(".wpb-col:checked").map(function () { return this.value; }).get();
+        return {
+            action:    "generate",
+            table:     $table.val(),
+            name:      $("#wpb-name").val(),
+            heading:   $("#wpb-heading").val(),
+            intro:     $("#wpb-intro").val(),
+            title:     $title.val(),
+            "columns[]": columns,
+            layout:    $("input[name='wpb-layout']:checked").val(),
+            perRow:    $("#wpb-perrow").val(),
+            accent:    $("#wpb-accent").val(),
+            detail:    $("#wpb-detail").is(":checked") ? 1 : 0,
+            customCss: $("#wpb-css").val(),
+            customHtml: $("#wpb-html").val(),
+            customJs:  $("#wpb-js").val()
+        };
+    }
+
+    function applyConfig(c) {
+        $table.val(c.table);
+        $("#wpb-heading").val(c.heading || "");
+        $("#wpb-intro").val(c.intro || "");
+        $("#wpb-name").val(c.fileName || "");
+        $("input[name='wpb-layout'][value='" + (c.layout || "cards") + "']").prop("checked", true);
+        $("#wpb-perrow").val(String(c.perRow || 3));
+        $("#wpb-accent").val(c.accent || "#0d6efd");
+        $("#wpb-detail").prop("checked", !!c.withDetail);
+        $("#wpb-css").val(c.customCss || "");
+        $("#wpb-html").val(c.customHtml || "");
+        $("#wpb-js").val(c.customJs || "");
+        loadColumns(c.table, c.columns || [], c.titleColumn);
+    }
+
+    function loadForEdit(file) {
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "load", file: file } })
+            .done(function (res) {
+                if (!res || !res.success) { return; }
+                $editing.val(file);
+                $genLbl.text("Guardar cambios");
+                applyConfig(res.config);
+            });
+    }
+
+    function resetForm() {
+        $editing.val("");
+        $genLbl.text("Crear página");
+        $("#wpb-heading,#wpb-intro,#wpb-name,#wpb-css,#wpb-html,#wpb-js").val("");
+        $("#wpb-accent").val("#0d6efd");
+        $("input[name='wpb-layout'][value='cards']").prop("checked", true);
+        $("#wpb-perrow").val("3");
+        $("#wpb-detail").prop("checked", true);
+        $table.val("");
+        $title.prop("disabled", true).empty().append("<option>Elige una tabla</option>");
+        $cols.html('<span class="text-muted small">Elige una tabla</span>');
+        $gen.prop("disabled", true);
+        $result.html("");
+    }
+
+    /* ---------- generate ---------- */
+    function generate() {
+        if (!$table.val()) { return; }
+        $gen.prop("disabled", true);
+        $result.html("");
+
+        $.ajax({ url: url, method: "POST", dataType: "json", data: collectConfig() })
+            .done(function (res) {
+                if (!res || !res.success) {
+                    $result.html(alertBox("danger", "No se pudo crear", escapeHtml((res && res.error) || "Error desconocido.")));
+                    return;
+                }
+                if (res.written) {
+                    var links = res.files.map(function (f) { return "<li><code>web/pages/" + escapeHtml(f) + "</code></li>"; }).join("");
+                    var viewUrl = (window.CMS_BASE_PATH || "").replace(/\/cms$/, "") + "/" + escapeHtml(res.urlPath);
+                    $result.html(alertBox("success", "¡Página lista!",
+                        "Archivos:<ul class='mt-2'>" + links + "</ul>" +
+                        '<a class="btn btn-sm btn-primary" target="_blank" href="' + viewUrl + '"><i class="bi bi-box-arrow-up-right me-1"></i>Ver página</a>'));
+                    loadPages();
+                } else {
+                    var buttons = "";
+                    Object.keys(res.sources).forEach(function (fn) {
+                        buttons += '<button class="btn btn-sm btn-outline-primary me-2 mb-2 wpb-dl" data-file="' + escapeHtml(fn) + '"><i class="bi bi-download me-1"></i>' + escapeHtml(fn) + "</button>";
+                    });
+                    var $box = $(alertBox("warning", "Generado (descarga manual)", escapeHtml(res.reason) + "<div class='mt-2'>" + buttons + "</div>"));
+                    $box.on("click", ".wpb-dl", function () { downloadFile($(this).data("file"), res.sources[$(this).data("file")]); });
+                    $result.html($box);
+                }
+            })
+            .fail(function () { $result.html(alertBox("danger", "Error", "No se pudo contactar al servidor.")); })
+            .always(function () { $gen.prop("disabled", false); });
+    }
+
+    function alertBox(type, title, body) {
+        return '<div class="alert alert-' + type + '"><h6 class="mb-1">' + escapeHtml(title) + "</h6><div>" + body + "</div></div>";
+    }
+
+    function downloadFile(name, contents) {
+        var blob = new Blob([contents], { type: "application/x-php" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    /* ---------- events ---------- */
     $table.on("change", function () {
         var t = $(this).val();
-        if (t) {
-            loadColumns(t);
-        } else {
-            $title.prop("disabled", true).empty().append("<option>Selecciona una tabla primero</option>");
-            $generate.prop("disabled", true);
-        }
+        if (t) { loadColumns(t, null, null); } else { resetForm(); }
     });
-
-    $generate.on("click", generate);
+    $gen.on("click", generate);
+    $("#wpb-new").on("click", resetForm);
 
     loadTables();
+    loadPages();
 })();
