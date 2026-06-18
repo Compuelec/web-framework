@@ -159,20 +159,21 @@ Web Pages builder (visual, configurable)
     }
 
     function deletePage(file) {
-        if (!window.confirm('¿Eliminar la página "' + file + '"? Se borrará el archivo .php (y su página de detalle si existe). Esta acción no se puede deshacer.')) {
-            return;
-        }
-        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "delete", file: file } })
-            .done(function (res) {
-                if (!res || !res.success) {
-                    $result.html(alertBox("danger", "No se pudo eliminar", escapeHtml((res && res.error) || "Error desconocido.")));
-                    return;
-                }
-                if ($editing.val() === file) { resetForm(); }
-                $result.html(alertBox("success", "Página eliminada", escapeHtml(res.deleted.join(", "))));
-                loadPages();
-            })
-            .fail(function () { $result.html(alertBox("danger", "Error", "No se pudo contactar al servidor.")); });
+        fncSweetAlert("confirm", '¿Eliminar la página "' + file + '"? Se borrará el archivo .php y su página de detalle si existe.')
+            .then(function (confirmed) {
+                if (!confirmed) { return; }
+                $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "delete", file: file } })
+                    .done(function (res) {
+                        if (!res || !res.success) {
+                            fncSweetAlert("error", (res && res.error) || "No se pudo eliminar.", "");
+                            return;
+                        }
+                        if ($editing.val() === file) { resetForm(); }
+                        fncToastr("success", "Página eliminada");
+                        loadPages();
+                    })
+                    .fail(function () { fncSweetAlert("error", "No se pudo contactar al servidor.", ""); });
+            });
     }
 
     function resetForm() {
@@ -199,14 +200,15 @@ Web Pages builder (visual, configurable)
         $.ajax({ url: url, method: "POST", dataType: "json", data: collectConfig() })
             .done(function (res) {
                 if (!res || !res.success) {
-                    $result.html(alertBox("danger", "No se pudo crear", escapeHtml((res && res.error) || "Error desconocido.")));
+                    fncSweetAlert("error", (res && res.error) || "Error desconocido.", "");
                     return;
                 }
                 if (res.written) {
                     var links = res.files.map(function (f) { return "<li><code>web/pages/" + escapeHtml(f) + "</code></li>"; }).join("");
                     var viewUrl = (window.CMS_BASE_PATH || "").replace(/\/cms$/, "") + "/" + escapeHtml(res.urlPath);
-                    $result.html(alertBox("success", "¡Página lista!",
-                        "Archivos:<ul class='mt-2'>" + links + "</ul>" +
+                    fncToastr("success", "Página creada correctamente");
+                    $result.html(resultCard("Archivos creados",
+                        "<ul class='mb-2'>" + links + "</ul>" +
                         '<a class="btn btn-sm btn-primary" target="_blank" href="' + viewUrl + '"><i class="bi bi-box-arrow-up-right me-1"></i>Ver página</a>'));
                     loadPages();
                 } else {
@@ -214,17 +216,18 @@ Web Pages builder (visual, configurable)
                     Object.keys(res.sources).forEach(function (fn) {
                         buttons += '<button class="btn btn-sm btn-outline-primary me-2 mb-2 wpb-dl" data-file="' + escapeHtml(fn) + '"><i class="bi bi-download me-1"></i>' + escapeHtml(fn) + "</button>";
                     });
-                    var $box = $(alertBox("warning", "Generado (descarga manual)", escapeHtml(res.reason) + "<div class='mt-2'>" + buttons + "</div>"));
+                    fncToastr("warning", "El servidor no puede escribir en web/pages: descarga manual");
+                    var $box = $(resultCard("Descarga manual", "<p class='small text-muted'>" + escapeHtml(res.reason) + "</p>" + buttons));
                     $box.on("click", ".wpb-dl", function () { downloadFile($(this).data("file"), res.sources[$(this).data("file")]); });
                     $result.html($box);
                 }
             })
-            .fail(function () { $result.html(alertBox("danger", "Error", "No se pudo contactar al servidor.")); })
+            .fail(function () { fncSweetAlert("error", "No se pudo contactar al servidor.", ""); })
             .always(function () { $gen.prop("disabled", false); });
     }
 
-    function alertBox(type, title, body) {
-        return '<div class="alert alert-' + type + '"><h6 class="mb-1">' + escapeHtml(title) + "</h6><div>" + body + "</div></div>";
+    function resultCard(title, body) {
+        return '<div class="card"><div class="card-body"><h6 class="card-title">' + escapeHtml(title) + "</h6><div>" + body + "</div></div></div>";
     }
 
     function downloadFile(name, contents) {
