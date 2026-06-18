@@ -117,6 +117,6 @@ Logger::warning('web/pages not writable; returning generated source', ['dir' => 
 echo json_encode([
     'success' => true,
     'written' => false,
-    'reason'  => 'El directorio web/pages no es escribible por el servidor web. Descarga los archivos y colócalos en web/pages/.',
+    'reason'  => 'El directorio web/pages no es escribible por el servidor web, así que aquí tienes los archivos para descargar y colocar en web/pages/. Para que el generador escriba directo, pide a tu administrador que haga ese directorio escribible (ver README, sección Permisos).',
     'sources' => $sources,
 ]);

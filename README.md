@@ -166,7 +166,20 @@ Configura las reglas de reescritura apropiadas para las rutas de la API.
 chmod -R 755 cms/views/assets/files/
 chmod -R 755 api/
 chmod -R 755 cms/
+chmod -R 755 web/pages/   # el Generador de Páginas Web escribe aquí
 ```
+
+> **Generador de Páginas Web**: para que el generador visual (CMS → "Páginas
+> Web") escriba las páginas directamente, el directorio `web/pages/` debe ser
+> escribible por el usuario del servidor web. En XAMPP/macOS (Apache corre como
+> `daemon`):
+>
+> ```bash
+> sudo chown -R daemon:staff web/pages
+> ```
+>
+> Si no es escribible, el generador igualmente funciona pero ofrece descargar
+> los archivos generados para colocarlos manualmente en `web/pages/`.
 
 > **⚠️ Importante para actualizaciones**: Si las actualizaciones del framework fallan, generalmente es debido a problemas de permisos. Se recomienda ejecutar los siguientes comandos para corregir los permisos:
 
