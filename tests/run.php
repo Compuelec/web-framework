@@ -65,6 +65,7 @@ require __DIR__ . '/logger_test.php';
 require __DIR__ . '/generator_test.php';
 require __DIR__ . '/migration_generator_test.php';
 require __DIR__ . '/plugin_generator_test.php';
+require __DIR__ . '/permissions_test.php';
 
 // Summary.
 $t = $GLOBALS['__tests'];
