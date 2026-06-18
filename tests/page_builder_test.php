@@ -114,14 +114,18 @@ it('round-trips the config through generate/extract', function() {
     assertSame('.x{color:red}', $back['customCss']);
 });
 
-it('renders a {{#form}} block with prefilled inputs', function() {
+it('renders a {{#form}} block, prefilled only in edit mode', function() {
     $tpl = '{{#form}}{{input dir}}{{textarea desc}}{{file foto}}{{submit Enviar}}{{/form}}';
-    $out = pb_renderTemplate($tpl, [], ['dir' => 'Calle 1', 'desc' => 'x']);
-    assertTrue(strpos($out, '<form method="post"') !== false, 'wraps in a form');
-    assertTrue(strpos($out, 'name="dir" value="Calle 1"') !== false, 'text input prefilled');
-    assertTrue(strpos($out, '<textarea') !== false && strpos($out, 'name="desc"') !== false, 'textarea');
-    assertTrue(strpos($out, 'type="file"') !== false && strpos($out, 'name="foto"') !== false, 'file input');
-    assertTrue(strpos($out, 'Enviar</button>') !== false, 'submit label');
+    // Edit mode: 4th arg ($formRow) prefills the inputs.
+    $edit = pb_renderTemplate($tpl, [], ['dir' => 'X'], ['dir' => 'Calle 1', 'desc' => 'd']);
+    assertTrue(strpos($edit, '<form method="post"') !== false, 'wraps in a form');
+    assertTrue(strpos($edit, 'name="dir" value="Calle 1"') !== false, 'text input prefilled in edit');
+    assertTrue(strpos($edit, '<textarea') !== false && strpos($edit, 'name="desc"') !== false, 'textarea');
+    assertTrue(strpos($edit, 'type="file"') !== false && strpos($edit, 'name="foto"') !== false, 'file input');
+    assertTrue(strpos($edit, 'Enviar</button>') !== false, 'submit label');
+    // Create mode: no $formRow → inputs are empty even if a display record exists.
+    $create = pb_renderTemplate($tpl, [], ['dir' => 'Calle 1']);
+    assertTrue(strpos($create, 'name="dir" value=""') !== false, 'create form is empty');
 });
 
 it('normalizes private flag and columns', function() {

@@ -56,12 +56,12 @@ function pb_isSystemTable($table) {
 /**
  * Replace {{field}} tags in a fragment with one row's escaped values.
  */
-function pb_replaceFields($html, array $row) {
+function pb_replaceFields($html, array $row, array $formRow = []) {
     // Form blocks: {{#form}} ...inputs... {{/form}} → a submit form. Inputs are
-    // prefilled with the current record's values (edit mode).
-    $html = preg_replace_callback('/\{\{#form\}\}(.*?)\{\{\/form\}\}/s', function ($m) use ($row) {
+    // prefilled only in edit mode ($formRow); create forms appear empty.
+    $html = preg_replace_callback('/\{\{#form\}\}(.*?)\{\{\/form\}\}/s', function ($m) use ($formRow) {
         return '<form method="post" enctype="multipart/form-data" class="wpb-form">'
-             . pb_formFields($m[1], $row)
+             . pb_formFields($m[1], $formRow)
              . '</form>';
     }, $html);
 
@@ -139,21 +139,21 @@ function pb_imageUrls($raw) {
  * Render a template against the record set; tags outside a repeat block use
  * the $single record.
  */
-function pb_renderTemplate($template, array $records, array $single) {
+function pb_renderTemplate($template, array $records, array $single, array $formRow = []) {
     // Split on the repeat block, capturing the inner HTML. Even-index parts are
     // outside any block (rendered once with $single); odd-index parts are the
     // captured inner blocks (rendered once per record). Each segment is filled
     // exactly once, so field values that happen to contain {{...}} are never
-    // re-evaluated.
+    // re-evaluated. $formRow prefills {{#form}} inputs (edit mode only).
     $parts = preg_split('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
     $out = '';
     foreach ($parts as $i => $part) {
         if ($i % 2 === 1) {
             foreach ($records as $rec) {
-                $out .= pb_replaceFields($part, (array) $rec);
+                $out .= pb_replaceFields($part, (array) $rec, []);
             }
         } else {
-            $out .= pb_replaceFields($part, $single);
+            $out .= pb_replaceFields($part, $single, $formRow);
         }
     }
     return $out;
@@ -321,6 +321,7 @@ if (\$private && \$user === null && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POS
                     'role'  => (string)(\$admin['rol_admin'] ?? ''),
                     'email' => (string)(\$admin['email_admin'] ?? ''),
                 ];
+                session_regenerate_id(true); // prevent session fixation
                 \$_SESSION[\$authKey] = \$user;
             } else { \$loginError = 'Credenciales inválidas.'; }
         } else { \$loginError = 'Credenciales inválidas.'; }
@@ -348,7 +349,7 @@ if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' 
     \$fields = [];
     foreach (\$columns as \$col) {
         if (\$col === \$idColumn) { continue; }
-        if (isset(\$_POST[\$col])) { \$fields[\$col] = trim((string) \$_POST[\$col]); }
+        if (isset(\$_POST[\$col]) && is_scalar(\$_POST[\$col])) { \$fields[\$col] = trim((string) \$_POST[\$col]); }
     }
     foreach (\$_FILES as \$col => \$file) {
         if (!in_array(\$col, \$columns, true) || \$col === \$idColumn) { continue; }
@@ -364,7 +365,9 @@ if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' 
     }
     if (\$fields) {
         try {
-            if (\$recordId !== null && \$recordId !== '') {
+            // Only authorized private pages may UPDATE an existing record;
+            // public pages can only CREATE (prevents anonymous edits via ?id).
+            if (\$recordId !== null && \$recordId !== '' && \$private) {
                 ApiController::update(\$table, \$recordId, \$fields, \$idColumn);
             } else {
                 ApiController::create(\$table, \$fields);
@@ -416,10 +419,11 @@ if (!function_exists('wpb_fields')) {
         }, \$html);
         return \$html;
     }
-    function wpb_fields(\$html, array \$row) {
-        // Form blocks: {{#form}} ...inputs... {{/form}}
-        \$html = preg_replace_callback('/\\{\\{#form\\}\\}(.*?)\\{\\{\\/form\\}\\}/s', function (\$m) use (\$row) {
-            return '<form method="post" enctype="multipart/form-data" class="wpb-form">' . wpb_form_fields(\$m[1], \$row) . '</form>';
+    function wpb_fields(\$html, array \$row, array \$formRow = []) {
+        // Form blocks: {{#form}} ...inputs... {{/form}} — prefilled only in edit
+        // mode (\$formRow), so create forms appear empty.
+        \$html = preg_replace_callback('/\\{\\{#form\\}\\}(.*?)\\{\\{\\/form\\}\\}/s', function (\$m) use (\$formRow) {
+            return '<form method="post" enctype="multipart/form-data" class="wpb-form">' . wpb_form_fields(\$m[1], \$formRow) . '</form>';
         }, \$html);
         // Image-gallery blocks: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
         \$html = preg_replace_callback('/\\{\\{#imagenes\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/imagenes\\}\\}/s', function (\$m) use (\$row) {
@@ -436,16 +440,16 @@ if (!function_exists('wpb_fields')) {
             return htmlspecialchars(is_scalar(\$val) ? (string) \$val : '', ENT_QUOTES);
         }, \$html);
     }
-    function wpb_render(\$template, array \$records, array \$single) {
+    function wpb_render(\$template, array \$records, array \$single, array \$formRow = []) {
         // Split on the repeat block (capturing inner HTML) so each segment is
         // filled exactly once — no re-evaluation of {{...}} found in data.
         \$parts = preg_split('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
         \$out = '';
         foreach (\$parts as \$i => \$part) {
             if (\$i % 2 === 1) {
-                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec); }
+                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec, []); }
             } else {
-                \$out .= wpb_fields(\$part, \$single);
+                \$out .= wpb_fields(\$part, \$single, \$formRow);
             }
         }
         return \$out;
@@ -464,7 +468,10 @@ if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = '';
 
-\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single);
+// In edit mode (?id) the form is prefilled with that record; in create mode it
+// is empty (so a new submission doesn't show the first record's data).
+\$formRow = (\$recordId !== null && \$recordId !== '') ? \$single : [];
+\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single, \$formRow);
 
 ob_start();
 ?>
