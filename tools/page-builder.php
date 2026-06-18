@@ -1,15 +1,20 @@
 <?php
 /**
- * Configurable public page builder.
+ * Template-based public page builder.
  *
- * Generates a self-contained, EDITABLE public page from a configuration object
- * (heading, intro, selected columns, layout, accent colour, custom CSS/HTML/JS).
- * The full config is embedded in the generated file as a base64 string, so the
- * page renders itself from that config and the visual builder can read it back
- * to edit the page later.
+ * Generates a self-contained, EDITABLE public page from a configuration object.
+ * The user writes their own HTML template with simple tags that bind to a
+ * table's data:
  *
- * Record data is always escaped with htmlspecialchars; the custom CSS/HTML/JS
- * is the admin's own content for their own site and is emitted verbatim.
+ *   {{field}}             a column value (escaped)
+ *   {{#cada}}...{{/cada}} repeat the inner HTML once per record
+ *
+ * Tags outside a repeat block use the "single" record (the ?id= one, or the
+ * first row). The full config is embedded in the generated file as base64 so
+ * the page renders itself and the visual builder can read it back to edit it.
+ *
+ * Column VALUES are always escaped with htmlspecialchars; the surrounding HTML
+ * (template, CSS, JS) is the admin's own content and is emitted verbatim.
  */
 
 function pb_isIdentifier($name) {
@@ -42,6 +47,61 @@ function pb_isSystemTable($table) {
     return in_array(strtolower((string)$table), pb_systemTables(), true);
 }
 
+/* ------------------------------------------------------------------ *
+ * Template renderer (used by the CMS live preview). The generated page
+ * embeds an equivalent inline copy so it stays self-contained — keep the
+ * two in sync (covered by tests/page_builder_test.php).
+ * ------------------------------------------------------------------ */
+
+/**
+ * Replace {{field}} tags in a fragment with one row's escaped values.
+ */
+function pb_replaceFields($html, array $row) {
+    return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
+        $val = array_key_exists($m[1], $row) ? $row[$m[1]] : '';
+        return htmlspecialchars(is_scalar($val) ? (string) $val : '', ENT_QUOTES);
+    }, $html);
+}
+
+/**
+ * Render a template against the record set; tags outside a repeat block use
+ * the $single record.
+ */
+function pb_renderTemplate($template, array $records, array $single) {
+    // Split on the repeat block, capturing the inner HTML. Even-index parts are
+    // outside any block (rendered once with $single); odd-index parts are the
+    // captured inner blocks (rendered once per record). Each segment is filled
+    // exactly once, so field values that happen to contain {{...}} are never
+    // re-evaluated.
+    $parts = preg_split('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $out = '';
+    foreach ($parts as $i => $part) {
+        if ($i % 2 === 1) {
+            foreach ($records as $rec) {
+                $out .= pb_replaceFields($part, (array) $rec);
+            }
+        } else {
+            $out .= pb_replaceFields($part, $single);
+        }
+    }
+    return $out;
+}
+
+/**
+ * Pick the "single" record: the one matching $id, else the first row.
+ */
+function pb_pickSingle(array $records, $idColumn, $id) {
+    if ($id !== null && $id !== '') {
+        foreach ($records as $rec) {
+            $row = (array) $rec;
+            if (isset($row[$idColumn]) && (string) $row[$idColumn] === (string) $id) {
+                return $row;
+            }
+        }
+    }
+    return isset($records[0]) ? (array) $records[0] : [];
+}
+
 function pb_deriveSuffix($table) {
     if (substr($table, -3) === 'ies') {
         return substr($table, 0, -3) . 'y';
@@ -50,10 +110,6 @@ function pb_deriveSuffix($table) {
         return substr($table, 0, -1);
     }
     return $table;
-}
-
-function pb_titleize($table) {
-    return ucwords(str_replace('_', ' ', $table));
 }
 
 /**
@@ -71,13 +127,6 @@ function pb_normalizeConfig(array $raw) {
     $idColumn    = pb_isIdentifier($raw['idColumn'] ?? '')    ? $raw['idColumn']    : ('id_' . $suffix);
     $titleColumn = pb_isIdentifier($raw['titleColumn'] ?? '') ? $raw['titleColumn'] : ('name_' . $suffix);
 
-    $columns = [];
-    foreach ((array)($raw['columns'] ?? []) as $c) {
-        if (pb_isIdentifier($c)) {
-            $columns[] = $c;
-        }
-    }
-
     $fileName = trim((string)($raw['fileName'] ?? ''));
     if ($fileName === '') {
         $fileName = $table;
@@ -86,27 +135,16 @@ function pb_normalizeConfig(array $raw) {
         throw new InvalidArgumentException('Nombre de archivo inválido.');
     }
 
-    $layout = in_array($raw['layout'] ?? '', ['cards', 'table', 'list'], true) ? $raw['layout'] : 'cards';
-    $accent = (isset($raw['accent']) && preg_match('/^#[0-9a-fA-F]{3,8}$/', (string)$raw['accent'])) ? $raw['accent'] : '#0d6efd';
-    $perRowRaw = (int)($raw['perRow'] ?? 3);
-    $perRow = in_array($perRowRaw, [1, 2, 3, 4, 6], true) ? $perRowRaw : 3;
-
     return [
         'table'       => $table,
         'suffix'      => $suffix,
         'idColumn'    => $idColumn,
         'titleColumn' => $titleColumn,
-        'columns'     => $columns,
         'fileName'    => $fileName,
-        'detailFile'  => $fileName . '-detail',
-        'heading'     => (string)($raw['heading'] ?? pb_titleize($table)),
-        'intro'       => (string)($raw['intro'] ?? ''),
-        'layout'      => $layout,
-        'accent'      => $accent,
-        'perRow'      => $perRow,
-        'withDetail'  => !empty($raw['withDetail']),
+        'heading'     => (string)($raw['heading'] ?? ''),
+        // The user's HTML template with {{field}} / {{#cada}} tags.
+        'template'    => (string)($raw['template'] ?? ''),
         'customCss'   => (string)($raw['customCss'] ?? ''),
-        'customHtml'  => (string)($raw['customHtml'] ?? ''),
         'customJs'    => (string)($raw['customJs'] ?? ''),
     ];
 }
@@ -127,13 +165,13 @@ function pb_extractConfig($source) {
 }
 
 /**
- * Build the PHP source of a configurable list page. The page renders itself
- * from the embedded config, so it is fully editable from the visual builder.
+ * Build the PHP source of a builder page. The page loads its table's records,
+ * renders the embedded HTML template against them, and wraps the result in the
+ * site layout. It embeds its own config so the builder can edit it later.
  */
 function buildConfigurablePage(array $config) {
     $cfg = pb_normalizeConfig($config);
     $b64 = base64_encode(json_encode($cfg));
-    $df  = var_export($cfg['detailFile'] . '.php', true);
 
     return <<<PHP
 <?php
@@ -156,26 +194,16 @@ if (is_array(\$siteCfg) && !empty(\$siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../controllers/api.controller.php';
 
-\$baseUrl  = (is_array(\$siteCfg) && isset(\$siteCfg['site']['base_url'])) ? rtrim(\$siteCfg['site']['base_url'], '/') . '/' : '/';
-\$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name']))     ? \$siteCfg['site']['name'] : 'My Website';
+\$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name'])) ? \$siteCfg['site']['name'] : 'My Website';
 
-\$table       = \$cfg['table'] ?? '';
-\$idColumn    = \$cfg['idColumn'] ?? 'id';
-\$titleColumn = \$cfg['titleColumn'] ?? '';
-\$columns     = !empty(\$cfg['columns']) ? \$cfg['columns'] : null;
-\$layout      = \$cfg['layout'] ?? 'cards';
-\$accent      = \$cfg['accent'] ?? '#0d6efd';
-\$perRow      = (int)(\$cfg['perRow'] ?? 3);
-\$detailUrl   = {$df}; // relative: same web/pages/ directory
-
-\$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
-\$pageDescription = \$cfg['intro'] ?? '';
+\$table    = \$cfg['table'] ?? '';
+\$idColumn = \$cfg['idColumn'] ?? 'id';
+\$template = \$cfg['template'] ?? '';
 
 \$records = [];
 \$error   = null;
-
 try {
-    \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 100);
+    \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 200);
     if (\$response->status == 200) {
         \$records = \$response->results;
     } elseif (\$response->status != 404) {
@@ -185,194 +213,66 @@ try {
     \$error = 'Could not load data.';
 }
 
-// Resolve which fields to show for a record (selected columns, or all but id).
-// Keep null values (rendered as empty strings) so table rows stay aligned;
-// only skip non-scalar (array/object) values.
-\$pickFields = function (\$row) use (\$columns, \$idColumn, \$titleColumn) {
-    \$out = [];
-    \$keys = \$columns ?: array_keys(\$row);
-    foreach (\$keys as \$k) {
-        if (\$k === \$idColumn || !array_key_exists(\$k, \$row)) { continue; }
-        if (\$row[\$k] !== null && !is_scalar(\$row[\$k])) { continue; }
-        \$out[\$k] = \$row[\$k];
+// Template renderer (mirrors tools/page-builder.php).
+if (!function_exists('wpb_fields')) {
+    function wpb_fields(\$html, array \$row) {
+        return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
+            \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '';
+            return htmlspecialchars(is_scalar(\$val) ? (string) \$val : '', ENT_QUOTES);
+        }, \$html);
     }
-    return \$out;
-};
+    function wpb_render(\$template, array \$records, array \$single) {
+        // Split on the repeat block (capturing inner HTML) so each segment is
+        // filled exactly once — no re-evaluation of {{...}} found in data.
+        \$parts = preg_split('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
+        \$out = '';
+        foreach (\$parts as \$i => \$part) {
+            if (\$i % 2 === 1) {
+                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec); }
+            } else {
+                \$out .= wpb_fields(\$part, \$single);
+            }
+        }
+        return \$out;
+    }
+}
 
-\$cols = max(1, min(12, (int) floor(12 / max(1, \$perRow))));
+\$recordId = isset(\$_GET['id']) ? \$_GET['id'] : null;
+\$single   = [];
+if (\$recordId !== null && \$recordId !== '') {
+    foreach (\$records as \$rec) {
+        \$row = (array) \$rec;
+        if (isset(\$row[\$idColumn]) && (string) \$row[\$idColumn] === (string) \$recordId) { \$single = \$row; break; }
+    }
+}
+if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
+
+\$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
+\$pageDescription = '';
+
+\$body = \$error ? '' : wpb_render(\$template, \$records, \$single);
 
 ob_start();
 ?>
 <style>
-    #wpb-page { --wpb-accent: <?php echo htmlspecialchars(\$accent, ENT_QUOTES); ?>; }
-    #wpb-page .btn-accent, #wpb-page .badge-accent { background: var(--wpb-accent); color: #fff; border: 0; }
-    #wpb-page .card-title { color: var(--wpb-accent); }
 <?php echo \$cfg['customCss'] ?? ''; ?>
 </style>
 
 <div class="container my-5" id="wpb-page">
     <?php if (!empty(\$cfg['heading'])): ?>
-        <h1 class="mb-2"><?php echo htmlspecialchars(\$cfg['heading'], ENT_QUOTES); ?></h1>
+        <h1 class="mb-4"><?php echo htmlspecialchars(\$cfg['heading'], ENT_QUOTES); ?></h1>
     <?php endif; ?>
-    <?php if (!empty(\$cfg['intro'])): ?>
-        <p class="text-muted mb-4"><?php echo htmlspecialchars(\$cfg['intro'], ENT_QUOTES); ?></p>
-    <?php endif; ?>
-
-    <?php echo \$cfg['customHtml'] ?? ''; ?>
 
     <?php if (\$error): ?>
         <div class="alert alert-warning"><?php echo htmlspecialchars(\$error, ENT_QUOTES); ?></div>
-    <?php elseif (empty(\$records)): ?>
-        <div class="alert alert-info">No records yet.</div>
-    <?php elseif (\$layout === 'table'): ?>
-        <table class="table">
-            <tbody>
-            <?php foreach (\$records as \$record):
-                \$row = (array) \$record; \$fields = \$pickFields(\$row); \$id = \$row[\$idColumn] ?? null; ?>
-                <tr>
-                    <?php foreach (\$fields as \$v): ?>
-                        <td><?php echo htmlspecialchars((string) \$v, ENT_QUOTES); ?></td>
-                    <?php endforeach; ?>
-                    <?php if (\$cfg['withDetail'] && \$id !== null): ?>
-                        <td><a class="btn btn-sm btn-accent" href="<?php echo htmlspecialchars(\$detailUrl . '?id=' . urlencode((string) \$id), ENT_QUOTES); ?>">Ver</a></td>
-                    <?php endif; ?>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php elseif (\$layout === 'list'): ?>
-        <ul class="list-group">
-            <?php foreach (\$records as \$record):
-                \$row = (array) \$record; \$id = \$row[\$idColumn] ?? null; \$title = \$row[\$titleColumn] ?? ''; ?>
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span><?php echo htmlspecialchars((string) \$title, ENT_QUOTES); ?></span>
-                    <?php if (\$cfg['withDetail'] && \$id !== null): ?>
-                        <a class="btn btn-sm btn-accent" href="<?php echo htmlspecialchars(\$detailUrl . '?id=' . urlencode((string) \$id), ENT_QUOTES); ?>">Ver</a>
-                    <?php endif; ?>
-                </li>
-            <?php endforeach; ?>
-        </ul>
     <?php else: ?>
-        <div class="row">
-            <?php foreach (\$records as \$record):
-                \$row = (array) \$record; \$fields = \$pickFields(\$row);
-                \$id = \$row[\$idColumn] ?? null; \$title = \$row[\$titleColumn] ?? ''; ?>
-                <div class="col-md-<?php echo \$cols; ?> mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title"><?php echo htmlspecialchars((string) \$title, ENT_QUOTES); ?></h5>
-                            <dl class="row small mb-0">
-                                <?php foreach (\$fields as \$k => \$v):
-                                    if (\$k === \$titleColumn) { continue; } ?>
-                                    <dt class="col-5 text-muted"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', \$k)), ENT_QUOTES); ?></dt>
-                                    <dd class="col-7"><?php echo htmlspecialchars(mb_strimwidth((string) \$v, 0, 80, '…'), ENT_QUOTES); ?></dd>
-                                <?php endforeach; ?>
-                            </dl>
-                        </div>
-                        <?php if (\$cfg['withDetail'] && \$id !== null): ?>
-                            <div class="card-footer">
-                                <a class="btn btn-sm btn-accent" href="<?php echo htmlspecialchars(\$detailUrl . '?id=' . urlencode((string) \$id), ENT_QUOTES); ?>">Ver detalle</a>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+        <?php echo \$body; ?>
     <?php endif; ?>
 </div>
 
 <script>
 <?php echo \$cfg['customJs'] ?? ''; ?>
 </script>
-<?php
-\$pageContent = ob_get_clean();
-include __DIR__ . '/../views/template.php';
-
-PHP;
-}
-
-/**
- * Build the PHP source of the detail page for a configured page.
- */
-function buildConfigurableDetail(array $config) {
-    $cfg = pb_normalizeConfig($config);
-    $t   = var_export($cfg['table'], true);
-    $id  = var_export($cfg['idColumn'], true);
-    $ti  = var_export($cfg['titleColumn'], true);
-    $lf  = var_export($cfg['fileName'] . '.php', true);
-    $ac  = var_export($cfg['accent'], true);
-    $css = var_export($cfg['customCss'], true);
-
-    return <<<PHP
-<?php
-/**
- * Detail page — generated by the Web Page Builder.
- */
-
-\$configPath = __DIR__ . '/../config.php';
-\$siteCfg = file_exists(\$configPath)
-    ? require \$configPath
-    : (file_exists(__DIR__ . '/../config.example.php') ? require __DIR__ . '/../config.example.php' : []);
-
-if (is_array(\$siteCfg) && !empty(\$siteCfg['timezone'])) {
-    date_default_timezone_set(\$siteCfg['timezone']);
-}
-
-require_once __DIR__ . '/../controllers/api.controller.php';
-
-\$baseUrl  = (is_array(\$siteCfg) && isset(\$siteCfg['site']['base_url'])) ? rtrim(\$siteCfg['site']['base_url'], '/') . '/' : '/';
-\$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name']))     ? \$siteCfg['site']['name'] : 'My Website';
-
-\$table       = {$t};
-\$idColumn    = {$id};
-\$titleColumn = {$ti};
-\$listUrl     = {$lf}; // relative: same web/pages/ directory
-
-\$record   = null;
-\$error    = null;
-\$recordId = isset(\$_GET['id']) ? \$_GET['id'] : null;
-
-if (\$recordId === null || \$recordId === '') {
-    \$error = 'No record specified.';
-} else {
-    try {
-        \$response = ApiController::getById(\$table, \$recordId, \$idColumn);
-        if (\$response->status == 200 && !empty(\$response->results)) {
-            \$record = (array) \$response->results[0];
-        } else {
-            \$error = 'Record not found.';
-        }
-    } catch (Throwable \$e) {
-        \$error = 'Could not load the record.';
-    }
-}
-
-\$pageTitle       = (\$record && isset(\$record[\$titleColumn]) ? \$record[\$titleColumn] : \$siteName) . ' - ' . \$siteName;
-\$pageDescription = '';
-
-ob_start();
-?>
-<style>#wpb-detail { --wpb-accent: <?php echo htmlspecialchars({$ac}, ENT_QUOTES); ?>; } #wpb-detail h1 { color: var(--wpb-accent); } <?php echo {$css}; ?></style>
-<div class="container my-5" id="wpb-detail">
-    <p><a href="<?php echo htmlspecialchars(\$listUrl, ENT_QUOTES); ?>">&larr; Volver al listado</a></p>
-
-    <?php if (\$error): ?>
-        <div class="alert alert-warning"><?php echo htmlspecialchars(\$error, ENT_QUOTES); ?></div>
-    <?php else: ?>
-        <h1 class="mb-4"><?php echo htmlspecialchars((string) (\$record[\$titleColumn] ?? 'Detalle'), ENT_QUOTES); ?></h1>
-        <table class="table">
-            <tbody>
-                <?php foreach (\$record as \$field => \$value):
-                    \$display = (is_scalar(\$value) || \$value === null) ? (string) \$value : json_encode(\$value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?>
-                    <tr>
-                        <th class="text-muted" style="width: 30%"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', \$field)), ENT_QUOTES); ?></th>
-                        <td><?php echo nl2br(htmlspecialchars(\$display, ENT_QUOTES)); ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
-</div>
 <?php
 \$pageContent = ob_get_clean();
 include __DIR__ . '/../views/template.php';
