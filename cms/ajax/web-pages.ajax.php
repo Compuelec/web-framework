@@ -76,7 +76,25 @@ if ($action === 'columns') {
         $db = $link->query('SELECT DATABASE()')->fetchColumn();
         $stmt = $link->prepare("SELECT COLUMN_NAME AS c FROM information_schema.columns WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION");
         $stmt->execute([':db' => $db, ':t' => $table]);
-        echo json_encode(['success' => true, 'columns' => $stmt->fetchAll(PDO::FETCH_COLUMN)]);
+        $names = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Framework column types (image / multiimage / etc.) from the module metadata.
+        $types = [];
+        try {
+            $tStmt = $link->prepare(
+                "SELECT c.title_column AS name, c.type_column AS type
+                 FROM columns c JOIN modules m ON c.id_module_column = m.id_module
+                 WHERE m.title_module = :t"
+            );
+            $tStmt->execute([':t' => $table]);
+            foreach ($tStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $types[$r['name']] = $r['type'];
+            }
+        } catch (Throwable $e) {
+            // Metadata is optional; chips just fall back to a plain tag.
+        }
+
+        echo json_encode(['success' => true, 'columns' => $names, 'types' => $types]);
     } catch (Throwable $e) {
         Logger::error('web-pages columns failed', ['error' => $e->getMessage()]);
         echo json_encode(['success' => false, 'error' => 'No se pudieron leer las columnas']);
