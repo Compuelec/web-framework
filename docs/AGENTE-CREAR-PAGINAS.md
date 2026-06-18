@@ -1,8 +1,21 @@
-# Guía para agentes de IA: crear páginas web
+# Guía para agentes de IA: crear sistemas y páginas
 
-Este documento está dirigido a un **agente de IA** que debe crear páginas públicas
-del sitio (con su HTML, CSS y JavaScript) usando la **CLI** o la **API** del
-framework.
+Este documento está dirigido a un **agente de IA** que debe construir
+funcionalidades completas con el framework desde la **CLI**: una **sección de
+datos** (tabla + administración CRUD) y/o una **página pública** (con su HTML, CSS
+y JavaScript) que la muestre.
+
+Con dos comandos el agente arma un sistema entero:
+
+| Comando | Crea |
+| --- | --- |
+| `tools/make-table.php` | Una **sección de datos**: tabla MySQL + CRUD en el admin (gestionar registros, stock, etc.). |
+| `tools/make-page.php` | Una **página pública** que lista/usa esos datos (precio, stock, carrito, formularios…). |
+
+> Ejemplo end-to-end: "crea una sección de productos para manejar stock y una
+> página que los liste con precio, stock y carrito" → `make-table.php` (tabla
+> `productos`) + `make-page.php` (página `tienda` con carrito). Ver el ejemplo al
+> final.
 
 ## Principio clave (lee esto primero)
 
@@ -24,7 +37,47 @@ mano**: usa el comando CLI de abajo, que genera ese formato por ti. Así la pág
 
 ---
 
-## Método recomendado: CLI `tools/make-page.php`
+## Paso 1 — Crear la sección de datos (`tools/make-table.php`)
+
+Crea la tabla MySQL **y** la registra en el admin como sección **Modular**, con
+CRUD automático (crear/editar/eliminar registros). No requiere escribir archivos.
+
+```bash
+php tools/make-table.php config.json
+# o JSON inline:
+php tools/make-table.php '{"name":"productos","title":"Productos","icon":"bi bi-box-seam","fields":[{"name":"nombre","type":"text"},{"name":"precio","type":"money"},{"name":"stock","type":"int"},{"name":"imagen","type":"image"}]}'
+```
+
+Imprime un JSON con los **nombres reales de las columnas** (úsalos en la página):
+
+```json
+{ "table": "productos", "idColumn": "id_producto",
+  "columns": ["nombre_producto","precio_producto","stock_producto","imagen_producto"] }
+```
+
+### Config de la sección
+
+| Clave | Descripción |
+| --- | --- |
+| `name` **(req.)** | Nombre de la tabla y URL de la sección (`a-z 0-9 _`). |
+| `title` | Título en el menú del admin (default: `name`). |
+| `icon` | Clase de Bootstrap Icons, ej. `bi bi-box-seam`. |
+| `fields` **(req.)** | Lista de campos `[{ "name", "type", "alias?", "visible?" }]`. |
+
+El framework agrega solos la **PK** (`id_<suffix>`) y las fechas de creación/edición.
+A cada campo le añade el sufijo de la tabla (`precio` → `precio_producto`).
+
+### Tipos de campo (`type`)
+
+`text`, `textarea`, `int`, `double`, `money`, `boolean`, `date`, `time`, `email`,
+`link`, `color`, `select`, `image`, `multiimage`, `file`, `json`, `object`.
+
+Tras crearla, la sección aparece en el **menú del CMS** y el usuario puede cargar
+registros (o cárgalos tú vía la API REST: `POST /api/<tabla>`).
+
+---
+
+## Paso 2 — Crear la página pública (`tools/make-page.php`)
 
 ```bash
 php tools/make-page.php config.json
@@ -153,9 +206,44 @@ CLI `tools/make-page.php`.
 
 ---
 
+## Ejemplo completo: productos + tienda con carrito
+
+**1. Crear la sección de datos** (tabla + CRUD en el admin):
+
+```bash
+php tools/make-table.php '{"name":"productos","title":"Productos","icon":"bi bi-box-seam","fields":[{"name":"nombre","type":"text"},{"name":"descripcion","type":"textarea"},{"name":"precio","type":"money"},{"name":"stock","type":"int"},{"name":"imagen","type":"image"}]}'
+```
+
+Devuelve las columnas: `nombre_producto`, `precio_producto`, `stock_producto`,
+`imagen_producto` (úsalas en la plantilla).
+
+**2. Crear la página pública** que los lista con precio, stock y **carrito**. El
+carrito es JavaScript en `customJs` (estado en `localStorage`), y el stock 0
+deshabilita el botón. Esqueleto:
+
+```jsonc
+{
+  "name": "tienda",
+  "heading": "Tienda",
+  "table": "productos",
+  "template": "<div class=\"grid\">{{#cada}}<article><img src=\"{{imagen_producto}}\"><h3>{{nombre_producto}}</h3><span class=\"price\" data-price=\"{{precio_producto}}\"></span><span class=\"stock\" data-stock=\"{{stock_producto}}\"></span><button class=\"add\" data-name=\"{{nombre_producto}}\" data-price=\"{{precio_producto}}\" data-stock=\"{{stock_producto}}\">Agregar</button></article>{{/cada}}</div>",
+  "customCss": ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem} /* … */",
+  "customJs": "var KEY='cart';function get(){return JSON.parse(localStorage.getItem(KEY)||'[]')}function add(n,p){var c=get();var i=c.find(x=>x.name===n);i?i.qty++:c.push({name:n,price:+p,qty:1});localStorage.setItem(KEY,JSON.stringify(c));} document.querySelectorAll('.add').forEach(b=>{if(+b.dataset.stock<=0){b.disabled=true;b.textContent='Sin stock';}else{b.onclick=()=>add(b.dataset.name,b.dataset.price);}});"
+}
+```
+
+La página queda en `web/pages/tienda.php`, aparece en el admin y se ve en
+`/tienda`. Los datos los gestiona el usuario en la sección **Productos** del CMS
+(o el agente vía `POST /api/productos`).
+
+---
+
 ## Reglas para el agente
 
-1. **Siempre** genera con `tools/make-page.php` (nunca escribas el `.php` a mano), o
+1. Si la funcionalidad necesita **gestionar datos** (stock, registros, etc.), crea
+   primero la sección con `tools/make-table.php`; luego la página con `make-page.php`
+   apuntando a esa `table`. Para páginas de solo contenido, usa directo `make-page.php`.
+2. **Siempre** genera con `tools/make-page.php` (nunca escribas el `.php` a mano), o
    la página no aparecerá en el admin ni será editable.
 2. `name` en minúsculas, sin espacios ni acentos (`a-z 0-9 _ -`).
 3. Si la página usa datos, indica `table` y usa las etiquetas; si es de contenido,

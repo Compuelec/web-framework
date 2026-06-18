@@ -56,7 +56,7 @@ Guía completa en **[docs/INSTALACION.md](docs/INSTALACION.md)**.
 | Uso de la API REST | [docs/API.md](docs/API.md) |
 | CMS Builder, tablas y tipos de campo | [docs/CMS-Y-TABLAS.md](docs/CMS-Y-TABLAS.md) |
 | **Generador de Páginas Web** (plantillas, formularios, login) | [docs/GENERADOR-PAGINAS.md](docs/GENERADOR-PAGINAS.md) |
-| Crear páginas desde la CLI/API (guía para agentes de IA) | [docs/AGENTE-CREAR-PAGINAS.md](docs/AGENTE-CREAR-PAGINAS.md) |
+| Crear **sistemas y páginas** por CLI (guía para agentes de IA) | [docs/AGENTE-CREAR-PAGINAS.md](docs/AGENTE-CREAR-PAGINAS.md) |
 | Seguridad | [docs/SEGURIDAD.md](docs/SEGURIDAD.md) |
 | Desarrollo (tests, generadores, convenciones) | [docs/DESARROLLO.md](docs/DESARROLLO.md) |
 | Manual de usuario | [docs/MANUAL-USUARIO.md](docs/MANUAL-USUARIO.md) |
