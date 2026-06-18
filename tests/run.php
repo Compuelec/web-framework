@@ -40,6 +40,21 @@ function assertTrue($v, $msg = '')  { assertSame(true, $v, $msg); }
 function assertFalse($v, $msg = '') { assertSame(false, $v, $msg); }
 function assertNull($v, $msg = '')  { assertSame(null, $v, $msg); }
 
+// Ensure the Composer autoloader exists (the API depends on firebase/php-jwt).
+$autoload = __DIR__ . '/../api/vendor/autoload.php';
+if (!file_exists($autoload)) {
+    fwrite(STDERR, "Missing Composer autoloader at api/vendor/autoload.php.\n");
+    fwrite(STDERR, "Run:  (cd api && composer install)\n");
+    exit(1);
+}
+
+// Provide a deterministic JWT secret for CI environments that have no
+// config.php (Connection::getConfig() then falls back to env vars). When a
+// real config.php exists, its secret is used and this fallback is ignored.
+if (getenv('JWT_SECRET') === false) {
+    putenv('JWT_SECRET=ci-test-secret-not-for-production');
+}
+
 // Code under test (loads the Composer autoloader + models).
 require_once __DIR__ . '/../api/models/connection.php';
 

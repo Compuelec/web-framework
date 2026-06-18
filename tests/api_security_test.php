@@ -45,14 +45,16 @@ it('rejects an arbitrary value',       fn() => assertNull(Connection::sanitizeOr
 it('rejects an empty value',           fn() => assertNull(Connection::sanitizeOrderMode('')));
 
 echo "\nConnection::internalWriteTables\n";
-it('returns the CMS-internal allow-list', function() {
+it('returns a non-empty list of safe identifiers', function() {
+    // Asserts the security invariant rather than the exact default list, so
+    // the test stays deterministic even if a local config customizes it.
     $tables = Connection::internalWriteTables();
-    assertTrue(is_array($tables), 'should be an array');
-    foreach (['admins', 'pages', 'modules', 'folders', 'columns'] as $tbl) {
-        assertTrue(in_array($tbl, $tables, true), "allow-list should contain '$tbl'");
+    assertTrue(is_array($tables) && count($tables) > 0, 'should be a non-empty array');
+    foreach ($tables as $tbl) {
+        assertSame($tbl, Connection::sanitizeIdentifier($tbl), "allow-list entry '$tbl' must be a safe identifier");
     }
 });
-it('excludes business tables', function() {
+it('excludes business tables (token-less writes stay CMS-internal)', function() {
     $tables = Connection::internalWriteTables();
     assertFalse(in_array('files', $tables, true), "must not allow token-less writes to 'files'");
     assertFalse(in_array('users', $tables, true), "must not allow token-less writes to 'users'");
@@ -70,8 +72,10 @@ it('reports an expired token as expired', function() use ($secret) {
     assertSame('expired', Connection::tokenValidate($expired, 'admins', 'admin'));
 });
 it('rejects a tampered token', function() use ($secret) {
-    $valid    = \Firebase\JWT\JWT::encode(['iat' => time(), 'exp' => time() + 9999, 'data' => ['id' => 1]], $secret);
-    $tampered = substr($valid, 0, -2) . (substr($valid, -1) === 'a' ? 'b' : 'a');
+    $valid = \Firebase\JWT\JWT::encode(['iat' => time(), 'exp' => time() + 9999, 'data' => ['id' => 1]], $secret);
+    // Flip only the last character so the token keeps its length/structure
+    // and decoding reaches (and fails at) signature verification.
+    $tampered = substr($valid, 0, -1) . (substr($valid, -1) === 'A' ? 'B' : 'A');
     assertSame('no-auth', Connection::tokenValidate($tampered, 'admins', 'admin'));
 });
 it('rejects a non-JWT string',         fn() => assertSame('no-auth', Connection::tokenValidate('not-a-jwt', 'admins', 'admin')));
