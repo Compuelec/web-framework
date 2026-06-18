@@ -26,48 +26,10 @@ Web Pages builder (template + live preview)
     var previewXhr   = null;
     var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
 
-    /* ---------- code editors (CodeMirror 5, loaded on demand) ---------- */
-    // The CMS bundles an old CodeMirror 3 used elsewhere; we load CM5 isolated
-    // (captured as WPB_CM) so the builder gets modern editors + autocomplete
-    // without disturbing the global CodeMirror. Falls back to plain textareas.
-    function loadCM5(cb) {
-        if (window.WPB_CM) { cb(); return; }
-        var base = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/";
-        ["codemirror.min.css", "addon/hint/show-hint.min.css"].forEach(function (href) {
-            var l = document.createElement("link");
-            l.rel = "stylesheet"; l.href = base + href;
-            document.head.appendChild(l);
-        });
-        var files = [
-            "codemirror.min.js", "mode/xml/xml.min.js", "mode/css/css.min.js",
-            "mode/javascript/javascript.min.js", "mode/htmlmixed/htmlmixed.min.js",
-            "addon/hint/show-hint.min.js", "addon/hint/xml-hint.min.js",
-            "addon/hint/html-hint.min.js", "addon/hint/css-hint.min.js",
-            "addon/hint/javascript-hint.min.js", "addon/hint/anyword-hint.min.js",
-            "addon/edit/matchbrackets.min.js", "addon/edit/closebrackets.min.js",
-            "addon/edit/closetag.min.js"
-        ];
-        var prev = window.CodeMirror, i = 0;
-        (function next() {
-            if (i >= files.length) {
-                window.WPB_CM = window.CodeMirror;
-                window.CodeMirror = prev; // restore the app's original CodeMirror
-                cb();
-                return;
-            }
-            var s = document.createElement("script");
-            s.src = base + files[i++];
-            s.onload = next;
-            s.onerror = function () {
-                // Abort on any failure: restore the original CodeMirror and leave
-                // WPB_CM unset so initEditors falls back to the plain textareas.
-                window.CodeMirror = prev;
-                cb();
-            };
-            document.head.appendChild(s);
-        })();
-    }
-
+    /* ---------- code editors (CodeMirror 5) ---------- */
+    // CodeMirror 5 is bundled and loaded by the builder view, captured as
+    // WPB_CM so it stays isolated from the legacy CodeMirror 3 the CMS uses
+    // elsewhere. If it's unavailable, the plain textareas keep working.
     function initEditors() {
         var CM = window.WPB_CM;
         if (!CM || !CM.hint || !CM.hint.css) { return; } // CM5 unavailable → keep textareas
@@ -388,7 +350,7 @@ Web Pages builder (template + live preview)
 
     // Defer initial loads to DOM-ready so the CSRF ajaxSend hook is active.
     $(function () {
-        loadCM5(initEditors);
+        initEditors();
         loadTables();
         loadPages();
         setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);

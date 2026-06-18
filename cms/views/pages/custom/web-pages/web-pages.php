@@ -9,6 +9,14 @@ if (!in_array($_SESSION['admin']->rol_admin ?? '', ['superadmin', 'admin'], true
 }
 ?>
 
+<!--=============================================
+CodeMirror 5 for the builder's code editors. Loaded here (before the footer
+loads the legacy CodeMirror 3) and captured as WPB_CM so it stays isolated.
+===============================================-->
+<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/plugins/codemirror5/codemirror5.css">
+<script src="<?php echo $cmsBasePath ?>/views/assets/plugins/codemirror5/codemirror5.js"></script>
+<script>window.WPB_CM = window.CodeMirror;</script>
+
 <div class="container-fluid py-4 px-4" id="web-pages-builder">
 
     <div class="d-flex align-items-center justify-content-between mb-4">
