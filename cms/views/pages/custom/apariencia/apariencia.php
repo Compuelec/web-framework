@@ -68,9 +68,12 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                     <label class="form-label small fw-semibold" for="te-brand-symbol">Símbolo / ícono</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white"><i class="bi-grid" id="te-brand-symbol-preview"></i></span>
-                        <input type="text" class="form-control" id="te-brand-symbol" placeholder="bi-house, bi-building, bi-gear…">
+                        <input type="text" class="form-control" id="te-brand-symbol" placeholder="Elegir ícono…" readonly>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#teIconModal" title="Elegir ícono">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                        </button>
                     </div>
-                    <div class="form-text">Clase de <a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener">Bootstrap Icons</a> (ej. <code>bi-building</code>). El color usa el <strong>Color primario</strong> de abajo.</div>
+                    <div class="form-text">Se muestra junto al nombre en el menú. El color usa el <strong>Color primario</strong> de abajo.</div>
                 </div>
             </div>
         </div>
@@ -221,6 +224,23 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
     </div>
 </div>
 
+<!-- Icon picker for the brand symbol (reuses the shared icon-selector.js) -->
+<div class="modal fade" id="teIconModal" tabindex="-1" aria-hidden="true" style="z-index:1060;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-grid-3x3-gap me-2"></i>Seleccionar ícono</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control mb-3" id="teIconSearch" placeholder="Buscar ícono…">
+                <div id="teIconGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;max-height:50vh;overflow:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/selectors/icon-selector.js"></script>
 <script>
 (function () {
     'use strict';
@@ -398,9 +418,20 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
         var logoClear = document.getElementById('te-brand-logo-clear');
         if (logoClear) logoClear.addEventListener('click', function () { setBrandLogo(''); });
 
-        // Symbol preview as you type
+        // Symbol preview as you type (when not using the picker)
         var symInput = document.getElementById('te-brand-symbol');
         if (symInput) symInput.addEventListener('input', function () { setSymbolPreview(this.value); });
+
+        // Icon picker (reuses the shared icon-selector.js + #teIconModal)
+        if (typeof initIconSelector === 'function') {
+            initIconSelector({
+                inputId: 'te-brand-symbol',
+                previewId: 'te-brand-symbol-preview',
+                modalId: 'teIconModal',
+                gridId: 'teIconGrid',
+                searchId: 'teIconSearch'
+            });
+        }
 
         // Save
         var saveBtn = document.getElementById('te-save-btn');
