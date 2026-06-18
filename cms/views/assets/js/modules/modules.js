@@ -507,6 +507,11 @@ $(document).on("click",".myModule",function(){
 											<div class="invalid-feedback">Campo Inválido</div>
 										</div>
 
+										<div class="col-12 matrixMaxWrap" style="${e.type_column == 'multiimage' ? '' : 'display:none;'}">
+											<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
+											<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${i}" value="${e.matrix_column || ''}" placeholder="Sin límite">
+										</div>
+
 										<div class="col-12 mt-3">
 											<div class="card bg-light border-0">
 												<div class="card-body py-2">
@@ -840,6 +845,11 @@ $(document).on("click",".addColumn",function(){
 							<div class="invalid-feedback">Campo Inválido</div>
 						</div>
 
+						<div class="col-12 matrixMaxWrap" style="display:none;">
+							<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
+							<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${indexRandom}" value="" placeholder="Sin límite">
+						</div>
+
 						<div class="col-12 mt-3">
 							<div class="card bg-light border-0">
 								<div class="card-body py-2">
@@ -892,6 +902,18 @@ $(document).on("click",".addColumn",function(){
 	indexColumns.push(indexRandom);
 
 	$("#indexColumns").val(JSON.stringify(indexColumns));
+
+})
+
+/*=============================================
+Show the "max images" input only for the multi-image type
+=============================================*/
+
+$(document).on("change", "[name^='type_column_']", function(){
+
+	const wrap = $(this).closest(".row.g-3").find(".matrixMaxWrap");
+
+	wrap.toggle($(this).val() === "multiimage");
 
 })
 
