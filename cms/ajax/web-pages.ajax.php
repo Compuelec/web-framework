@@ -234,7 +234,7 @@ if (pb_isIdentifier($config['table'])) {
     $link = Connection::connect();
     if ($link !== null) {
         try {
-            $db = $link->query('SELECT DATABASE()')->fetchColumn();
+            $db = Connection::infoDatabase()['database'];
             $pkStmt = $link->prepare(
                 "SELECT COLUMN_NAME FROM information_schema.columns
                  WHERE table_schema = :db AND table_name = :t AND COLUMN_KEY = 'PRI' LIMIT 1"
