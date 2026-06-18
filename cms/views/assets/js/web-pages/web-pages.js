@@ -23,6 +23,7 @@ Web Pages builder (template + live preview)
     var $pages    = $("#wpb-pages");
 
     var previewTimer = null;
+    var previewXhr   = null;
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -109,13 +110,19 @@ Web Pages builder (template + live preview)
     function runPreview() {
         var table = $table.val();
         if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
-        $.ajax({
+        // Abort any in-flight preview so a slow earlier response can't overwrite
+        // a newer one (race condition while typing fast).
+        if (previewXhr) { previewXhr.abort(); }
+        previewXhr = $.ajax({
             url: url, method: "POST", dataType: "json",
             data: { action: "preview", table: table, template: $template.val(), customCss: $("#wpb-css").val() }
         }).done(function (res) {
             if (!res || !res.success) { setPreview('<p style="color:#c00">' + escapeHtml((res && res.error) || "Error") + "</p>", 0); return; }
             setPreview(res.html, res.count, res.css);
-        }).fail(function () { setPreview('<p style="color:#c00">No se pudo generar la vista previa.</p>', 0); });
+        }).fail(function (xhr, status) {
+            if (status === "abort") { return; }
+            setPreview('<p style="color:#c00">No se pudo generar la vista previa.</p>', 0);
+        });
     }
 
     /* ---------- existing pages ---------- */

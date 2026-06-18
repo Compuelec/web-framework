@@ -68,14 +68,23 @@ function pb_replaceFields($html, array $row) {
  * the $single record.
  */
 function pb_renderTemplate($template, array $records, array $single) {
-    $rendered = preg_replace_callback('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', function ($m) use ($records) {
-        $buffer = '';
-        foreach ($records as $rec) {
-            $buffer .= pb_replaceFields($m[1], (array) $rec);
+    // Split on the repeat block, capturing the inner HTML. Even-index parts are
+    // outside any block (rendered once with $single); odd-index parts are the
+    // captured inner blocks (rendered once per record). Each segment is filled
+    // exactly once, so field values that happen to contain {{...}} are never
+    // re-evaluated.
+    $parts = preg_split('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $out = '';
+    foreach ($parts as $i => $part) {
+        if ($i % 2 === 1) {
+            foreach ($records as $rec) {
+                $out .= pb_replaceFields($part, (array) $rec);
+            }
+        } else {
+            $out .= pb_replaceFields($part, $single);
         }
-        return $buffer;
-    }, $template);
-    return pb_replaceFields($rendered, $single);
+    }
+    return $out;
 }
 
 /**
@@ -213,12 +222,18 @@ if (!function_exists('wpb_fields')) {
         }, \$html);
     }
     function wpb_render(\$template, array \$records, array \$single) {
-        \$r = preg_replace_callback('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', function (\$m) use (\$records) {
-            \$b = '';
-            foreach (\$records as \$rec) { \$b .= wpb_fields(\$m[1], (array) \$rec); }
-            return \$b;
-        }, \$template);
-        return wpb_fields(\$r, \$single);
+        // Split on the repeat block (capturing inner HTML) so each segment is
+        // filled exactly once — no re-evaluation of {{...}} found in data.
+        \$parts = preg_split('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
+        \$out = '';
+        foreach (\$parts as \$i => \$part) {
+            if (\$i % 2 === 1) {
+                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec); }
+            } else {
+                \$out .= wpb_fields(\$part, \$single);
+            }
+        }
+        return \$out;
     }
 }
 

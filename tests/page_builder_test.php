@@ -51,6 +51,15 @@ it('repeats the {{#cada}} block once per record', function() {
     assertSame('<ul><li>A</li><li>B</li><li>C</li></ul>', pb_renderTemplate($tpl, $records, []));
 });
 
+it('does not re-expand field values that contain {{...}}', function() {
+    // A record value that happens to contain a tag must stay literal, not be
+    // re-evaluated against the single record.
+    $tpl     = '{{#cada}}<i>{{name}}</i>{{/cada}}';
+    $records = [['name' => '{{price}}'], ['name' => 'B']];
+    $out     = pb_renderTemplate($tpl, $records, ['price' => 'SECRET']);
+    assertSame('<i>{{price}}</i><i>B</i>', $out);
+});
+
 it('uses the single record for tags outside a repeat block', function() {
     $tpl = '<h1>{{title}}</h1>{{#cada}}<li>{{title}}</li>{{/cada}}';
     $records = [['title' => 'First'], ['title' => 'Second']];
