@@ -24,6 +24,94 @@ Web Pages builder (template + live preview)
 
     var previewTimer = null;
     var previewXhr   = null;
+    var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
+
+    /* ---------- code editors (CodeMirror 5, loaded on demand) ---------- */
+    // The CMS bundles an old CodeMirror 3 used elsewhere; we load CM5 isolated
+    // (captured as WPB_CM) so the builder gets modern editors + autocomplete
+    // without disturbing the global CodeMirror. Falls back to plain textareas.
+    function loadCM5(cb) {
+        if (window.WPB_CM) { cb(); return; }
+        var base = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/";
+        ["codemirror.min.css", "addon/hint/show-hint.min.css"].forEach(function (href) {
+            var l = document.createElement("link");
+            l.rel = "stylesheet"; l.href = base + href;
+            document.head.appendChild(l);
+        });
+        var files = [
+            "codemirror.min.js", "mode/xml/xml.min.js", "mode/css/css.min.js",
+            "mode/javascript/javascript.min.js", "mode/htmlmixed/htmlmixed.min.js",
+            "addon/hint/show-hint.min.js", "addon/hint/xml-hint.min.js",
+            "addon/hint/html-hint.min.js", "addon/hint/css-hint.min.js",
+            "addon/hint/javascript-hint.min.js", "addon/hint/anyword-hint.min.js",
+            "addon/edit/matchbrackets.min.js", "addon/edit/closebrackets.min.js",
+            "addon/edit/closetag.min.js"
+        ];
+        var prev = window.CodeMirror, i = 0;
+        (function next() {
+            if (i >= files.length) {
+                window.WPB_CM = window.CodeMirror;
+                window.CodeMirror = prev; // restore the app's original CodeMirror
+                cb();
+                return;
+            }
+            var s = document.createElement("script");
+            s.src = base + files[i++];
+            s.onload = next;
+            s.onerror = function () {
+                // Abort on any failure: restore the original CodeMirror and leave
+                // WPB_CM unset so initEditors falls back to the plain textareas.
+                window.CodeMirror = prev;
+                cb();
+            };
+            document.head.appendChild(s);
+        })();
+    }
+
+    function initEditors() {
+        var CM = window.WPB_CM;
+        if (!CM || !CM.hint || !CM.hint.css) { return; } // CM5 unavailable → keep textareas
+
+        function make(id, mode, hint) {
+            var el = document.getElementById(id);
+            if (!el) { return null; }
+            var cm = CM.fromTextArea(el, {
+                mode: mode, lineNumbers: true, lineWrapping: true,
+                matchBrackets: true, autoCloseBrackets: true,
+                autoCloseTags: (mode === "htmlmixed"),
+                extraKeys: { "Ctrl-Space": "autocomplete" }
+            });
+            cm.setSize(null, 260);
+            cm.on("inputRead", function (editor, change) {
+                if (change.origin !== "+input") { return; }
+                var ch = change.text[0];
+                if (ch && /[\w<.{#-]/.test(ch)) {
+                    editor.showHint({ hint: hint, completeSingle: false });
+                }
+            });
+            return cm;
+        }
+
+        cmTemplate = make("wpb-template", "htmlmixed", CM.hint.html);
+        cmCss = make("wpb-css", "css", CM.hint.css);
+        cmJs = make("wpb-js", "javascript", CM.hint.javascript);
+
+        if (cmTemplate) { cmTemplate.on("change", function () { cmTemplate.save(); schedulePreview(); }); }
+        if (cmCss) { cmCss.on("change", function () { cmCss.save(); schedulePreview(); }); }
+        if (cmJs) { cmJs.on("change", function () { cmJs.save(); }); }
+
+        // CSS/JS editors live in a collapsed accordion — refresh on open.
+        $("#wpb-adv-body").on("shown.bs.collapse", function () {
+            if (cmCss) { cmCss.refresh(); }
+            if (cmJs) { cmJs.refresh(); }
+        });
+    }
+
+    function syncEditors() {
+        if (cmTemplate) { cmTemplate.save(); }
+        if (cmCss) { cmCss.save(); }
+        if (cmJs) { cmJs.save(); }
+    }
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -85,6 +173,13 @@ Web Pages builder (template + live preview)
 
     /* ---------- editor helpers ---------- */
     function insertAtCursor(text) {
+        if (cmTemplate) {
+            cmTemplate.replaceSelection(text);
+            cmTemplate.focus();
+            cmTemplate.save();
+            schedulePreview();
+            return;
+        }
         var el = $template[0];
         var start = el.selectionStart || 0, end = el.selectionEnd || 0;
         var val = el.value;
@@ -95,10 +190,19 @@ Web Pages builder (template + live preview)
     }
 
     function insertRepeat() {
+        var placeholder = "\n  <!-- HTML por cada registro: usa {{campo}} -->\n";
+        if (cmTemplate) {
+            var selection = cmTemplate.getSelection() || placeholder;
+            cmTemplate.replaceSelection("{{#cada}}" + selection + "{{/cada}}");
+            cmTemplate.focus();
+            cmTemplate.save();
+            schedulePreview();
+            return;
+        }
         var el = $template[0];
         var start = el.selectionStart || 0, end = el.selectionEnd || 0;
         var val = el.value;
-        var sel = val.slice(start, end) || "\n  <!-- HTML por cada registro: usa {{campo}} -->\n";
+        var sel = val.slice(start, end) || placeholder;
         var block = "{{#cada}}" + sel + "{{/cada}}";
         el.value = val.slice(0, start) + block + val.slice(end);
         el.focus();
@@ -161,6 +265,7 @@ Web Pages builder (template + live preview)
 
     /* ---------- config in/out ---------- */
     function collectConfig() {
+        syncEditors();
         return {
             action:    "generate",
             table:     $table.val(),
@@ -179,6 +284,9 @@ Web Pages builder (template + live preview)
         $template.val(c.template || "");
         $("#wpb-css").val(c.customCss || "");
         $("#wpb-js").val(c.customJs || "");
+        if (cmTemplate) { cmTemplate.setValue(c.template || ""); }
+        if (cmCss) { cmCss.setValue(c.customCss || ""); }
+        if (cmJs) { cmJs.setValue(c.customJs || ""); }
         loadFields(c.table, runPreview);
     }
 
@@ -211,6 +319,9 @@ Web Pages builder (template + live preview)
         $editing.val("");
         $genLbl.text("Crear página");
         $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js").val("");
+        if (cmTemplate) { cmTemplate.setValue(""); }
+        if (cmCss) { cmCss.setValue(""); }
+        if (cmJs) { cmJs.setValue(""); }
         $table.val("");
         $fields.html('<span class="text-muted small">Elige una tabla</span>');
         $repeat.prop("disabled", true);
@@ -277,6 +388,7 @@ Web Pages builder (template + live preview)
 
     // Defer initial loads to DOM-ready so the CSRF ajaxSend hook is active.
     $(function () {
+        loadCM5(initEditors);
         loadTables();
         loadPages();
         setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
