@@ -9,6 +9,16 @@ if (!in_array($_SESSION['admin']->rol_admin ?? '', ['superadmin', 'admin'], true
 }
 ?>
 
+<!--=============================================
+CodeMirror 5 for the builder's code editors. The CMS loads the legacy
+CodeMirror 3 in the <head>, so we stash that reference, load CM5, capture it as
+WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
+===============================================-->
+<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/plugins/codemirror5/codemirror5.css">
+<script>window.WPB_CM_PREV = window.CodeMirror;</script>
+<script src="<?php echo $cmsBasePath ?>/views/assets/plugins/codemirror5/codemirror5.js"></script>
+<script>window.WPB_CM = window.CodeMirror; window.CodeMirror = window.WPB_CM_PREV;</script>
+
 <div class="container-fluid py-4 px-4" id="web-pages-builder">
 
     <div class="d-flex align-items-center justify-content-between mb-4">
