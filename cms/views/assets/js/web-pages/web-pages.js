@@ -91,6 +91,9 @@ Web Pages builder (visual, configurable)
                     $a.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
                     $pages.append($a);
                 });
+            })
+            .fail(function () {
+                $pages.html('<div class="list-group-item text-danger small">No se pudieron cargar las páginas.</div>');
             });
     }
 

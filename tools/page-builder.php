@@ -133,16 +133,16 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$baseUrl  = (is_array(\$siteCfg) && isset(\$siteCfg['site']['base_url'])) ? rtrim(\$siteCfg['site']['base_url'], '/') . '/' : '/';
 \$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name']))     ? \$siteCfg['site']['name'] : 'My Website';
 
-\$table       = \$cfg['table'];
-\$idColumn    = \$cfg['idColumn'];
-\$titleColumn = \$cfg['titleColumn'];
+\$table       = \$cfg['table'] ?? '';
+\$idColumn    = \$cfg['idColumn'] ?? 'id';
+\$titleColumn = \$cfg['titleColumn'] ?? '';
 \$columns     = !empty(\$cfg['columns']) ? \$cfg['columns'] : null;
 \$layout      = \$cfg['layout'] ?? 'cards';
 \$accent      = \$cfg['accent'] ?? '#0d6efd';
 \$perRow      = (int)(\$cfg['perRow'] ?? 3);
 \$detailUrl   = \$baseUrl . 'pages/' . {$df} . '.php';
 
-\$pageTitle       = (\$cfg['heading'] ?: \$siteName) . ' - ' . \$siteName;
+\$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = \$cfg['intro'] ?? '';
 
 \$records = [];
@@ -155,16 +155,19 @@ try {
     } elseif (\$response->status != 404) {
         \$error = 'Could not load data.';
     }
-} catch (Exception \$e) {
+} catch (Throwable \$e) {
     \$error = 'Could not load data.';
 }
 
 // Resolve which fields to show for a record (selected columns, or all but id).
+// Keep null values (rendered as empty strings) so table rows stay aligned;
+// only skip non-scalar (array/object) values.
 \$pickFields = function (\$row) use (\$columns, \$idColumn, \$titleColumn) {
     \$out = [];
     \$keys = \$columns ?: array_keys(\$row);
     foreach (\$keys as \$k) {
-        if (\$k === \$idColumn || !array_key_exists(\$k, \$row) || !is_scalar(\$row[\$k])) { continue; }
+        if (\$k === \$idColumn || !array_key_exists(\$k, \$row)) { continue; }
+        if (\$row[\$k] !== null && !is_scalar(\$row[\$k])) { continue; }
         \$out[\$k] = \$row[\$k];
     }
     return \$out;
@@ -178,7 +181,7 @@ ob_start();
     #wpb-page { --wpb-accent: <?php echo htmlspecialchars(\$accent, ENT_QUOTES); ?>; }
     #wpb-page .btn-accent, #wpb-page .badge-accent { background: var(--wpb-accent); color: #fff; border: 0; }
     #wpb-page .card-title { color: var(--wpb-accent); }
-<?php echo \$cfg['customCss']; ?>
+<?php echo \$cfg['customCss'] ?? ''; ?>
 </style>
 
 <div class="container my-5" id="wpb-page">
@@ -189,7 +192,7 @@ ob_start();
         <p class="text-muted mb-4"><?php echo htmlspecialchars(\$cfg['intro'], ENT_QUOTES); ?></p>
     <?php endif; ?>
 
-    <?php echo \$cfg['customHtml']; ?>
+    <?php echo \$cfg['customHtml'] ?? ''; ?>
 
     <?php if (\$error): ?>
         <div class="alert alert-warning"><?php echo htmlspecialchars(\$error, ENT_QUOTES); ?></div>
@@ -253,7 +256,7 @@ ob_start();
 </div>
 
 <script>
-<?php echo \$cfg['customJs']; ?>
+<?php echo \$cfg['customJs'] ?? ''; ?>
 </script>
 <?php
 \$pageContent = ob_get_clean();
@@ -313,7 +316,7 @@ if (\$recordId === null || \$recordId === '') {
         } else {
             \$error = 'Record not found.';
         }
-    } catch (Exception \$e) {
+    } catch (Throwable \$e) {
         \$error = 'Could not load the record.';
     }
 }
