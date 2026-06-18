@@ -470,8 +470,10 @@ class FilesController{
 		$files = CurlController::request($url,$method,$fields);
 
 		/*=============================================
-		Sum the size of every file in the folder. An empty
-		folder yields 0 so the total is reset correctly.
+		Sum the size of every file in the folder. Only update the
+		total when the fetch succeeded (200, sum the files) or the
+		folder is genuinely empty (404 -> 0). On any other status
+		(network/DB error) do NOT overwrite the stored total.
 		=============================================*/
 
 		$totalSize = 0;
@@ -481,10 +483,15 @@ class FilesController{
 			foreach ($files->results as $value) {
 				$totalSize += $value->size_file;
 			}
+
+		}else if($files->status != 404){
+
+			echo 500;
+			return;
 		}
 
 		/*=============================================
-		Update the folder total once, even when empty
+		Update the folder total once (0 when the folder is empty)
 		=============================================*/
 
 		$url = "folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
