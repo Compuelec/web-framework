@@ -66,6 +66,7 @@ class Logger {
      * writable location is available so the caller falls back to error_log().
      */
     private static function resolveLogFile() {
+        // An explicit override (e.g. from tests) always wins and is cached.
         if (self::$logFile !== null) {
             return self::$logFile;
         }
@@ -73,7 +74,10 @@ class Logger {
         $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs';
 
         if (!is_dir($dir)) {
-            if (!@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            // 0755 (not 0700) so the web server and CLI runner, which may run
+            // as different users, can both use the directory; web access is
+            // still denied by the .htaccess below.
+            if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
                 return null;
             }
             // Deny direct web access to the log directory.
@@ -84,7 +88,8 @@ class Logger {
             return null;
         }
 
-        self::$logFile = $dir . DIRECTORY_SEPARATOR . 'app-' . date('Y-m-d') . '.log';
-        return self::$logFile;
+        // Resolve the daily file fresh on every call (NOT cached) so that
+        // long-running processes roll over to the next day's log file.
+        return $dir . DIRECTORY_SEPARATOR . 'app-' . date('Y-m-d') . '.log';
     }
 }
