@@ -40,9 +40,20 @@ if($pages->status == 200){
 
 <div class="bg-white shadow" id="sidebar-wrapper">
 
+	<?php
+	// Brand (logo / name) comes from the global Apariencia settings; falls back
+	// to the admin's symbol/title until a brand is configured.
+	$_brandLogo  = $_SESSION['cms_theme']['theme_brand_logo']  ?? '';
+	$_brandTitle = $_SESSION['cms_theme']['theme_brand_title'] ?? '';
+	if ($_brandTitle === '') { $_brandTitle = $_SESSION["admin"]->title_admin ?? 'Dashboard'; }
+	?>
 	<div class="sidebar-heading bg-white text-dark my-2">
-		<i class="<?php echo h($_SESSION["admin"]->symbol_admin) ?> textColor"></i>
-		<span class="menu-text"><?php echo h($_SESSION["admin"]->title_admin) ?></span>
+		<?php if ($_brandLogo): ?>
+			<img src="<?php echo h($_brandLogo) ?>" alt="<?php echo h($_brandTitle) ?>" style="max-height:42px; max-width:170px; object-fit:contain;">
+		<?php else: ?>
+			<i class="<?php echo h($_SESSION["admin"]->symbol_admin) ?> textColor"></i>
+			<span class="menu-text"><?php echo h($_brandTitle) ?></span>
+		<?php endif ?>
 	</div>
 
 	<hr class="mt-0 borderDashboard">

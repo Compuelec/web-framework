@@ -34,6 +34,37 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
     </div>
     <?php endif ?>
 
+    <!-- Brand / identity -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-stars me-1"></i>Marca / Identidad</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold" for="te-brand-title">Nombre del dashboard</label>
+                    <input type="text" class="form-control" id="te-brand-title" maxlength="120" placeholder="Nombre que se muestra en el menú">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold d-block">Logo</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="te-brand-logo-preview" class="border rounded d-flex align-items-center justify-content-center" style="width:64px;height:64px;background:#f8f9fa;overflow:hidden;">
+                            <i class="bi bi-image text-muted"></i>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <input type="hidden" id="te-brand-logo" value="">
+                            <label class="btn btn-sm btn-outline-primary mb-0">
+                                <i class="bi bi-upload me-1"></i>Subir logo
+                                <input type="file" accept="image/*" id="te-brand-logo-file" class="d-none">
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="te-brand-logo-clear">Quitar</button>
+                            <span class="spinner-border spinner-border-sm text-primary" id="te-brand-logo-spin" style="display:none;"></span>
+                        </div>
+                    </div>
+                    <div class="form-text">Si hay logo, reemplaza el texto del nombre en el menú.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
 
         <!-- Color pickers -->
@@ -209,8 +240,22 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                 var val = t[f.key] || getDefaultVal(f.key);
                 setField(f, val);
             });
+            var brandTitleEl = document.getElementById('te-brand-title');
+            if (brandTitleEl) brandTitleEl.value = t.theme_brand_title || '';
+            setBrandLogo(t.theme_brand_logo || '');
             applyPreview();
         });
+    }
+
+    function setBrandLogo(url) {
+        document.getElementById('te-brand-logo').value = url || '';
+        var preview = document.getElementById('te-brand-logo-preview');
+        if (url) {
+            preview.innerHTML = '<img alt="logo" style="width:100%;height:100%;object-fit:contain;">';
+            preview.firstChild.src = url;
+        } else {
+            preview.innerHTML = '<i class="bi bi-image text-muted"></i>';
+        }
     }
 
     function getDefaultVal(key) {
@@ -311,6 +356,29 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
             });
         });
 
+        // Brand logo upload / clear
+        var logoInput = document.getElementById('te-brand-logo-file');
+        if (logoInput) logoInput.addEventListener('change', function () {
+            if (!this.files || !this.files.length) return;
+            var spin = document.getElementById('te-brand-logo-spin');
+            spin.style.display = '';
+            var data = new FormData();
+            data.append('file', this.files[0]);
+            data.append('folder', '1');
+            data.append('token', window.CMS_TOKEN || '');
+            fetch((window.CMS_AJAX_PATH || '') + '/files.ajax.php', { method: 'POST', body: data })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    spin.style.display = 'none';
+                    if (res && res.status === 200 && res.link) { setBrandLogo(res.link); }
+                    else { fncToastr('error', (res && res.error) || 'No se pudo subir el logo'); }
+                })
+                .catch(function () { spin.style.display = 'none'; fncToastr('error', 'Error al subir el logo'); });
+            this.value = '';
+        });
+        var logoClear = document.getElementById('te-brand-logo-clear');
+        if (logoClear) logoClear.addEventListener('click', function () { setBrandLogo(''); });
+
         // Save
         var saveBtn = document.getElementById('te-save-btn');
         if (saveBtn) saveBtn.addEventListener('click', function () {
@@ -318,6 +386,8 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
             fields.forEach(function (f) {
                 params.append(f.key, getVal(f.inputId));
             });
+            params.append('theme_brand_title', getVal('te-brand-title'));
+            params.append('theme_brand_logo', document.getElementById('te-brand-logo').value);
 
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
