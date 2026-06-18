@@ -523,6 +523,28 @@ if($adminTable !== null && is_object($adminTable)){
 			}
 			$_SESSION['_web_pages_ensured'] = true;
 		}
+
+		// Ensure the System Health page exists (checked once per session)
+		if (empty($_SESSION['_system_health_ensured'])) {
+			$shCheck = CurlController::request("pages?linkTo=url_page&equalTo=system-health", "GET", array());
+			$shExists = (
+				$shCheck && is_object($shCheck) &&
+				isset($shCheck->status) && $shCheck->status == 200 &&
+				isset($shCheck->results) && is_array($shCheck->results) &&
+				count($shCheck->results) > 0
+			);
+			if (!$shExists) {
+				CurlController::request("pages?token=no&except=id_page", "POST", array(
+					"title_page"        => "Estado del Sistema",
+					"url_page"          => "system-health",
+					"icon_page"         => "bi bi-heart-pulse",
+					"type_page"         => "custom",
+					"order_page"        => 97,
+					"date_created_page" => date("Y-m-d"),
+				));
+			}
+			$_SESSION['_system_health_ensured'] = true;
+		}
 		?>
 
 		<!--=============================================
@@ -875,6 +897,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/pages/pages.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.1"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=1"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/system-health/system-health.js?v=1"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/workflow.js?v=1.0"></script>
