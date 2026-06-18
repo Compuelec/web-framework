@@ -242,6 +242,23 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
+								Multi-image type content
+								=============================================*/
+
+								}else if($item->type_column == "multiimage"){
+
+									$multiImgs = json_decode(urldecode($value[$item->title_column]), true);
+									if(is_array($multiImgs) && count($multiImgs)){
+										foreach($multiImgs as $imgUrl){
+											$HTMLTable .= '<a href="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" target="_blank">
+											<img src="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" class="rounded me-1 mb-1" style="width:45px; height:45px; object-fit: cover; object-position:center;">
+											</a>';
+										}
+									}else{
+										$HTMLTable.= '<img src="'.$cmsBasePath.'/views/assets/img/file.png" class="rounded" style="width:45px; height:45px; object-fit: cover; object-position:center;">';
+									}
+
+								/*=============================================
 								Video-type content
 								=============================================*/
 

@@ -375,7 +375,7 @@ $(document).on("click",".myModule",function(){
 					Mark selected column type
 					=============================================*/
 
-					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow"];
+					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow","multiimage"];
 					var selectColumn = [];
 
 					typeColumn.forEach((v,f)=>{
@@ -466,6 +466,7 @@ $(document).on("click",".myModule",function(){
 												<option value="int" ${selectColumn[2]}>Número Entero</option>
 												<option value="double" ${selectColumn[3]}>Número Decimal</option>
 												<option value="image" ${selectColumn[4]}>Imagen</option>
+												<option value="multiimage" ${selectColumn[26]}>Múltiples Imágenes</option>
 												<option value="video" ${selectColumn[5]}>Video</option>
 												<option value="file" ${selectColumn[6]}>Archivo</option>
 												<option value="boolean" ${selectColumn[7]}>Boleano</option>
@@ -798,6 +799,7 @@ $(document).on("click",".addColumn",function(){
 								<option value="int">Número Entero</option>
 								<option value="double">Número Decimal</option>
 								<option value="image">Imagen</option>
+								<option value="multiimage">Múltiples Imágenes</option>
 								<option value="video">Video</option>
 								<option value="file">Archivo</option>
 								<option value="boolean">Boleano</option>

@@ -895,11 +895,12 @@ if($adminTable !== null && is_object($adminTable)){
 
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dashboard/dashboard.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/pages/pages.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.2"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.3"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=8"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/system-health/system-health.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/multi-image.js?v=1"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/workflow.js?v=1.0"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-tables/dynamic-tables.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/fms/fms.js?v=csrf1"></script>

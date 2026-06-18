@@ -73,6 +73,13 @@ class TemplateController{
 
 		}
 
+		if($value == "multiimage"){
+
+			// Stores a JSON array of image URLs.
+			$type = "TEXT NULL DEFAULT '[]'";
+
+		}
+
 		if($value == "int" || $value == "relations" || $value == "order"){
 	       
 	       	$type = "INT NULL DEFAULT '0'";
