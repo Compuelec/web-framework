@@ -16,6 +16,8 @@ Web Pages builder (template + live preview)
     var $template = $("#wpb-template");
     var $fields   = $("#wpb-fields");
     var $repeat   = $("#wpb-repeat");
+    var $formBtn  = $("#wpb-form");
+    var currentColumns = [], currentTypes = {}, currentIdColumn = "";
     var $gen      = $("#wpb-generate");
     var $genLbl   = $("#wpb-generate-label");
     var $result   = $("#wpb-result");
@@ -105,6 +107,8 @@ Web Pages builder (template + live preview)
             .done(function (res) {
                 var cols = (res && res.columns) || [];
                 var types = (res && res.types) || {};
+                currentColumns = cols; currentTypes = types;
+                currentIdColumn = cols.filter(function (c) { return /^id_/.test(c); })[0] || "";
                 if (!cols.length) { $fields.html('<span class="text-danger small">Sin columnas</span>'); return; }
                 $fields.empty();
                 cols.forEach(function (c) {
@@ -126,6 +130,7 @@ Web Pages builder (template + live preview)
                     $fields.append($chip);
                 });
                 $repeat.prop("disabled", false);
+                $formBtn.prop("disabled", false);
                 $gen.prop("disabled", false);
                 $("#wpb-name").attr("placeholder", table);
                 if (cb) { cb(); }
@@ -235,8 +240,29 @@ Web Pages builder (template + live preview)
             heading:   $("#wpb-heading").val(),
             template:  $template.val(),
             customCss: $("#wpb-css").val(),
-            customJs:  $("#wpb-js").val()
+            customJs:  $("#wpb-js").val(),
+            private:   $("#wpb-private").is(":checked") ? 1 : 0
         };
+    }
+
+    // Build a {{#form}} block from the table's columns and insert it.
+    function insertFormSnippet() {
+        if (!currentColumns.length) { return; }
+        var rows = "";
+        currentColumns.forEach(function (c) {
+            if (c === currentIdColumn) { return; }
+            var type = currentTypes[c] || "";
+            var tag;
+            if (type === "image" || type === "multiimage" || type === "file") {
+                tag = "{{file " + c + "}}";
+            } else if (type === "textarea") {
+                tag = "{{textarea " + c + "}}";
+            } else {
+                tag = "{{input " + c + "}}";
+            }
+            rows += '  <label class="form-label">' + c + "</label>\n  " + tag + "\n";
+        });
+        insertAtCursor("{{#form}}\n" + rows + "  {{submit Guardar}}\n{{/form}}\n");
     }
 
     function applyConfig(c) {
@@ -246,6 +272,7 @@ Web Pages builder (template + live preview)
         $template.val(c.template || "");
         $("#wpb-css").val(c.customCss || "");
         $("#wpb-js").val(c.customJs || "");
+        $("#wpb-private").prop("checked", !!c.private);
         if (cmTemplate) { cmTemplate.setValue(c.template || ""); }
         if (cmCss) { cmCss.setValue(c.customCss || ""); }
         if (cmJs) { cmJs.setValue(c.customJs || ""); }
@@ -285,8 +312,10 @@ Web Pages builder (template + live preview)
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }
         $table.val("");
+        $("#wpb-private").prop("checked", false);
         $fields.html('<span class="text-muted small">Elige una tabla</span>');
         $repeat.prop("disabled", true);
+        $formBtn.prop("disabled", true);
         $gen.prop("disabled", true);
         $result.html("");
         setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
@@ -345,6 +374,7 @@ Web Pages builder (template + live preview)
     $template.on("input", schedulePreview);
     $("#wpb-css").on("input", schedulePreview);
     $repeat.on("click", insertRepeat);
+    $formBtn.on("click", insertFormSnippet);
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 

@@ -270,27 +270,31 @@ $config = [
     'template'  => $_POST['template']  ?? '',
     'customCss' => $_POST['customCss'] ?? '',
     'customJs'  => $_POST['customJs']  ?? '',
+    'private'   => !empty($_POST['private']),
+    'columns'   => [],
 ];
 
-// Use the table's REAL primary-key column for ordering/lookups, instead of
-// guessing it from the table name (which breaks for plural/irregular names and
-// leaves the generated page with zero records).
+// Look up the table's REAL primary-key column (so ordering/lookups work for
+// plural/irregular names) and its full column list (so forms only write real
+// columns).
 if (pb_isIdentifier($config['table'])) {
     $link = Connection::connect();
     if ($link !== null) {
         try {
             $db = Connection::infoDatabase()['database'];
-            $pkStmt = $link->prepare(
-                "SELECT COLUMN_NAME FROM information_schema.columns
-                 WHERE table_schema = :db AND table_name = :t AND COLUMN_KEY = 'PRI' LIMIT 1"
+            $colStmt = $link->prepare(
+                "SELECT COLUMN_NAME AS name, COLUMN_KEY AS k FROM information_schema.columns
+                 WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION"
             );
-            $pkStmt->execute([':db' => $db, ':t' => $config['table']]);
-            $pk = $pkStmt->fetchColumn();
-            if ($pk) {
-                $config['idColumn'] = $pk;
+            $colStmt->execute([':db' => $db, ':t' => $config['table']]);
+            foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
+                $config['columns'][] = $c['name'];
+                if ($c['k'] === 'PRI') {
+                    $config['idColumn'] = $c['name'];
+                }
             }
         } catch (Throwable $e) {
-            Logger::warning('web-pages PK lookup failed', ['error' => $e->getMessage()]);
+            Logger::warning('web-pages column lookup failed', ['error' => $e->getMessage()]);
         }
     }
 }

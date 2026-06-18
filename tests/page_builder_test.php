@@ -114,6 +114,36 @@ it('round-trips the config through generate/extract', function() {
     assertSame('.x{color:red}', $back['customCss']);
 });
 
+it('renders a {{#form}} block with prefilled inputs', function() {
+    $tpl = '{{#form}}{{input dir}}{{textarea desc}}{{file foto}}{{submit Enviar}}{{/form}}';
+    $out = pb_renderTemplate($tpl, [], ['dir' => 'Calle 1', 'desc' => 'x']);
+    assertTrue(strpos($out, '<form method="post"') !== false, 'wraps in a form');
+    assertTrue(strpos($out, 'name="dir" value="Calle 1"') !== false, 'text input prefilled');
+    assertTrue(strpos($out, '<textarea') !== false && strpos($out, 'name="desc"') !== false, 'textarea');
+    assertTrue(strpos($out, 'type="file"') !== false && strpos($out, 'name="foto"') !== false, 'file input');
+    assertTrue(strpos($out, 'Enviar</button>') !== false, 'submit label');
+});
+
+it('normalizes private flag and columns', function() {
+    $c = pb_normalizeConfig(['table' => 'products', 'private' => 1, 'columns' => ['name_product', 'bad col']]);
+    assertTrue($c['private'] === true);
+    assertSame(['name_product'], $c['columns']);
+});
+
+it('generates valid PHP for a private page with a form', function() {
+    $src = buildConfigurablePage([
+        'table' => 'products', 'private' => true, 'columns' => ['name_product'],
+        'template' => '{{#form}}{{input name_product}}{{submit}}{{/form}}',
+    ]);
+    $tmp = tempnam(sys_get_temp_dir(), 'pb');
+    file_put_contents($tmp, $src);
+    $out = []; $code = 0;
+    exec(PHP_BINARY . ' -l ' . escapeshellarg($tmp) . ' 2>&1', $out, $code);
+    @unlink($tmp);
+    assertSame(0, $code, 'should be valid PHP: ' . implode("\n", $out));
+    assertTrue(strpos($src, 'password_verify') !== false, 'embeds login check');
+});
+
 it('generates valid PHP that embeds the renderer', function() {
     $tmp = tempnam(sys_get_temp_dir(), 'pb');
     file_put_contents($tmp, buildConfigurablePage(['table' => 'products', 'template' => '{{#cada}}{{name_product}}{{/cada}}']));

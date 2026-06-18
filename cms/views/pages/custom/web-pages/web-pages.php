@@ -66,9 +66,19 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                             envuelve el HTML con el botón <span class="badge bg-secondary">Repetir</span>.
                         </div>
                         <div id="wpb-fields" class="mb-2"><span class="text-muted small">Elige una tabla</span></div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="wpb-repeat" disabled>
+                        <button type="button" class="btn btn-sm btn-outline-primary me-1" id="wpb-repeat" disabled>
                             <i class="bi bi-arrow-repeat me-1"></i>Repetir por cada registro
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="wpb-form" disabled>
+                            <i class="bi bi-ui-checks me-1"></i>Insertar formulario (crear/editar)
+                        </button>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="wpb-private">
+                        <label class="form-check-label" for="wpb-private">
+                            Página privada — requiere iniciar sesión (admins) para verla/editarla
+                        </label>
                     </div>
 
                     <div class="mb-3">
