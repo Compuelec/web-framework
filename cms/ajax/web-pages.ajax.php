@@ -124,6 +124,44 @@ if ($action === 'load') {
     exit;
 }
 
+/* ============================ delete ============================ */
+if ($action === 'delete') {
+    $file = (string)($_POST['file'] ?? '');
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $file) || $pagesDir === false) {
+        echo json_encode(['success' => false, 'error' => 'Archivo inválido']);
+        exit;
+    }
+    $path = $pagesDir . DIRECTORY_SEPARATOR . $file . '.php';
+    // Safety: only delete builder-generated pages (those that embed a config),
+    // never framework examples or unrelated files.
+    $cfg = file_exists($path) ? pb_extractConfig(@file_get_contents($path)) : null;
+    if (!$cfg) {
+        echo json_encode(['success' => false, 'error' => 'Esta página no se puede eliminar desde aquí']);
+        exit;
+    }
+
+    $deleted = [];
+    if (@unlink($path)) {
+        $deleted[] = $file . '.php';
+    }
+    // Remove the companion detail page if it exists.
+    $detailFile = $cfg['detailFile'] ?? ($file . '-detail');
+    if (preg_match('/^[a-zA-Z0-9_-]+$/', (string)$detailFile)) {
+        $detailPath = $pagesDir . DIRECTORY_SEPARATOR . $detailFile . '.php';
+        if (is_file($detailPath) && @unlink($detailPath)) {
+            $deleted[] = $detailFile . '.php';
+        }
+    }
+
+    if (!$deleted) {
+        Logger::error('web-pages delete failed', ['file' => $file]);
+        echo json_encode(['success' => false, 'error' => 'No se pudo eliminar el archivo.']);
+        exit;
+    }
+    echo json_encode(['success' => true, 'deleted' => $deleted]);
+    exit;
+}
+
 /* ============================ generate ============================ */
 if ($action !== 'generate') {
     echo json_encode(['success' => false, 'error' => 'Unknown action']);

@@ -97,11 +97,14 @@ Web Pages builder (visual, configurable)
                 }
                 $pages.empty();
                 pages.forEach(function (p) {
-                    var $a = $('<a href="#" class="list-group-item list-group-item-action">' +
+                    var $item = $('<div class="list-group-item d-flex justify-content-between align-items-start"></div>');
+                    var $info = $('<a href="#" class="flex-grow-1 text-decoration-none text-body">' +
                         '<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + "</div>" +
                         '<div class="small text-muted">' + escapeHtml(p.file) + ".php · " + escapeHtml(p.table) + "</div></a>");
-                    $a.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
-                    $pages.append($a);
+                    $info.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
+                    var $del = $('<button class="btn btn-sm btn-link text-danger p-0 ms-2" title="Eliminar"><i class="bi bi-trash"></i></button>');
+                    $del.on("click", function (e) { e.preventDefault(); deletePage(p.file); });
+                    $pages.append($item.append($info).append($del));
                 });
             })
             .fail(function () {
@@ -153,6 +156,23 @@ Web Pages builder (visual, configurable)
                 $genLbl.text("Guardar cambios");
                 applyConfig(res.config);
             });
+    }
+
+    function deletePage(file) {
+        if (!window.confirm('¿Eliminar la página "' + file + '"? Se borrará el archivo .php (y su página de detalle si existe). Esta acción no se puede deshacer.')) {
+            return;
+        }
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "delete", file: file } })
+            .done(function (res) {
+                if (!res || !res.success) {
+                    $result.html(alertBox("danger", "No se pudo eliminar", escapeHtml((res && res.error) || "Error desconocido.")));
+                    return;
+                }
+                if ($editing.val() === file) { resetForm(); }
+                $result.html(alertBox("success", "Página eliminada", escapeHtml(res.deleted.join(", "))));
+                loadPages();
+            })
+            .fail(function () { $result.html(alertBox("danger", "Error", "No se pudo contactar al servidor.")); });
     }
 
     function resetForm() {
