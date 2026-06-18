@@ -83,4 +83,47 @@ hidden .multiImageValue input.
     $(function () {
         $(".multiImageField").each(function () { syncField($(this)); });
     });
+
+    /*=============================================
+    Single image field (direct upload, one image)
+    =============================================*/
+
+    $(document).on("change", ".singleImageInput", function () {
+        var input = this;
+        if (!input.files || !input.files.length) { return; }
+
+        var $field   = $(input).closest(".singleImageField");
+        var $spinner = $field.find(".singleImageSpinner").show();
+
+        var data = new FormData();
+        data.append("file", input.files[0]);
+        data.append("folder", DEFAULT_FOLDER);
+        data.append("token", window.CMS_TOKEN || "");
+
+        $.ajax({
+            url: (window.CMS_AJAX_PATH || "/ajax") + "/files.ajax.php",
+            method: "POST", data: data, contentType: false, processData: false, dataType: "json"
+        }).done(function (res) {
+            if (res && res.status === 200 && res.link) {
+                $field.find(".singleImageValue").val(res.link);
+                $field.find(".singleImagePreview").attr("src", res.link);
+                $field.find(".singleImageThumb").show();
+            } else {
+                fncToastr("error", (res && res.error) || "No se pudo subir la imagen");
+            }
+        }).fail(function () {
+            fncToastr("error", "Error al subir la imagen");
+        }).always(function () {
+            $spinner.hide();
+            input.value = "";
+        });
+    });
+
+    $(document).on("click", ".singleImageRemove", function () {
+        var $field = $(this).closest(".singleImageField");
+        $field.find(".singleImageValue").val("");
+        $field.find(".singleImagePreview").attr("src", "");
+        $field.find(".singleImageThumb").hide();
+    });
 })();
+
