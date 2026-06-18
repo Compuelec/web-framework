@@ -90,8 +90,8 @@ if (!in_array($_SESSION['admin']->rol_admin ?? '', ['superadmin', 'admin'], true
                     </div>
 
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="wpb-detail" checked>
-                        <label class="form-check-label" for="wpb-detail">Generar página de detalle (vista individual)</label>
+                        <input class="form-check-input" type="checkbox" id="wpb-detail">
+                        <label class="form-check-label" for="wpb-detail">Generar también una página de detalle (vista individual de cada registro)</label>
                     </div>
 
                     <div class="mb-3">

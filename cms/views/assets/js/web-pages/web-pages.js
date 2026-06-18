@@ -150,7 +150,7 @@ Web Pages builder (visual, configurable)
         $("#wpb-accent").val("#0d6efd");
         $("input[name='wpb-layout'][value='cards']").prop("checked", true);
         $("#wpb-perrow").val("3");
-        $("#wpb-detail").prop("checked", true);
+        $("#wpb-detail").prop("checked", false);
         $table.val("");
         $title.prop("disabled", true).empty().append("<option>Elige una tabla</option>");
         $cols.html('<span class="text-muted small">Elige una tabla</span>');

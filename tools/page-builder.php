@@ -140,7 +140,7 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$layout      = \$cfg['layout'] ?? 'cards';
 \$accent      = \$cfg['accent'] ?? '#0d6efd';
 \$perRow      = (int)(\$cfg['perRow'] ?? 3);
-\$detailUrl   = \$baseUrl . 'pages/' . {$df} . '.php';
+\$detailUrl   = {$df} . '.php'; // relative: same web/pages/ directory
 
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = \$cfg['intro'] ?? '';
@@ -300,7 +300,7 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$table       = {$t};
 \$idColumn    = {$id};
 \$titleColumn = {$ti};
-\$listUrl     = \$baseUrl . 'pages/' . {$lf} . '.php';
+\$listUrl     = {$lf} . '.php'; // relative: same web/pages/ directory
 
 \$record   = null;
 \$error    = null;
