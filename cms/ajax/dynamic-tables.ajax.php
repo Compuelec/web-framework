@@ -247,7 +247,7 @@ class DynamicTablesController{
 
 								}else if($item->type_column == "multiimage"){
 
-									$multiImgs = json_decode(urldecode($value[$item->title_column]), true);
+									$multiImgs = json_decode(urldecode($value[$item->title_column] ?? ''), true);
 									if(is_array($multiImgs) && count($multiImgs)){
 										foreach($multiImgs as $imgUrl){
 											$HTMLTable .= '<a href="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" target="_blank">

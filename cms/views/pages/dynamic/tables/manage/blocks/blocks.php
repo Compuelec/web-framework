@@ -81,7 +81,13 @@ if (!empty($module->columns[$i]->conditions_column)) {
 		File, Image, Video type form
 		=============================================*/
 		
-		include "forms/file.php"; /* Multi-image type form */ include "forms/multiimage.php"; 
+		include "forms/file.php";
+
+			/*=============================================
+			Multi-image type form
+			=============================================*/
+
+			include "forms/multiimage.php"; 
 
 		/*=============================================
 		Date type form
