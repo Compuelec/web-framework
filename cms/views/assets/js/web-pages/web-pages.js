@@ -59,8 +59,8 @@ Visual generator for public frontend pages.
             cols.forEach(function (c) {
                 $title.append($("<option>").val(c).text(c));
             });
-            // Default to a name_* column if present.
-            var preferred = cols.find(function (c) { return /^name_/.test(c) || /^title_/.test(c); });
+            // Default to a name_* or title_* column if present.
+            var preferred = cols.filter(function (c) { return /^name_/.test(c) || /^title_/.test(c); })[0];
             if (preferred) { $title.val(preferred); }
 
             $title.prop("disabled", false);
@@ -109,7 +109,7 @@ Visual generator for public frontend pages.
             }
         }).done(function (res) {
             if (!res || !res.success) {
-                $result.html(alertBox("danger", "No se pudo generar", (res && res.error) || "Error desconocido."));
+                $result.html(alertBox("danger", "No se pudo generar", escapeHtml((res && res.error) || "Error desconocido.")));
                 return;
             }
 

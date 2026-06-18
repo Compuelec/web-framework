@@ -27,6 +27,13 @@ if (!SessionController::validateCsrfRequest()) {
     exit;
 }
 
+// Writing files to the server is an admin-level action.
+$role = $_SESSION['admin']->rol_admin ?? '';
+if (!in_array($role, ['superadmin', 'admin'], true)) {
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 require_once __DIR__ . '/../../tools/make-web-page.php';
 
 $action = $_POST['action'] ?? '';
@@ -65,34 +72,47 @@ if ($pagesDir === false) {
     exit;
 }
 
-// Write the files when the directory is writable; otherwise hand the source
-// back to the UI so the user can download it.
-$created  = [];
-$sources  = [];
-$writable = is_writable($pagesDir);
-
+$sources = [];
 foreach ($targets as $tgt) {
     $sources[$tgt['file'] . '.php'] = $tgt['source'];
-    if (!$writable) {
-        continue;
-    }
-    $path = $pagesDir . DIRECTORY_SEPARATOR . $tgt['file'] . '.php';
-    if (@file_put_contents($path, $tgt['source']) !== false) {
-        $created[] = $tgt['file'] . '.php';
-    }
 }
 
-if ($writable && count($created) === count($targets)) {
-    echo json_encode([
-        'success'  => true,
-        'written'  => true,
-        'files'    => $created,
-        'urlPath'  => 'web/pages/' . $opts['fileName'] . '.php',
-    ]);
+// Write the files when the directory is writable; otherwise hand the source
+// back to the UI so the user can download it.
+if (is_writable($pagesDir)) {
+
+    $createdPaths = [];
+    $ok = true;
+
+    foreach ($targets as $tgt) {
+        $path = $pagesDir . DIRECTORY_SEPARATOR . $tgt['file'] . '.php';
+        if (@file_put_contents($path, $tgt['source']) === false) {
+            $ok = false;
+            break;
+        }
+        $createdPaths[] = $path;
+    }
+
+    if ($ok) {
+        echo json_encode([
+            'success'  => true,
+            'written'  => true,
+            'files'    => array_map('basename', $createdPaths),
+            'urlPath'  => 'web/pages/' . $opts['fileName'] . '.php',
+        ]);
+        exit;
+    }
+
+    // Roll back any partial writes so the system is not left inconsistent.
+    foreach ($createdPaths as $p) {
+        @unlink($p);
+    }
+    Logger::error('Web page generation failed mid-write; rolled back', ['dir' => $pagesDir]);
+    echo json_encode(['success' => false, 'error' => 'No se pudieron escribir todos los archivos.']);
     exit;
 }
 
-// Not writable (or a write failed): return the source for download.
+// Not writable: return the source for download.
 Logger::warning('web/pages not writable; returning generated source', ['dir' => $pagesDir]);
 echo json_encode([
     'success' => true,

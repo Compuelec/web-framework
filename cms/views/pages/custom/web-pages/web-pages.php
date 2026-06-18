@@ -3,6 +3,13 @@ if (!isset($_SESSION['admin'])) {
     header('Location: ' . ($cmsBasePath ?? '') . '/login');
     exit;
 }
+
+// Generating server files is an admin-level action (defense in depth — the
+// AJAX endpoint enforces the same restriction).
+if (!in_array($_SESSION['admin']->rol_admin ?? '', ['superadmin', 'admin'], true)) {
+    echo '<div class="container-fluid p-4"><div class="alert alert-danger">No tienes permisos para acceder a esta página.</div></div>';
+    return;
+}
 ?>
 
 <div class="container-fluid py-4 px-4" id="web-pages-builder">

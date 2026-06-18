@@ -502,23 +502,26 @@ if($adminTable !== null && is_object($adminTable)){
 			));
 		}
 
-		// Ensure the Web Pages builder page exists
-		$webPagesCheck = CurlController::request("pages?linkTo=url_page&equalTo=web-pages", "GET", array());
-		$webPagesExists = (
-			$webPagesCheck && is_object($webPagesCheck) &&
-			isset($webPagesCheck->status) && $webPagesCheck->status == 200 &&
-			isset($webPagesCheck->results) && is_array($webPagesCheck->results) &&
-			count($webPagesCheck->results) > 0
-		);
-		if (!$webPagesExists) {
-			CurlController::request("pages?token=no&except=id_page", "POST", array(
-				"title_page"        => "Páginas Web",
-				"url_page"          => "web-pages",
-				"icon_page"         => "bi bi-window-plus",
-				"type_page"         => "custom",
-				"order_page"        => 98,
-				"date_created_page" => date("Y-m-d"),
-			));
+		// Ensure the Web Pages builder page exists (checked once per session)
+		if (empty($_SESSION['_web_pages_ensured'])) {
+			$webPagesCheck = CurlController::request("pages?linkTo=url_page&equalTo=web-pages", "GET", array());
+			$webPagesExists = (
+				$webPagesCheck && is_object($webPagesCheck) &&
+				isset($webPagesCheck->status) && $webPagesCheck->status == 200 &&
+				isset($webPagesCheck->results) && is_array($webPagesCheck->results) &&
+				count($webPagesCheck->results) > 0
+			);
+			if (!$webPagesExists) {
+				CurlController::request("pages?token=no&except=id_page", "POST", array(
+					"title_page"        => "Páginas Web",
+					"url_page"          => "web-pages",
+					"icon_page"         => "bi bi-window-plus",
+					"type_page"         => "custom",
+					"order_page"        => 98,
+					"date_created_page" => date("Y-m-d"),
+				));
+			}
+			$_SESSION['_web_pages_ensured'] = true;
 		}
 		?>
 
