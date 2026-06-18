@@ -750,7 +750,7 @@ $(document).on("click",".addColumn",function(){
 				<div class="card-body">
 					<div class="d-flex justify-content-between align-items-center mb-3">
 						<h6 class="card-title mb-0 text-muted">
-							<i class="bi bi-columns"></i> Columna ${$(".listColumns .col-12").length + 1}
+							<i class="bi bi-columns"></i> Columna ${$(".listColumns > .col-12").length + 1}
 						</h6>
 						<button type="button" class="btn btn-sm btn-outline-danger deleteColumn" index="${indexRandom}" idItem="0" title="Eliminar columna">
 							<i class="bi bi-trash"></i>
