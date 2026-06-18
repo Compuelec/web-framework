@@ -38,6 +38,28 @@ require_once __DIR__ . '/../../api/models/connection.php';
 $pagesDir = realpath(__DIR__ . '/../../web/pages');
 $action   = $_POST['action'] ?? '';
 
+/* ============================ tables ============================ */
+// List user/custom data tables only (framework + plugin tables are hidden).
+if ($action === 'tables') {
+    $link = Connection::connect();
+    if ($link === null) {
+        echo json_encode(['success' => false, 'error' => 'DB connection failed']);
+        exit;
+    }
+    try {
+        $db = $link->query('SELECT DATABASE()')->fetchColumn();
+        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type = 'BASE TABLE' ORDER BY TABLE_NAME");
+        $stmt->execute([':db' => $db]);
+        $all    = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $custom = array_values(array_filter($all, function ($t) { return !pb_isSystemTable($t); }));
+        echo json_encode(['success' => true, 'tables' => $custom]);
+    } catch (Throwable $e) {
+        Logger::error('web-pages tables failed', ['error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'No se pudieron leer las tablas']);
+    }
+    exit;
+}
+
 /* ============================ columns ============================ */
 if ($action === 'columns') {
     $table = (string)($_POST['table'] ?? '');

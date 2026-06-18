@@ -77,6 +77,15 @@ it('generates valid PHP for every layout', function() {
     assertValidPagePhp(buildConfigurableDetail(['table' => 'products']), 'detail');
 });
 
+it('flags framework tables as system and user tables as custom', function() {
+    assertTrue(pb_isSystemTable('admins'), 'admins is system');
+    assertTrue(pb_isSystemTable('PAGES'), 'case-insensitive');
+    assertTrue(pb_isSystemTable('page_seo'), 'plugin table is system');
+    assertTrue(pb_isSystemTable('workflows'), 'plugin table is system');
+    assertFalse(pb_isSystemTable('products'), 'user table is custom');
+    assertFalse(pb_isSystemTable('clientes'), 'user table is custom');
+});
+
 it('escapes record output but emits custom content verbatim', function() {
     $src = buildConfigurablePage(['table' => 'products', 'customHtml' => '<x-promo></x-promo>']);
     assertTrue(strpos($src, 'htmlspecialchars') !== false, 'data is escaped');
