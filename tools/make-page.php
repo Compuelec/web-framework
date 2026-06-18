@@ -104,6 +104,7 @@ $path = $pagesDir . '/' . $cfg['fileName'] . '.php';
 if (@file_put_contents($path, $source) === false) {
     fail('Could not write ' . $path . ' (check write permissions on web/pages).');
 }
+@chmod($path, 0664); // group-writable so the CMS (web server) can edit it too
 
 // ---- optional: set as the site home page ------------------------------------
 $homeSet = false;

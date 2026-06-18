@@ -353,10 +353,17 @@ if (is_writable($pagesDir)) {
     $ok = true;
     foreach ($targets as $tgt) {
         $path = $pagesDir . DIRECTORY_SEPARATOR . $tgt['file'] . '.php';
-        if (@file_put_contents($path, $tgt['source']) === false) {
+        // Write to a temp file then rename over the target. Because the web server
+        // owns web/pages, this replaces the page even when the existing file was
+        // created by another user (e.g. via tools/make-page.php on the CLI), where
+        // a direct overwrite would fail. chmod 0664 so CLI tools can edit it too.
+        $tmp = $path . '.tmp' . getmypid();
+        if (@file_put_contents($tmp, $tgt['source']) === false || !@rename($tmp, $path)) {
+            @unlink($tmp);
             $ok = false;
             break;
         }
+        @chmod($path, 0664);
         $createdPaths[] = $path;
     }
     if ($ok) {
