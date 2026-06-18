@@ -78,11 +78,11 @@ Web Pages builder (visual, configurable)
     function loadPages() {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "list" } })
             .done(function (res) {
-                if (res && res.success === false) {
-                    $pages.html('<div class="list-group-item text-danger small">' + escapeHtml(res.error || "Error al cargar.") + "</div>");
+                if (!res || !res.success) {
+                    $pages.html('<div class="list-group-item text-danger small">' + escapeHtml((res && res.error) || "Error al cargar.") + "</div>");
                     return;
                 }
-                var pages = (res && res.pages) || [];
+                var pages = res.pages || [];
                 if (!pages.length) {
                     $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>');
                     return;
