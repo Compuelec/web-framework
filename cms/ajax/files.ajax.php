@@ -469,37 +469,41 @@ class FilesController{
 
 		$files = CurlController::request($url,$method,$fields);
 
-		if($files->status == 200){
+		/*=============================================
+		Sum the size of every file in the folder. Only update the
+		total when the fetch succeeded (200, sum the files) or the
+		folder is genuinely empty (404 -> 0). On any other status
+		(network/DB error) do NOT overwrite the stored total.
+		=============================================*/
 
-			$files = $files->results;
-			$totalSize = 0;
-			$countFiles = 0;
+		$totalSize = 0;
 
-			foreach ($files as $key => $value) {
-				
+		if($files->status == 200 && isset($files->results) && is_array($files->results)){
+
+			foreach ($files->results as $value) {
 				$totalSize += $value->size_file;
-				$countFiles++;
-
-				if($countFiles == count($files)){
-
-					/*=============================================
-					Update folders
-					=============================================*/
-
-					$url = 	"folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
-					$method = "PUT";
-					$fields = "total_folder=".$totalSize;
-
-					$folders = CurlController::request($url,$method,$fields);
-
-					if($folders->status == 200){
-
-						echo $folders->status;
-					}
-				}
 			}
+
+		}else if($files->status != 404){
+
+			echo 500;
+			return;
 		}
 
+		/*=============================================
+		Update the folder total once (0 when the folder is empty)
+		=============================================*/
+
+		$url = "folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
+		$method = "PUT";
+		$fields = "total_folder=".$totalSize;
+
+		$folders = CurlController::request($url,$method,$fields);
+
+		if($folders->status == 200){
+
+			echo $folders->status;
+		}
 
 	}
 

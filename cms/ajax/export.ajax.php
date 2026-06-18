@@ -50,7 +50,7 @@ try {
     }
     
     if (isset($_GET['between1']) && isset($_GET['between2'])) {
-        $url .= "&between1=" . $_GET['between1'] . "&between2=" . $_GET['between2'];
+        $url .= "&between1=" . urlencode($_GET['between1']) . "&between2=" . urlencode($_GET['between2']);
     }
     
     $data = CurlController::request($url, $method, $fields);
