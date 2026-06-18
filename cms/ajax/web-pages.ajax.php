@@ -464,11 +464,24 @@ if (is_writable($pagesDir)) {
         $createdPaths[] = $path;
     }
     if ($ok) {
+        // If marked as the home page, point web/index.php at it so the site root
+        // (e.g. www.midominio.cl/) opens this page.
+        $homeWritten = false;
+        if (!empty($_POST['isHome'])) {
+            $webDir = realpath(__DIR__ . '/../../web');
+            if ($webDir !== false) {
+                $indexPhp = "<?php\n"
+                          . "// Homepage — set from the page builder. Serves the chosen page at the site root.\n"
+                          . "include __DIR__ . '/pages/" . $cfg['fileName'] . ".php';\n";
+                $homeWritten = @file_put_contents($webDir . DIRECTORY_SEPARATOR . 'index.php', $indexPhp) !== false;
+            }
+        }
         echo json_encode([
-            'success' => true,
-            'written' => true,
-            'files'   => array_map('basename', $createdPaths),
-            'urlPath' => 'web/pages/' . $cfg['fileName'] . '.php',
+            'success'     => true,
+            'written'     => true,
+            'files'       => array_map('basename', $createdPaths),
+            'urlPath'     => 'web/pages/' . $cfg['fileName'] . '.php',
+            'homeWritten' => $homeWritten,
         ]);
         exit;
     }

@@ -263,6 +263,7 @@ Web Pages builder (template + live preview)
             ogDesc:    $("#wpb-og-desc").val(),
             ogImage:   $("#wpb-og-image").val(),
             private:   $("input[name='wpb-visibility']:checked").val() === "private" ? 1 : 0,
+            isHome:    $("#wpb-home").is(":checked") ? 1 : 0,
             "accessRoles[]": $(".wpb-role:checked").map(function () { return this.value; }).get(),
             "accessUsers[]": $(".wpb-user:checked").map(function () { return this.value; }).get()
         };
@@ -360,6 +361,7 @@ Web Pages builder (template + live preview)
         $genLbl.text("Crear página");
         $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js,#wpb-meta-title,#wpb-meta-desc,#wpb-og-title,#wpb-og-desc,#wpb-og-image").val("");
         $("#wpb-og-type").val("website");
+        $("#wpb-home").prop("checked", false);
         if (cmTemplate) { cmTemplate.setValue(""); }
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }
@@ -389,8 +391,9 @@ Web Pages builder (template + live preview)
                     var links = res.files.map(function (f) { return "<li><code>web/pages/" + escapeHtml(f) + "</code></li>"; }).join("");
                     var viewUrl = (window.CMS_BASE_PATH || "").replace(/\/cms$/, "") + "/" + escapeHtml(res.urlPath);
                     fncToastr("success", "Página guardada correctamente");
+                    var homeNote = res.homeWritten ? '<div class="small text-success mb-2"><i class="bi bi-house-door me-1"></i>Es la página de inicio (raíz del dominio).</div>' : "";
                     $result.html(resultCard("Listo",
-                        "<ul class='mb-2 small'>" + links + "</ul>" +
+                        "<ul class='mb-2 small'>" + links + "</ul>" + homeNote +
                         '<a class="btn btn-sm btn-primary" target="_blank" href="' + viewUrl + '"><i class="bi bi-box-arrow-up-right me-1"></i>Ver página</a>'));
                     loadPages();
                 } else {

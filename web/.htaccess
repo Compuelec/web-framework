@@ -4,7 +4,12 @@ RewriteEngine On
 # Route sitemap.xml to sitemap.php
 RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 
-# Route slug-based URLs to page.php (e.g. /about-us → page.php?slug=about-us)
+# Clean URLs: /slug → page.php?slug=slug. page.php serves a builder-generated
+# web/pages/<slug>.php if it exists, otherwise the SEO/slug page. Existing files
+# and directories (assets, uploads, pages/*.php) are served as-is.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([a-z0-9-]+)/?$ page.php?slug=$1 [L,QSA]
+RewriteRule ^([a-z0-9_-]+)/?$ page.php?slug=$1 [L,QSA]
+
+# The homepage (/) is served by index.php (set as a home page from the builder).
+DirectoryIndex index.php

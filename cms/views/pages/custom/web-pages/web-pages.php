@@ -153,6 +153,13 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
+                    <div class="form-check mb-2 wpb-page-only">
+                        <input class="form-check-input" type="checkbox" id="wpb-home">
+                        <label class="form-check-label small" for="wpb-home">
+                            <i class="bi bi-house-door me-1"></i>Usar como <strong>página de inicio</strong> (la raíz del dominio abrirá esta página)
+                        </label>
+                    </div>
+
                     <div class="d-flex align-items-end gap-2">
                         <div class="flex-grow-1 wpb-page-only">
                             <label class="form-label fw-semibold" for="wpb-name">Nombre del archivo</label>
