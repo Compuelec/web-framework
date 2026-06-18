@@ -111,7 +111,9 @@ ob_start();
                             <h5 class="card-title"><?php echo htmlspecialchars((string) \$title, ENT_QUOTES); ?></h5>
                             <dl class="row small mb-0">
                                 <?php foreach (\$row as \$field => \$value):
-                                    if (\$field === \$idColumn || \$field === \$titleColumn || \$value === null || \$value === '') { continue; }
+                                    // Skip the id/title (already shown) and non-scalar values
+                                    // (e.g. JSON columns) which can't be cast to a string.
+                                    if (\$field === \$idColumn || \$field === \$titleColumn || \$value === null || \$value === '' || !is_scalar(\$value)) { continue; }
                                 ?>
                                     <dt class="col-5 text-muted"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', \$field)), ENT_QUOTES); ?></dt>
                                     <dd class="col-7"><?php echo htmlspecialchars(mb_strimwidth((string) \$value, 0, 80, '…'), ENT_QUOTES); ?></dd>
@@ -212,10 +214,16 @@ ob_start();
         <h1 class="mb-4"><?php echo htmlspecialchars((string) (\$record[\$titleColumn] ?? 'Detail'), ENT_QUOTES); ?></h1>
         <table class="table">
             <tbody>
-                <?php foreach (\$record as \$field => \$value): ?>
+                <?php foreach (\$record as \$field => \$value):
+                    // Scalars render as-is; arrays/objects (e.g. JSON columns)
+                    // are pretty-printed instead of crashing on a string cast.
+                    \$display = (is_scalar(\$value) || \$value === null)
+                        ? (string) \$value
+                        : json_encode(\$value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+                ?>
                     <tr>
                         <th class="text-muted" style="width: 30%"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', \$field)), ENT_QUOTES); ?></th>
-                        <td><?php echo nl2br(htmlspecialchars((string) \$value, ENT_QUOTES)); ?></td>
+                        <td><?php echo nl2br(htmlspecialchars(\$display, ENT_QUOTES)); ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
