@@ -55,7 +55,9 @@ function buildWebPageSource(array $opts) {
     ? require \$configPath
     : (file_exists(__DIR__ . '/../config.example.php') ? require __DIR__ . '/../config.example.php' : []);
 
-date_default_timezone_set(is_array(\$config) ? (\$config['timezone'] ?? 'America/Santiago') : 'America/Santiago');
+if (is_array(\$config) && !empty(\$config['timezone'])) {
+    date_default_timezone_set(\$config['timezone']);
+}
 
 require_once __DIR__ . '/../controllers/api.controller.php';
 

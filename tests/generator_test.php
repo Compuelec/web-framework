@@ -45,7 +45,9 @@ it('generates valid, escaped PHP that uses the shared template', function() {
     assertTrue(strpos($src, "views/template.php") !== false, 'should include the shared template');
 
     // The generated source must itself be syntactically valid PHP.
-    $tmp = tempnam(sys_get_temp_dir(), 'genpage') . '.php';
+    // Use the tempnam() path directly (php -l checks any extension) so no
+    // orphan temp file is left behind.
+    $tmp = tempnam(sys_get_temp_dir(), 'genpage');
     file_put_contents($tmp, $src);
     $out = [];
     $code = 0;
