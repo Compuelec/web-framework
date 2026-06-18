@@ -33,6 +33,7 @@ foreach ($writableDirs as $rel) {
     $dir = $root . '/' . $rel;
     if (!is_dir($dir)) {
         if (@mkdir($dir, 0775, true)) {
+            @chmod($dir, 0775); // mkdir is subject to umask; enforce 0775
             $created[] = $rel . '/';
         }
     }
@@ -52,6 +53,8 @@ foreach ($configDirs as $dir) {
         }
         if (@copy($example, $config)) {
             $created[] = str_replace($root . '/', '', $config);
+        } else {
+            out('! Could not create ' . str_replace($root . '/', '', $config) . ' (permission? run via setup.sh / sudo).');
         }
     } elseif (file_exists($config)) {
         $skipped[] = str_replace($root . '/', '', $config) . ' (already exists)';
@@ -67,7 +70,15 @@ $cmsConfig = file_exists($root . '/cms/config.php') ? @include $root . '/cms/con
 if (!file_exists($webConfig)) {
     if (is_array($cmsConfig) && !empty($cmsConfig['api']['base_url']) && !empty($cmsConfig['api']['key'])) {
         $apiBase  = rtrim($cmsConfig['api']['base_url'], '/');
-        $siteBase = preg_replace('#/api$#', '/web', $apiBase) . '/';
+        // The public site usually sits next to the API (…/api → …/web). If that
+        // shape doesn't apply (subdomain / different host), warn so the user
+        // sets site.base_url manually.
+        $siteBase = preg_replace('#/api$#', '/web', $apiBase);
+        if ($siteBase === $apiBase) {
+            out('! Could not derive the public site URL from api.base_url (' . $apiBase . ').');
+            out('  Edit web/config.php and set site.base_url to your public web URL.');
+        }
+        $siteBase = rtrim($siteBase, '/') . '/';
         $data = [
             'api' => [
                 'base_url' => $apiBase . '/',
