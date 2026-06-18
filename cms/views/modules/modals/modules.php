@@ -15,7 +15,7 @@
         <div class="modal-body px-4">
 
           <!--=============================================
-          Seleccionar tipo de módulo
+          Select module type
           ===============================================-->
 
           <div class="form-group mb-3">
@@ -41,7 +41,7 @@
           </div>
 
           <!--=============================================
-          Agregar título al módulo
+          Add title to module
           ===============================================-->
 
           <div class="form-group mb-3">

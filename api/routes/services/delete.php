@@ -45,7 +45,7 @@ if(isset($_GET["id"]) && isset($_GET["nameId"])){
 			}
 
 			/*=============================================
-			Validar la tabla y las columnas
+			Validate the table and the columns
 			=============================================*/
 
 			$columns = array($_GET["except"]);

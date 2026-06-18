@@ -74,7 +74,7 @@ if(isset($_POST)){
 				}
 
 				/*=============================================
-				Validar la tabla y las columnas
+				Validate the table and the columns
 				=============================================*/
 
 				$columns = array($_GET["except"]);

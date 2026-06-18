@@ -214,14 +214,14 @@ $('#daterange-btn').daterangepicker({
 		var between2 = end.format('YYYY-MM-DD');
 
 		/*=============================================
-		Actualizando el selector de fechas
+		Updating the date selector
 		=============================================*/
 
 		$("#startDate").html(between1);
 		$("#endDate").html(between2);	
 
 		/*=============================================
-		Actualizando las fechas de los input ocultos
+		Updating the dates in the hidden inputs
 		=============================================*/	
 
 		$("#between1").val(between1);
@@ -235,7 +235,7 @@ $('#daterange-btn').daterangepicker({
 );
 
 /*=============================================
-Cargar tabla con Ajax
+Load table with Ajax
 =============================================*/
 
 function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,between1,between2){
@@ -358,7 +358,7 @@ function loadAjaxTable(contentModule,orderBy,orderMode,limit,page,filter,search,
 }
 
 /*=============================================
-Seleccionar Item Individual
+Select Individual Item
 =============================================*/
 
 $(document).on("change",".checkItem",function(){
@@ -395,7 +395,7 @@ $(document).on("change",".checkItem",function(){
 })
 
 /*=============================================
-Seleccionar masiva de items
+Bulk selection of items
 =============================================*/
 
 $(document).on("click",".checkAllItems",function(){
@@ -753,7 +753,7 @@ $(document).on("click",".mySelects",function(){
 })
 
 /*=============================================
-Cambiar el orden de un registro
+Change the order of a record
 =============================================*/
 
 $(document).on("change",".changeOrder",function(){

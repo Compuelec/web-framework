@@ -11,7 +11,7 @@ if($files->status == 200){
 	$files = $files->results;
 
 	/*=============================================
-	Traer el total de archivos existentes en BD
+	Fetch the total number of existing files in the DB
 	=============================================*/
 
 	$url = "files?select=id_file";

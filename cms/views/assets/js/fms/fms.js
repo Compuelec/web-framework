@@ -444,7 +444,7 @@ function uploadFiles(event, type, time){
 }
 
 /*=============================================
-Ajuste de imagen para el grid
+Image adjustment for the grid
 =============================================*/
 
 function imgAdjustGrid(){
@@ -463,13 +463,13 @@ function imgAdjustGrid(){
 }
 
 /*=============================================
-Cambio al seleccionar servidor
+Change when selecting server
 =============================================*/
 
 $(document).on("change",".check-fms",function(){
 
 	/*=============================================
-	Seleccionar servidor
+	Select server
 	=============================================*/
 
 	if($(this).attr("type") == "radio"){
@@ -631,7 +631,7 @@ function uploadFilesAjax(folder){
 					countFiles++;
 
 					/*=============================================
-					Modifica la vista de la lista
+					Modify the list view
 					=============================================*/
 					$(".columnName"+i).parent().removeClass("itemsUp");
 					$(".columnName"+i).find("input").attr("readonly", false);
@@ -773,7 +773,7 @@ Delete File
 $(document).on("click",".deleteFile",function(){
 
 	/*=============================================
-	Confirmar si esta como administrador
+	Confirm if logged in as administrator
 	=============================================*/
 
 	if(!window.CMS_TOKEN){
@@ -862,7 +862,7 @@ $(document).on("click",".clearFile",function(){
 	var name = $(this).attr("name");
 
 	/*=============================================
-	Quitar archivo de la vista
+	Remove file from view
 	=============================================*/
 
 	if(mode == "list"){
@@ -958,7 +958,7 @@ Change file name
 $(document).on("change",".changeName", function(){
 
 	/*=============================================
-	Confirmar si esta como administrador
+	Confirm if logged in as administrator
 	=============================================*/
 
 	if(!window.CMS_TOKEN){
