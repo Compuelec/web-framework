@@ -40,6 +40,8 @@ if (!$link) {
     exit;
 }
 
+try {
+
 // Ensure table exists
 $link->exec("
     CREATE TABLE IF NOT EXISTS `cms_settings` (
@@ -145,6 +147,13 @@ switch ($action) {
         foreach ($allowedSeo as $key) {
             if (isset($_POST[$key])) {
                 $val = trim($_POST[$key]);
+
+                // Reject a malformed canonical base URL before storing it
+                if ($key === 'seo_canonical_base_url' && $val !== '' && !filter_var($val, FILTER_VALIDATE_URL)) {
+                    echo json_encode(['success' => false, 'error' => 'URL canónica inválida']);
+                    exit;
+                }
+
                 $stmt->execute([$key, $val]);
             }
         }
@@ -154,4 +163,9 @@ switch ($action) {
 
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
+}
+
+} catch (Exception $e) {
+    error_log("Theme settings AJAX error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }

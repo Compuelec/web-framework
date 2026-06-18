@@ -60,15 +60,13 @@ class DynamicTablesController{
 
 				$countDelete++;
 
-				if($countDelete == count($idItems)){
-
-					echo 200;
-
-				}
-
 			}
 
-    	}		
+    	}
+
+    	// Always respond so the client never receives an empty body on a
+    	// partial failure: 200 only when every item was deleted, 500 otherwise.
+    	echo $countDelete == count($idItems) ? 200 : 500;
 
 	}
 
@@ -463,14 +461,11 @@ class DynamicTablesController{
     		if($updateItem->status == 200){
 
     			$countChange++;
-
-    			if($countChange == count($idItems)){
-
-    				echo 200;
-    			}
-    		}  		
+    		}
 
 		}
+
+		echo $countChange == count($idItems) ? 200 : 500;
 	}
 
 	/*=============================================
@@ -498,14 +493,11 @@ class DynamicTablesController{
     		if($updateItem->status == 200){
 
     			$countSelect++;
-
-    			if($countSelect == count($idItems)){
-
-    				echo 200;
-    			}
-    		}  		
+    		}
 
 		}
+
+		echo $countSelect == count($idItems) ? 200 : 500;
 	}
 
 	/*=============================================
@@ -529,9 +521,12 @@ class DynamicTablesController{
 		if($updateItem->status == 200){
 
 			echo 200;
-			
-		}  		
-	
+
+		}else{
+
+			echo 500;
+		}
+
 	}
 
 }
