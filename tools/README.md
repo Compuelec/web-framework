@@ -42,3 +42,38 @@ The generator validates that the table/column names are safe identifiers and
 refuses to overwrite an existing page unless `--force` is given.
 
 Tests live in `tests/generator_test.php` (run via `php tests/run.php`).
+
+## make-migration.php
+
+Scaffolds a `CREATE TABLE` migration in `migrations/` following the project's
+conventions: the suffix column naming (`id_<suffix>`, `<col>_<suffix>`),
+aligned types, `date_created_*`/`date_updated_*` timestamps, and a commented
+`ROLLBACK`.
+
+### Usage
+
+```bash
+php tools/make-migration.php <table> [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--suffix=<s>` | Column suffix (default: derived from the table). |
+| `--columns=<csv>` | Comma list of `name:type` pairs. |
+| `--name=<file>` | Output file name (default: `create_<table>_table`). |
+| `--date=<Y-m-d>` | Header date stamp (default: today). |
+| `--force` | Overwrite the output file if it exists. |
+| `--stdout` | Print to stdout instead of writing a file. |
+
+Supported types: `string`/`text`, `textarea`/`longtext`, `int`, `double`,
+`money`, `bool`, `date`, `datetime`, `time`, `email`.
+
+### Example
+
+```bash
+php tools/make-migration.php products --suffix=product \
+    --columns="name:string,price:money,active:bool,description:textarea"
+```
+
+Review the generated file, then apply it with `run_migration.php` or your
+migration process. Tests live in `tests/migration_generator_test.php`.
