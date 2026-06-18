@@ -74,11 +74,14 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </button>
                     </div>
 
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="wpb-private">
-                        <label class="form-check-label" for="wpb-private">
-                            Página privada — requiere iniciar sesión para verla/editarla
-                        </label>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold d-block mb-1">Acceso a la página</label>
+                        <div class="btn-group" role="group" id="wpb-visibility">
+                            <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-public" value="public" checked>
+                            <label class="btn btn-outline-success" for="wpb-vis-public"><i class="bi bi-globe2 me-1"></i>Pública</label>
+                            <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-private" value="private">
+                            <label class="btn btn-outline-primary" for="wpb-vis-private"><i class="bi bi-lock-fill me-1"></i>Privada (con login)</label>
+                        </div>
                     </div>
 
                     <div id="wpb-access" class="border rounded p-2 mb-3" style="display:none;">

@@ -241,7 +241,7 @@ Web Pages builder (template + live preview)
             template:  $template.val(),
             customCss: $("#wpb-css").val(),
             customJs:  $("#wpb-js").val(),
-            private:   $("#wpb-private").is(":checked") ? 1 : 0,
+            private:   $("input[name='wpb-visibility']:checked").val() === "private" ? 1 : 0,
             "accessRoles[]": $(".wpb-role:checked").map(function () { return this.value; }).get(),
             "accessUsers[]": $(".wpb-user:checked").map(function () { return this.value; }).get()
         };
@@ -290,7 +290,7 @@ Web Pages builder (template + live preview)
         $template.val(c.template || "");
         $("#wpb-css").val(c.customCss || "");
         $("#wpb-js").val(c.customJs || "");
-        $("#wpb-private").prop("checked", !!c.private);
+        $("input[name='wpb-visibility'][value='" + (c.private ? "private" : "public") + "']").prop("checked", true);
         $("#wpb-access").toggle(!!c.private);
         var roles = c.accessRoles || [], users = (c.accessUsers || []).map(String);
         $(".wpb-role").each(function () { this.checked = roles.indexOf(this.value) !== -1; });
@@ -334,7 +334,7 @@ Web Pages builder (template + live preview)
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }
         $table.val("");
-        $("#wpb-private").prop("checked", false);
+        $("#wpb-vis-public").prop("checked", true);
         $("#wpb-access").hide();
         $(".wpb-role, .wpb-user").prop("checked", false);
         $fields.html('<span class="text-muted small">Elige una tabla</span>');
@@ -399,7 +399,7 @@ Web Pages builder (template + live preview)
     $("#wpb-css").on("input", schedulePreview);
     $repeat.on("click", insertRepeat);
     $formBtn.on("click", insertFormSnippet);
-    $("#wpb-private").on("change", function () { $("#wpb-access").toggle(this.checked); });
+    $("input[name='wpb-visibility']").on("change", function () { $("#wpb-access").toggle($(this).val() === "private"); });
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
