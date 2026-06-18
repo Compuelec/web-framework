@@ -303,7 +303,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/colors/colors.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/fms/fms.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/chat/chat.css">
-	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css">
+	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css?v=2">
 
 	<?php
 	// Inject CMS theme CSS variables from cms_settings table
@@ -926,7 +926,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/performance/performance.js"></script>
 		
 <?php endif ?>
