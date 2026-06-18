@@ -94,7 +94,7 @@ try {
             break;
     }
 } catch (Exception $e) {
-    error_log("Packaging AJAX error: " . $e->getMessage());
+    Logger::error("Packaging AJAX error", ['exception' => $e->getMessage()]);
     echo json_encode([
         'success' => false,
         'error' => 'Internal server error'

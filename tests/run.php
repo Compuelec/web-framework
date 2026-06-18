@@ -57,9 +57,11 @@ if (getenv('JWT_SECRET') === false) {
 
 // Code under test (loads the Composer autoloader + models).
 require_once __DIR__ . '/../api/models/connection.php';
+require_once __DIR__ . '/../core/logger.php';
 
 // Test suites.
 require __DIR__ . '/api_security_test.php';
+require __DIR__ . '/logger_test.php';
 
 // Summary.
 $t = $GLOBALS['__tests'];

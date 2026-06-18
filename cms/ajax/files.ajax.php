@@ -357,7 +357,7 @@ class FilesController{
 						// If we still don't have an ID, log and return error
 						if($idFile === null){
 							// Log the actual structure for debugging
-							error_log("Files API Response Structure: " . json_encode($uploadData, JSON_PRETTY_PRINT));
+							Logger::debug("Files API unexpected response structure", ['response' => $uploadData]);
 							$response = array(
 								"status" => 500,
 								"error" => "Error uploading file information: Could not extract file ID from API response. Check server logs for details."
@@ -899,7 +899,7 @@ if(isset($_FILES["file"])){
 		$ajax -> ajaxUploadFiles();
 	} catch(Exception $e) {
 		// Catch any unexpected errors and return JSON
-		error_log("Files upload AJAX error: " . $e->getMessage());
+		Logger::error("Files upload AJAX error", ['exception' => $e->getMessage()]);
 		$response = array(
 			"status" => 500,
 			"error" => "Internal server error"
