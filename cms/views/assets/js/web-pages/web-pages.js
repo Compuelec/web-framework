@@ -11,7 +11,6 @@ Web Pages builder (visual, configurable)
 
     var ajaxPath = window.CMS_AJAX_PATH || "/ajax";
     var url      = ajaxPath + "/web-pages.ajax.php";
-    var modules  = ajaxPath + "/modules.ajax.php";
 
     var $table   = $("#wpb-table");
     var $title   = $("#wpb-title");
@@ -28,12 +27,21 @@ Web Pages builder (visual, configurable)
         });
     }
 
-    /* ---------- load tables ---------- */
+    /* ---------- load tables (custom/user tables only) ---------- */
     function loadTables() {
-        $.ajax({ url: modules + "?action=getTables", method: "GET", dataType: "json" })
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "tables" } })
             .done(function (res) {
-                var tables = (res && res.results) || [];
-                $table.empty().append('<option value="">— Elige una tabla —</option>');
+                if (!res || !res.success) {
+                    $table.empty().append('<option value="">Error al cargar tablas</option>');
+                    return;
+                }
+                var tables = res.tables || [];
+                $table.empty();
+                if (!tables.length) {
+                    $table.append('<option value="">No hay tablas propias todavía</option>');
+                    return;
+                }
+                $table.append('<option value="">— Elige una tabla —</option>');
                 tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
             })
             .fail(function () { $table.empty().append('<option value="">Error al cargar tablas</option>'); });

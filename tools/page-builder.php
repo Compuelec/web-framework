@@ -16,6 +16,28 @@ function pb_isIdentifier($name) {
     return is_string($name) && preg_match('/^[a-zA-Z0-9_]+$/', $name) === 1;
 }
 
+/**
+ * Framework / bundled-plugin tables. These are infrastructure, not user data,
+ * so the visual page builder hides them and only offers custom (user-created)
+ * tables. When a new plugin ships its own table, add it here.
+ */
+function pb_systemTables() {
+    return [
+        // core framework
+        'admins', 'roles', 'pages', 'modules', 'columns', 'folders', 'files',
+        'cms_settings', 'activity_logs',
+        // bundled plugins
+        'dashboard_widgets', 'page_seo', 'payku_orders', 'workflows',
+    ];
+}
+
+/**
+ * Whether a table is a framework/system table (case-insensitive).
+ */
+function pb_isSystemTable($table) {
+    return in_array(strtolower((string)$table), pb_systemTables(), true);
+}
+
 function pb_deriveSuffix($table) {
     if (substr($table, -3) === 'ies') {
         return substr($table, 0, -3) . 'y';
