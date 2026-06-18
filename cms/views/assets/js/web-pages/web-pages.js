@@ -35,7 +35,7 @@ Web Pages builder (visual, configurable)
                     $table.empty().append('<option value="">Error al cargar tablas</option>');
                     return;
                 }
-                var tables = res.tables || [];
+                var tables = Array.isArray(res.tables) ? res.tables : [];
                 $table.empty();
                 if (!tables.length) {
                     $table.append('<option value="">No hay tablas propias todavía</option>');

@@ -22,13 +22,17 @@ function pb_isIdentifier($name) {
  * tables. When a new plugin ships its own table, add it here.
  */
 function pb_systemTables() {
-    return [
-        // core framework
-        'admins', 'roles', 'pages', 'modules', 'columns', 'folders', 'files',
-        'cms_settings', 'activity_logs',
-        // bundled plugins
-        'dashboard_widgets', 'page_seo', 'payku_orders', 'workflows',
-    ];
+    static $tables = null;
+    if ($tables === null) {
+        $tables = [
+            // core framework
+            'admins', 'roles', 'pages', 'modules', 'columns', 'folders', 'files',
+            'cms_settings', 'activity_logs',
+            // bundled plugins
+            'dashboard_widgets', 'page_seo', 'payku_orders', 'workflows',
+        ];
+    }
+    return $tables;
 }
 
 /**
