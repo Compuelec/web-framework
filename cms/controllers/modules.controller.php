@@ -73,7 +73,7 @@ class ModulesController{
 										$url = "columns?id=".$_POST["id_column_".$value]."&nameId=id_column&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "PUT";
 										$conditionsValue = isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '';
-										$matrixValue = isset($_POST["matrix_column_".$value]) ? $_POST["matrix_column_".$value] : '';
+										$matrixValue = $_POST["matrix_column_".$value] ?? '';
 										$data = "title_column=".str_replace(" ","_",$_POST["title_column_".$value])."&alias_column=".$_POST["alias_column_".$value]."&type_column=".$_POST["type_column_".$value]."&visible_column=".$_POST["visible_column_".$value]."&conditions_column=".urlencode($conditionsValue)."&matrix_column=".urlencode($matrixValue);
 
 										$updateColumn = CurlController::request($url,$method,$data);
@@ -111,7 +111,7 @@ class ModulesController{
 											"type_column" => $_POST["type_column_".$value],
 											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
-											"matrix_column" => isset($_POST["matrix_column_".$value]) ? $_POST["matrix_column_".$value] : '',
+											"matrix_column" => $_POST["matrix_column_".$value] ?? '',
 											"date_created_column" => date("Y-m-d")
 										);
 
@@ -429,7 +429,7 @@ class ModulesController{
 											"type_column" => $_POST["type_column_".$value],
 											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
-											"matrix_column" => isset($_POST["matrix_column_".$value]) ? $_POST["matrix_column_".$value] : '',
+											"matrix_column" => $_POST["matrix_column_".$value] ?? '',
 											"date_created_column" => date("Y-m-d")
 										);
 

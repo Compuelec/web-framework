@@ -911,13 +911,9 @@ Show the "max images" input only for the multi-image type
 
 $(document).on("change", "[name^='type_column_']", function(){
 
-	var wrap = $(this).closest(".col-12.mb-3").find(".matrixMaxWrap");
+	const wrap = $(this).closest(".row.g-3").find(".matrixMaxWrap");
 
-	if($(this).val() === "multiimage"){
-		wrap.show();
-	}else{
-		wrap.hide();
-	}
+	wrap.toggle($(this).val() === "multiimage");
 
 })
 
