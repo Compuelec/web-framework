@@ -151,7 +151,7 @@ PHP;
  * {$label} controller.
  */
 
-require_once __DIR__ . '/../../../cms/controllers/install.controller.php';
+require_once __DIR__ . '/../../../api/models/connection.php';
 
 class {$class} {
 
@@ -159,7 +159,7 @@ class {$class} {
     private \$link;
 
     public function __construct() {
-        \$this->link = InstallController::connect();
+        \$this->link = Connection::connect();
         \$this->ensureTableExists();
     }
 
