@@ -120,7 +120,9 @@
                         id="type_page"
                       >
                         <option value="modules">Modular</option>
-                        <option value="custom">Personalizable</option>
+                        <!-- 'custom' kept hidden: not offered for new sections (needs a manual PHP
+                             file), but preserved so editing existing custom system sections works. -->
+                        <option value="custom" hidden>Personalizable</option>
                         <option value="plugins">Plugin</option>
                         <option value="menu">Menú</option>
                         <option value="external_link">Enlace Externo</option>
