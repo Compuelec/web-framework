@@ -75,6 +75,34 @@ A cada campo le añade el sufijo de la tabla (`precio` → `precio_producto`).
 Tras crearla, la sección aparece en el **menú del CMS** y el usuario puede cargar
 registros (o cárgalos tú vía la API REST: `POST /api/<tabla>`).
 
+### ¿Esta tabla necesita página pública?
+
+**No siempre.** El Paso 2 (crear página) es **opcional**. Decide por cada tabla:
+
+- **Tabla con página** → usa `make-page.php` para una vista pública (catálogo,
+  listado, tienda…).
+- **Tabla solo-datos** (sin página) → se gestiona en el admin y se consume desde
+  una **aplicación web** (o app móvil) por la **API REST**. Muchas secciones son
+  así: configuraciones, inventario, usuarios de la app, pedidos, etc.
+
+Si el usuario no especifica, **pregunta** qué tablas requieren página y cuáles son
+solo-datos.
+
+### Consumir una sección solo-datos por la API
+
+La tabla queda disponible de inmediato en la API dinámica (header
+`Authorization: <api-key>`):
+
+```text
+GET    /api/<tabla>                          # listar
+GET    /api/<tabla>?linkTo=col&equalTo=valor # filtrar
+POST   /api/<tabla>                          # crear   (body JSON)
+PUT    /api/<tabla>?id=5&nameId=id_<suffix>  # actualizar
+DELETE /api/<tabla>?id=5&nameId=id_<suffix>  # eliminar
+```
+
+Detalles completos en **[API.md](API.md)**.
+
 ---
 
 ## Paso 2 — Crear la página pública (`tools/make-page.php`)
@@ -240,9 +268,14 @@ La página queda en `web/pages/tienda.php`, aparece en el admin y se ve en
 
 ## Reglas para el agente
 
-1. Si la funcionalidad necesita **gestionar datos** (stock, registros, etc.), crea
-   primero la sección con `tools/make-table.php`; luego la página con `make-page.php`
-   apuntando a esa `table`. Para páginas de solo contenido, usa directo `make-page.php`.
+1. Elige el caso según lo que pida el usuario:
+   - **Datos + página pública**: `make-table.php` (sección) → `make-page.php` (página
+     con esa `table`).
+   - **Solo datos** (app web / sin página pública): solo `make-table.php`; la app
+     consume la tabla por la **API REST**.
+   - **Solo contenido** (landing, info): solo `make-page.php` sin `table`.
+
+   Si no está claro, **pregunta** qué tablas necesitan página y cuáles son solo-datos.
 2. **Siempre** genera con `tools/make-page.php` (nunca escribas el `.php` a mano), o
    la página no aparecerá en el admin ni será editable.
 2. `name` en minúsculas, sin espacios ni acentos (`a-z 0-9 _ -`).
