@@ -50,7 +50,7 @@ Guía completa en **[docs/INSTALACION.md](docs/INSTALACION.md)**.
 ## 📚 Documentación
 
 | Tema | Documento |
-|---|---|
+| --- | --- |
 | Instalación, configuración y permisos | [docs/INSTALACION.md](docs/INSTALACION.md) |
 | Arquitectura y estructura del proyecto | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) |
 | Uso de la API REST | [docs/API.md](docs/API.md) |

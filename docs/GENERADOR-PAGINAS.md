@@ -27,7 +27,7 @@ su configuración) o **eliminarlas**.
 ## Etiquetas de la plantilla
 
 | Etiqueta | Qué hace |
-|---|---|
+| --- | --- |
 | `{{campo}}` | Muestra el valor de una columna (escapado). |
 | `{{#cada}} ... {{/cada}}` | Repite el HTML interior por **cada registro**. |
 | `{{#imagenes campo}}<img src="{{url}}">{{/imagenes}}` | Recorre un campo **multi-imagen** (arreglo JSON) y repite por cada imagen. |
@@ -43,6 +43,7 @@ Fuera de un bloque `{{#cada}}`, las etiquetas usan el **registro único**: el de
 ### Chips inteligentes
 
 Al elegir una tabla, cada columna aparece como un **chip**. Al hacer clic:
+
 - Campo de **imagen** → inserta `<img src="{{campo}}">`.
 - Campo **multi-imagen** → inserta el bucle `{{#imagenes campo}}...{{/imagenes}}`.
 - Otros campos → insertan `{{campo}}`.
@@ -76,6 +77,7 @@ El botón **"Insertar formulario"** arma un bloque `{{#form}}` con un campo por
 cada columna de la tabla (campos de archivo para las imágenes).
 
 Comportamiento de la página generada al enviar el formulario:
+
 - **Sin `?id`** → **crea** un registro nuevo (formulario vacío).
 - **Con `?id=5`** (solo en páginas privadas autorizadas) → **edita** ese registro
   (campos prellenados).
@@ -95,6 +97,7 @@ Cada página tiene un selector de acceso:
   existentes**: el visitante entra con el mismo email/contraseña del CMS.
 
 Al marcar **Privada** puedes restringir el acceso:
+
 - **Grupos / roles** — uno o varios roles (el `rol_admin` de tus usuarios, p. ej.
   `empleado`, `rrhh`).
 - **Usuarios específicos** — usuarios puntuales por email.
