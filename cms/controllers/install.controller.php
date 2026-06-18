@@ -996,6 +996,12 @@ class InstallController{
 							}
 						}
 
+						// Create the public site's shared header/footer partials
+						// (part of the public view). The template falls back if
+						// they're missing, but a fresh install should have them.
+						require_once __DIR__ . '/../../tools/web-partials.php';
+						wpb_ensurePartials();
+
 						echo '<script>
 						fncMatPreloader("off");
 						fncFormatInputs();
