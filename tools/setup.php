@@ -28,7 +28,7 @@ function out($m) { fwrite(STDOUT, $m . PHP_EOL); }
 /* ---------------------------------------------------------------------------
  * 1. Writable directories
  * ------------------------------------------------------------------------- */
-$writableDirs = ['web/pages', 'logs', 'api/tmp', 'cms/views/assets/files', 'packages'];
+$writableDirs = ['web/pages', 'web/partials', 'logs', 'api/tmp', 'cms/views/assets/files', 'packages'];
 foreach ($writableDirs as $rel) {
     $dir = $root . '/' . $rel;
     if (!is_dir($dir)) {
@@ -106,6 +106,27 @@ if (!file_exists($webConfig)) {
     }
 } else {
     $skipped[] = 'web/config.php (already exists)';
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. Shared header/footer partials — part of the public view, auto-created so a
+ *    fresh install/restore has them (the template still falls back if missing).
+ * ------------------------------------------------------------------------- */
+require_once $root . '/tools/web-partials.php';
+$partialExisted = [
+    'header' => file_exists(wpb_partialPath('header')),
+    'footer' => file_exists(wpb_partialPath('footer')),
+];
+wpb_ensurePartials();
+foreach ($partialExisted as $which => $existed) {
+    $rel  = 'web/partials/' . $which . '.php';
+    $path = wpb_partialPath('header' === $which ? 'header' : 'footer');
+    if ($path && file_exists($path)) {
+        if ($existed) { $skipped[] = $rel . ' (already exists)'; }
+        else          { $created[] = $rel; }
+    } else {
+        out('! Could not create ' . $rel . ' (permission?) — run via setup.sh / sudo.');
+    }
 }
 
 /* ---------------------------------------------------------------------------
