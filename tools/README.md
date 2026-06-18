@@ -5,13 +5,17 @@ with `php tools/<script>.php`.
 
 ## make-web-page.php
 
-Scaffolds a public frontend listing page (`web/pages/<name>.php`) for a
-dynamic table, following the project's conventions: it fetches via
-`ApiController`, renders Bootstrap cards, escapes all output with
-`htmlspecialchars`, and includes the shared `web/views/template.php`.
+Scaffolds public frontend pages for a dynamic table:
 
-This automates what previously had to be hand-written for every table —
-the public-frontend counterpart of the CMS's table builder.
+- a **listing page** (`web/pages/<name>.php`) — Bootstrap cards showing each
+  record's title and fields, with a "View details" link, and
+- a **detail page** (`web/pages/<name>-detail.php?id=...`) — fetches a single
+  record by id and shows all its fields.
+
+Both fetch via `ApiController`, escape all output with `htmlspecialchars`, and
+include the shared `web/views/template.php`. This automates what previously
+had to be hand-written for every table — the public-frontend counterpart of
+the CMS's table builder. Pass `--no-detail` to generate only the listing.
 
 ### Usage
 
@@ -25,8 +29,9 @@ php tools/make-web-page.php <table> [options]
 | `--id=<col>` | Primary-key column (default: `id_<suffix>`). |
 | `--title=<col>` | Column used as the card title (default: `name_<suffix>`). |
 | `--name=<file>` | Output file name without extension (default: `<table>`). |
-| `--force` | Overwrite the output file if it already exists. |
-| `--stdout` | Print to stdout instead of writing a file (preview). |
+| `--no-detail` | Generate only the listing page (skip the detail page). |
+| `--force` | Overwrite the output file(s) if they already exist. |
+| `--stdout` | Print to stdout instead of writing files (preview). |
 
 ### Examples
 
