@@ -107,7 +107,7 @@ function pb_extractConfig($source) {
 function buildConfigurablePage(array $config) {
     $cfg = pb_normalizeConfig($config);
     $b64 = base64_encode(json_encode($cfg));
-    $df  = var_export($cfg['detailFile'], true);
+    $df  = var_export($cfg['detailFile'] . '.php', true);
 
     return <<<PHP
 <?php
@@ -140,7 +140,7 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$layout      = \$cfg['layout'] ?? 'cards';
 \$accent      = \$cfg['accent'] ?? '#0d6efd';
 \$perRow      = (int)(\$cfg['perRow'] ?? 3);
-\$detailUrl   = \$baseUrl . 'pages/' . {$df} . '.php';
+\$detailUrl   = {$df}; // relative: same web/pages/ directory
 
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = \$cfg['intro'] ?? '';
@@ -273,7 +273,7 @@ function buildConfigurableDetail(array $config) {
     $t   = var_export($cfg['table'], true);
     $id  = var_export($cfg['idColumn'], true);
     $ti  = var_export($cfg['titleColumn'], true);
-    $lf  = var_export($cfg['fileName'], true);
+    $lf  = var_export($cfg['fileName'] . '.php', true);
     $ac  = var_export($cfg['accent'], true);
     $css = var_export($cfg['customCss'], true);
 
@@ -300,7 +300,7 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$table       = {$t};
 \$idColumn    = {$id};
 \$titleColumn = {$ti};
-\$listUrl     = \$baseUrl . 'pages/' . {$lf} . '.php';
+\$listUrl     = {$lf}; // relative: same web/pages/ directory
 
 \$record   = null;
 \$error    = null;
