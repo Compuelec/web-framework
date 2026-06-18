@@ -148,33 +148,49 @@ if($adminTable !== null && is_object($adminTable)){
 			<?php endif ?>
 
 			/*=============================================
-			Dashboard Color
+			Dashboard Color — accent comes from the global Apariencia theme
+			(theme_primary); falls back to the admin's color until configured.
 			=============================================*/
+			<?php
+			if (!isset($_SESSION['cms_theme'])) {
+				try {
+					$_accentLink = Connection::connect();
+					if ($_accentLink) {
+						$_accentStmt = $_accentLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+						$_SESSION['cms_theme'] = [];
+						foreach (($_accentStmt ? $_accentStmt->fetchAll(PDO::FETCH_OBJ) : []) as $_r) {
+							$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+						}
+					}
+				} catch (Throwable $e) { /* fall back to color_admin */ }
+			}
+			$_accent = !empty($_SESSION['cms_theme']['theme_primary']) ? $_SESSION['cms_theme']['theme_primary'] : $admin->color_admin;
+			?>
 
 			.backColor{
-				background: <?php echo $admin->color_admin ?> !important;
+				background: <?php echo $_accent ?> !important;
 				color: #FFF !important;
 				border: 0 !important;
 			}
 
 			.form-check-input:checked{
-				background-color: <?php echo $admin->color_admin ?> !important;
-			    border-color: <?php echo $admin->color_admin ?> !important;
+				background-color: <?php echo $_accent ?> !important;
+			    border-color: <?php echo $_accent ?> !important;
 			}
 
 			.textColor{
-				color: <?php echo $admin->color_admin ?> !important;
+				color: <?php echo $_accent ?> !important;
 			}
 
 			.page-item.active .page-link {
 				z-index: 3;
 				color: #fff !important;
-				background-color: <?php echo $admin->color_admin ?> !important;
-				border-color: <?php echo $admin->color_admin ?> !important;
+				background-color: <?php echo $_accent ?> !important;
+				border-color: <?php echo $_accent ?> !important;
 			}
 
 			.page-link {
-				color: <?php echo $admin->color_admin ?> !important;		
+				color: <?php echo $_accent ?> !important;
 			}
 
 		</style>

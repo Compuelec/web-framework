@@ -59,7 +59,18 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                             <span class="spinner-border spinner-border-sm text-primary" id="te-brand-logo-spin" style="display:none;"></span>
                         </div>
                     </div>
-                    <div class="form-text">Si hay logo, reemplaza el texto del nombre en el menú.</div>
+                    <div class="form-text">Si hay logo, se muestra arriba del nombre y el ícono en el menú.</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold" for="te-brand-symbol">Símbolo / ícono</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi-grid" id="te-brand-symbol-preview"></i></span>
+                        <input type="text" class="form-control" id="te-brand-symbol" placeholder="bi-house, bi-building, bi-gear…">
+                    </div>
+                    <div class="form-text">Clase de <a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener">Bootstrap Icons</a> (ej. <code>bi-building</code>). El color usa el <strong>Color primario</strong> de abajo.</div>
                 </div>
             </div>
         </div>
@@ -242,9 +253,17 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
             });
             var brandTitleEl = document.getElementById('te-brand-title');
             if (brandTitleEl) brandTitleEl.value = t.theme_brand_title || '';
+            var brandSymbolEl = document.getElementById('te-brand-symbol');
+            if (brandSymbolEl) brandSymbolEl.value = t.theme_brand_symbol || '';
+            setSymbolPreview(t.theme_brand_symbol || '');
             setBrandLogo(t.theme_brand_logo || '');
             applyPreview();
         });
+    }
+
+    function setSymbolPreview(cls) {
+        var p = document.getElementById('te-brand-symbol-preview');
+        if (p) p.className = (cls && cls.trim()) ? cls.trim() : 'bi-grid';
     }
 
     function setBrandLogo(url) {
@@ -379,6 +398,10 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
         var logoClear = document.getElementById('te-brand-logo-clear');
         if (logoClear) logoClear.addEventListener('click', function () { setBrandLogo(''); });
 
+        // Symbol preview as you type
+        var symInput = document.getElementById('te-brand-symbol');
+        if (symInput) symInput.addEventListener('input', function () { setSymbolPreview(this.value); });
+
         // Save
         var saveBtn = document.getElementById('te-save-btn');
         if (saveBtn) saveBtn.addEventListener('click', function () {
@@ -387,6 +410,7 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                 params.append(f.key, getVal(f.inputId));
             });
             params.append('theme_brand_title', getVal('te-brand-title'));
+            params.append('theme_brand_symbol', getVal('te-brand-symbol'));
             params.append('theme_brand_logo', document.getElementById('te-brand-logo').value);
 
             saveBtn.disabled = true;

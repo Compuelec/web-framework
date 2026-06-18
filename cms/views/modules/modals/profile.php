@@ -112,8 +112,10 @@
                     <h6 class="card-title text-muted mb-3">
                       <i class="bi bi-palette"></i> Apariencia
                     </h6>
-                    
-                    <div class="row g-3">
+                    <div class="alert alert-light border small mb-2">
+                      El <strong>símbolo</strong> y el <strong>color</strong> del dashboard se configuran en el módulo <strong>Apariencia</strong>.
+                    </div>
+                    <div class="row g-3" style="display:none;">
                       <div class="col-md-6">
                         <label for="symbol_admin" class="form-label small fw-semibold">Símbolo<sup>*</sup></label>
                         <div class="input-group input-group-sm">

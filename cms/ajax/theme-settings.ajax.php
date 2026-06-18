@@ -73,7 +73,7 @@ switch ($action) {
         }
 
         $colorKeys = ['theme_primary', 'theme_sidebar_bg', 'theme_active_bg', 'theme_active_color', 'theme_active_border'];
-        $textKeys  = ['theme_brand_title', 'theme_brand_logo']; // brand name and logo URL (not colors)
+        $textKeys  = ['theme_brand_title', 'theme_brand_logo', 'theme_brand_symbol']; // brand name, logo URL, icon class (not colors)
         $allowed   = array_merge($colorKeys, $textKeys);
         $stmt      = $link->prepare("
             INSERT INTO cms_settings (key_setting, value_setting)
