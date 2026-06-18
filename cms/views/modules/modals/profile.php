@@ -90,18 +90,12 @@
                     
                     <div class="row g-3">
                       <div class="col-md-12">
-                        <label for="title_admin" class="form-label small fw-semibold">Nombre del Dashboard<sup>*</sup></label>
-                        <input 
-                          type="text" 
-                          class="form-control form-control-sm rounded" 
-                          id="title_admin"
-                          name="title_admin"
-                          value="<?php echo h($_SESSION["admin"]->title_admin) ?>"
-                          placeholder="Nombre del dashboard"
-                          required
-                        >
-                        <div class="valid-feedback">Válido.</div>
-                        <div class="invalid-feedback">Campo inválido.</div>
+                        <!-- Dashboard name + logo moved to the Apariencia module.
+                             Kept as a hidden input so the profile save preserves it. -->
+                        <input type="hidden" id="title_admin" name="title_admin" value="<?php echo h($_SESSION["admin"]->title_admin) ?>">
+                        <div class="alert alert-light border small mb-0">
+                          <i class="bi bi-palette me-1"></i>El <strong>nombre del dashboard</strong> y el <strong>logo</strong> se configuran en el módulo <strong>Apariencia</strong>.
+                        </div>
                       </div>
                     </div>
                   </div>
