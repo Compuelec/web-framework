@@ -62,6 +62,7 @@ require_once __DIR__ . '/../core/logger.php';
 // Test suites.
 require __DIR__ . '/api_security_test.php';
 require __DIR__ . '/logger_test.php';
+require __DIR__ . '/generator_test.php';
 
 // Summary.
 $t = $GLOBALS['__tests'];
