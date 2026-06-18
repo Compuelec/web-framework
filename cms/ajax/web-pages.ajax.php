@@ -143,13 +143,15 @@ if ($action === 'delete') {
     $deleted = [];
     if (@unlink($path)) {
         $deleted[] = $file . '.php';
-    }
-    // Remove the companion detail page if it exists.
-    $detailFile = $cfg['detailFile'] ?? ($file . '-detail');
-    if (preg_match('/^[a-zA-Z0-9_-]+$/', (string)$detailFile)) {
-        $detailPath = $pagesDir . DIRECTORY_SEPARATOR . $detailFile . '.php';
-        if (is_file($detailPath) && @unlink($detailPath)) {
-            $deleted[] = $detailFile . '.php';
+
+        // Remove the companion detail page only after the main page is gone,
+        // so a failed main delete never reports partial success.
+        $detailFile = $cfg['detailFile'] ?? ($file . '-detail');
+        if (preg_match('/^[a-zA-Z0-9_-]+$/', (string)$detailFile)) {
+            $detailPath = $pagesDir . DIRECTORY_SEPARATOR . $detailFile . '.php';
+            if (is_file($detailPath) && @unlink($detailPath)) {
+                $deleted[] = $detailFile . '.php';
+            }
         }
     }
 
