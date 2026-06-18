@@ -464,16 +464,15 @@ if (is_writable($pagesDir)) {
         $createdPaths[] = $path;
     }
     if ($ok) {
-        // If marked as the home page, point web/index.php at it so the site root
-        // (e.g. www.midominio.cl/) opens this page.
+        // If marked as the home page, record it in web/partials/home.txt (a
+        // gitignored marker). web/index.php reads it and serves that page at the
+        // site root (e.g. www.midominio.cl/), so no tracked file is overwritten.
         $homeWritten = false;
         if (!empty($_POST['isHome'])) {
-            $webDir = realpath(__DIR__ . '/../../web');
-            if ($webDir !== false) {
-                $indexPhp = "<?php\n"
-                          . "// Homepage — set from the page builder. Serves the chosen page at the site root.\n"
-                          . "include __DIR__ . '/pages/" . $cfg['fileName'] . ".php';\n";
-                $homeWritten = @file_put_contents($webDir . DIRECTORY_SEPARATOR . 'index.php', $indexPhp) !== false;
+            $dir = wpb_partialsDir();
+            if ($dir !== false) {
+                if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+                $homeWritten = @file_put_contents($dir . DIRECTORY_SEPARATOR . 'home.txt', $cfg['fileName']) !== false;
             }
         }
         echo json_encode([
