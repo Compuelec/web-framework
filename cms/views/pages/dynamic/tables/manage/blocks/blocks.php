@@ -82,6 +82,7 @@ if (!empty($module->columns[$i]->conditions_column)) {
 		=============================================*/
 		
 		include "forms/file.php";
+		include "forms/image.php";
 
 			/*=============================================
 			Multi-image type form
