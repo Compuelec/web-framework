@@ -51,6 +51,24 @@ it('repeats the {{#cada}} block once per record', function() {
     assertSame('<ul><li>A</li><li>B</li><li>C</li></ul>', pb_renderTemplate($tpl, $records, []));
 });
 
+it('expands an image gallery block over a JSON array field', function() {
+    $row = ['imgs' => '["a.jpg","b.jpg"]'];
+    $out = pb_replaceFields('{{#imagenes imgs}}<img src="{{url}}">{{/imagenes}}', $row);
+    assertSame('<img src="a.jpg"><img src="b.jpg">', $out);
+});
+
+it('decodes URL-encoded image arrays in a gallery block', function() {
+    $row = ['imgs' => urlencode('["a.jpg","b.jpg"]')];
+    $out = pb_replaceFields('{{#imagenes imgs}}<img src="{{url}}">{{/imagenes}}', $row);
+    assertSame('<img src="a.jpg"><img src="b.jpg">', $out);
+});
+
+it('pb_imageUrls returns an empty list for non-array values', function() {
+    assertSame([], pb_imageUrls(''));
+    assertSame([], pb_imageUrls('not json'));
+    assertSame(['x.jpg'], pb_imageUrls('["x.jpg"]'));
+});
+
 it('does not re-expand field values that contain {{...}}', function() {
     // A record value that happens to contain a tag must stay literal, not be
     // re-evaluated against the single record.

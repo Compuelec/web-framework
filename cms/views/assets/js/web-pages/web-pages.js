@@ -54,12 +54,25 @@ Web Pages builder (template + live preview)
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "columns", table: table } })
             .done(function (res) {
                 var cols = (res && res.columns) || [];
+                var types = (res && res.types) || {};
                 if (!cols.length) { $fields.html('<span class="text-danger small">Sin columnas</span>'); return; }
                 $fields.empty();
                 cols.forEach(function (c) {
+                    var type = types[c] || "";
+                    var snippet, label;
+                    if (type === "image") {
+                        snippet = '<img src="{{' + c + '}}" alt="" style="max-width:200px">';
+                        label = '<i class="bi bi-image me-1"></i>' + escapeHtml(c);
+                    } else if (type === "multiimage") {
+                        snippet = "{{#imagenes " + c + '}}<img src="{{url}}" alt="" style="max-width:150px">{{/imagenes}}';
+                        label = '<i class="bi bi-images me-1"></i>' + escapeHtml(c);
+                    } else {
+                        snippet = "{{" + c + "}}";
+                        label = "<code>{{" + escapeHtml(c) + "}}</code>";
+                    }
                     var $chip = $('<button type="button" class="btn btn-sm btn-light border me-1 mb-1"></button>');
-                    $chip.html("<code>{{" + escapeHtml(c) + "}}</code>");
-                    $chip.on("click", function () { insertAtCursor("{{" + c + "}}"); });
+                    $chip.html(label);
+                    $chip.on("click", function () { insertAtCursor(snippet); });
                     $fields.append($chip);
                 });
                 $repeat.prop("disabled", false);

@@ -57,10 +57,47 @@ function pb_isSystemTable($table) {
  * Replace {{field}} tags in a fragment with one row's escaped values.
  */
 function pb_replaceFields($html, array $row) {
+    // Expand image-gallery blocks first: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
+    // Repeats the inner HTML once per URL in the field's JSON array.
+    $html = preg_replace_callback('/\{\{#imagenes\s+([a-zA-Z0-9_]+)\s*\}\}(.*?)\{\{\/imagenes\}\}/s', function ($m) use ($row) {
+        $urls = pb_imageUrls(array_key_exists($m[1], $row) ? $row[$m[1]] : '');
+        $out  = '';
+        foreach ($urls as $url) {
+            $out .= str_replace('{{url}}', htmlspecialchars($url, ENT_QUOTES), $m[2]);
+        }
+        return $out;
+    }, $html);
+
+    // Then simple {{field}} tags.
     return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
         $val = array_key_exists($m[1], $row) ? $row[$m[1]] : '';
         return htmlspecialchars(is_scalar($val) ? (string) $val : '', ENT_QUOTES);
     }, $html);
+}
+
+/**
+ * Decode a multi-image field value (a JSON array of URLs, possibly
+ * URL-encoded) into a flat list of string URLs.
+ */
+function pb_imageUrls($raw) {
+    if (is_array($raw)) {
+        $decoded = $raw;
+    } else {
+        $decoded = json_decode((string) $raw, true);
+        if (!is_array($decoded)) {
+            $decoded = json_decode(urldecode((string) $raw), true);
+        }
+    }
+    if (!is_array($decoded)) {
+        return [];
+    }
+    $urls = [];
+    foreach ($decoded as $u) {
+        if (is_scalar($u) && $u !== '') {
+            $urls[] = (string) $u;
+        }
+    }
+    return $urls;
 }
 
 /**
@@ -215,7 +252,22 @@ try {
 
 // Template renderer (mirrors tools/page-builder.php).
 if (!function_exists('wpb_fields')) {
+    function wpb_image_urls(\$raw) {
+        \$decoded = is_array(\$raw) ? \$raw : json_decode((string) \$raw, true);
+        if (!is_array(\$decoded)) { \$decoded = json_decode(urldecode((string) \$raw), true); }
+        if (!is_array(\$decoded)) { return []; }
+        \$urls = [];
+        foreach (\$decoded as \$u) { if (is_scalar(\$u) && \$u !== '') { \$urls[] = (string) \$u; } }
+        return \$urls;
+    }
     function wpb_fields(\$html, array \$row) {
+        // Image-gallery blocks: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
+        \$html = preg_replace_callback('/\\{\\{#imagenes\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/imagenes\\}\\}/s', function (\$m) use (\$row) {
+            \$urls = wpb_image_urls(array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '');
+            \$out = '';
+            foreach (\$urls as \$url) { \$out .= str_replace('{{url}}', htmlspecialchars(\$url, ENT_QUOTES), \$m[2]); }
+            return \$out;
+        }, \$html);
         return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
             \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '';
             return htmlspecialchars(is_scalar(\$val) ? (string) \$val : '', ENT_QUOTES);
