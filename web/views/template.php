@@ -75,7 +75,14 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
     <?php endif; ?>
 </head>
 <body>
-    <!-- Navigation -->
+    <!-- Shared header (edit via CMS → Páginas Web → Header y Footer). Falls back
+         to the default nav below until a custom header is saved. -->
+    <?php
+    $_headerPartial = __DIR__ . '/../partials/header.php';
+    if (file_exists($_headerPartial)) {
+        include $_headerPartial;
+    } else {
+    ?>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="<?php echo $baseUrl; ?>">
@@ -89,19 +96,11 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
                     <li class="nav-item">
                         <a class="nav-link" href="<?php echo $baseUrl; ?>">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $baseUrl; ?>pages/example-table.php">Example Table</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $baseUrl; ?>pages/example-list.php">Example List</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $baseUrl; ?>pages/example-detail.php">Example Detail</a>
-                    </li>
                 </ul>
             </div>
         </div>
     </nav>
+    <?php } ?>
 
     <!-- Main Content -->
     <main>
@@ -115,7 +114,14 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
         ?>
     </main>
 
-    <!-- Footer -->
+    <!-- Shared footer (edit via CMS → Páginas Web → Header y Footer). Falls back
+         to the default footer below until a custom footer is saved. -->
+    <?php
+    $_footerPartial = __DIR__ . '/../partials/footer.php';
+    if (file_exists($_footerPartial)) {
+        include $_footerPartial;
+    } else {
+    ?>
     <footer class="bg-dark text-light py-4 mt-5">
         <div class="container">
             <div class="row">
@@ -129,6 +135,7 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
             </div>
         </div>
     </footer>
+    <?php } ?>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
