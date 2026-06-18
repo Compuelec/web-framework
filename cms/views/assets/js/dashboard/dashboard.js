@@ -1,5 +1,5 @@
 /*=============================================
-Interfaz Dashboard
+Dashboard Interface
 =============================================*/
 
 var menuToggle = document.getElementById("menu-toggle");
@@ -75,7 +75,7 @@ document.addEventListener("click", function(event) {
 
 
 /*=============================================
-Hacer la tabla responsiva al cambio de ancho del navegador
+Make the table responsive to browser width changes
 =============================================*/
 
 $(window).resize(function() {

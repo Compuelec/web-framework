@@ -114,7 +114,7 @@ $(document).on("click",".myModule",function(){
 	$("#myModule").modal("show");
 
 	/*=============================================
-	Cuando se abre la ventana modal
+	When the modal window is opened
 	=============================================*/
 
 	$("#myModule").on('shown.bs.modal', function () {
@@ -366,7 +366,7 @@ $(document).on("click",".myModule",function(){
 				$(".listColumns").html('');
 
 				/*=============================================
-				Visualizar las columnas a editar
+				Display the columns to edit
 				=============================================*/
 
 				JSON.parse(item).columns.forEach((e,i)=>{
@@ -736,7 +736,7 @@ $(document).on("change",".changeGraphic",function(){
 })
 
 /*=============================================
-Agregar columnas
+Add columns
 =============================================*/
 
 $(document).on("click",".addColumn",function(){

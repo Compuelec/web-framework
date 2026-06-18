@@ -24,127 +24,127 @@ if (!empty($module->columns[$i]->conditions_column)) {
 		<?php 
 		
 		/*=============================================
-		Formulario de tipo Texto		
+		Text type form
 		=============================================*/
 		
 		include "forms/text.php"; 
 
 		/*=============================================
-		Formulario de tipo TextoArea			
+		TextArea type form
 		=============================================*/
 		
 		include "forms/textarea.php"; 
 
 		/*=============================================
-		Formulario de tipo Número Entero		
+		Integer number type form
 		=============================================*/
 		
 		include "forms/int.php"; 
 
 		/*=============================================
-		Formulario de tipo Número con decimal			
+		Decimal number type form
 		=============================================*/
 		
 		include "forms/double.php"; 
 
 		/*=============================================
-		Formulario de tipo Selección	
+		Select type form
 		=============================================*/
 		
 		include "forms/select.php"; 
 
 		/*=============================================
-		Formulario de tipo Boleano		
+		Boolean type form
 		=============================================*/
 		
 		include "forms/boolean.php"; 
 
 		/*=============================================
-		Formulario de tipo Arreglo	
+		Array type form
 		=============================================*/
 		
 		include "forms/array.php"; 
 
 		/*=============================================
-		Formulario de tipo Objeto		
+		Object type form
 		=============================================*/
 		
 		include "forms/object.php"; 
 
 		/*=============================================
-		Formulario de tipo JSON		
+		JSON type form
 		=============================================*/
 		
 		include "forms/_json.php"; 
 
 		/*=============================================
-		Formulario de tipo Archivo, Imagen, Video
+		File, Image, Video type form
 		=============================================*/
 		
 		include "forms/file.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha	
+		Date type form
 		=============================================*/
 		
 		include "forms/date.php"; 
 
 		/*=============================================
-		Formulario de tipo tiempo	
+		Time type form
 		=============================================*/
 		
 		include "forms/time.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha y Tiempo
+		Date and Time type form
 		=============================================*/
 		
 		include "forms/datetime.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha y Tiempo Automático
+		Automatic Date and Time type form
 		=============================================*/
 
 		include "forms/timestamp.php"; 
 
 		/*=============================================
-		Formulario de tipo Código
+		Code type form
 		=============================================*/
 
 		include "forms/code.php"; 
 
 		/*=============================================
-		Formulario de tipo Color
+		Color type form
 		=============================================*/
 
 		include "forms/color.php"; 
 
 		/*=============================================
-		Formulario de tipo Contraseña
+		Password type form
 		=============================================*/
 
 		include "forms/password.php"; 
 
 		/*=============================================
-		Formulario de tipo Email
+		Email type form
 		=============================================*/
 
 		include "forms/email.php"; 
 
 		/*=============================================
-		Formulario de tipo Relaciones
+		Relations type form
 		=============================================*/
 
 		include "forms/relations.php";
 
 		/*=============================================
-		Formulario de tipo ChatGPT
+		ChatGPT type form
 		=============================================*/
 
 		include "forms/chatgpt.php";
 
 		/*=============================================
-		Formulario de tipo Workflow
+		Workflow type form
 		=============================================*/
 
 		include "forms/workflow.php";

@@ -547,7 +547,7 @@ class FilesController{
 		}
 
 		/*=============================================
-		Eliminando archivo del servidor local
+		Deleting file from the local server
 		=============================================*/
 
 		if($this->idFolderDelete == 1){

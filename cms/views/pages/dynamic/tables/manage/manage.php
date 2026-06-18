@@ -1,7 +1,7 @@
 <?php 
 
 /*=============================================
-Capturar datos para editar
+Capture data to edit
 =============================================*/
 
 $data = null;
@@ -24,7 +24,7 @@ if(!empty($routesArray[2])){
 
 
 /*=============================================
-Definiendo Bloques
+Defining Blocks
 =============================================*/
 
 $block1 = ceil(count($module->columns)/2);
@@ -56,7 +56,7 @@ $block2 = count($module->columns) - $block1;
 			<?php endif ?>
 
 			<!--=========================================
-			Cabecera
+			Header
 			===========================================-->
 			
 			<div class="card-header bg-white rounded-top py-3">
@@ -77,7 +77,7 @@ $block2 = count($module->columns) - $block1;
 			</div>
 
 			<!--=========================================
-			Cuerpo
+			Body
 			===========================================-->
 
 			<div class="card-body">
@@ -86,7 +86,7 @@ $block2 = count($module->columns) - $block1;
 
 
 					<!--=========================================
-					Bloque 1
+					Block 1
 					===========================================-->
 
 					<div class="col">
@@ -102,7 +102,7 @@ $block2 = count($module->columns) - $block1;
 					<?php if ($block2 > 0): ?>
 
 						<!--=========================================
-						Bloque 2
+						Block 2
 						===========================================-->
 
 						<div class="col">
@@ -122,7 +122,7 @@ $block2 = count($module->columns) - $block1;
 			</div>
 
 			<!--=========================================
-			Pie de Página
+			Footer
 			===========================================-->
 
 			<div class="card-footer bg-white rounded-bottom py-3">

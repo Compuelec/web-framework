@@ -151,7 +151,7 @@ if(isset($_GET["scode"])){
 </div>
 
 <!--====================================
-Modal para recuperar contraseña
+Modal to recover password
 ====================================-->
 
 <!-- The Modal -->

@@ -35,7 +35,7 @@ if($modules->status == 200){
             <?php foreach ($modules as $key => $value): $module = $value ?>
 
                 <!--=========================================
-                Cuando el módulo es un breadcrumb
+                When the module is a breadcrumb
                 ===========================================-->
 
                 <?php if ($module->type_module == "breadcrumbs"): ?>
@@ -45,7 +45,7 @@ if($modules->status == 200){
                 <?php endif ?>
 
                 <!--=========================================
-                Cuando el módulo es una métrica
+                When the module is a metric
                 ===========================================-->
 
                 <?php if ($module->type_module == "metrics"): ?>
@@ -55,7 +55,7 @@ if($modules->status == 200){
                 <?php endif ?>
 
                 <!--=========================================
-                Cuando el módulo es un gráfico
+                When the module is a chart
                 ===========================================-->
 
                 <?php if ($module->type_module == "graphics"): ?>
@@ -65,7 +65,7 @@ if($modules->status == 200){
                 <?php endif ?>
 
                 <!--=========================================
-                Cuando el módulo es una tabla
+                When the module is a table
                 ===========================================-->
 
                 <?php if ($module->type_module == "tables"): ?>
