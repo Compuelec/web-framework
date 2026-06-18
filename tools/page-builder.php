@@ -235,6 +235,13 @@ function pb_normalizeConfig(array $raw) {
         // admin ids.
         'accessRoles' => array_values(array_filter(array_map('strval', (array)($raw['accessRoles'] ?? [])), 'strlen')),
         'accessUsers' => array_values(array_filter(array_map('strval', (array)($raw['accessUsers'] ?? [])), 'strlen')),
+        // SEO / Open Graph (emitted by the generated page's meta tags).
+        'metaTitle'   => (string)($raw['metaTitle'] ?? ''),
+        'metaDesc'    => (string)($raw['metaDesc'] ?? ''),
+        'ogTitle'     => (string)($raw['ogTitle'] ?? ''),
+        'ogType'      => (string)($raw['ogType'] ?? 'website'),
+        'ogDesc'      => (string)($raw['ogDesc'] ?? ''),
+        'ogImage'     => (string)($raw['ogImage'] ?? ''),
     ];
 }
 
@@ -466,7 +473,18 @@ if (\$recordId !== null && \$recordId !== '') {
 if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
-\$pageDescription = '';
+\$pageDescription = \$cfg['metaDesc'] ?? '';
+
+// SEO / Open Graph meta — web/views/template.php emits these tags.
+\$seoMeta = (object) [
+    'meta_title_seo' => \$cfg['metaTitle'] ?? '',
+    'meta_desc_seo'  => \$cfg['metaDesc'] ?? '',
+    'og_title_seo'   => \$cfg['ogTitle'] ?? '',
+    'og_desc_seo'    => \$cfg['ogDesc'] ?? '',
+    'og_image_seo'   => \$cfg['ogImage'] ?? '',
+    'og_type_seo'    => !empty(\$cfg['ogType']) ? \$cfg['ogType'] : 'website',
+    'slug_seo'       => '',
+];
 
 // In edit mode (?id) the form is prefilled with that record; in create mode it
 // is empty (so a new submission doesn't show the first record's data).

@@ -100,6 +100,41 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                             placeholder="&lt;div class=&quot;row&quot;&gt;&#10;  {{#cada}}&#10;    &lt;div class=&quot;col-4&quot;&gt;{{name}}&lt;/div&gt;&#10;  {{/cada}}&#10;&lt;/div&gt;"></textarea>
                     </div>
 
+                    <div class="accordion mb-3" id="wpb-seo-acc">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#wpb-seo-body">
+                                    <i class="bi bi-search me-2"></i>SEO y redes sociales
+                                </button>
+                            </h2>
+                            <div id="wpb-seo-body" class="accordion-collapse collapse" data-bs-parent="#wpb-seo-acc">
+                                <div class="accordion-body">
+                                    <label class="form-label small fw-semibold" for="wpb-meta-title">Meta Title (buscadores)</label>
+                                    <input type="text" class="form-control form-control-sm mb-2" id="wpb-meta-title" maxlength="60" placeholder="Título para Google (máx 60)">
+                                    <label class="form-label small fw-semibold" for="wpb-meta-desc">Meta Description</label>
+                                    <textarea class="form-control form-control-sm mb-2" id="wpb-meta-desc" rows="2" maxlength="160" placeholder="Descripción para buscadores (máx 160)"></textarea>
+                                    <hr class="my-2">
+                                    <div class="small text-muted mb-1"><i class="bi bi-share me-1"></i>Open Graph (al compartir en redes)</div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-8">
+                                            <input type="text" class="form-control form-control-sm" id="wpb-og-title" placeholder="OG Title (vacío = Meta Title)">
+                                        </div>
+                                        <div class="col-4">
+                                            <select class="form-select form-select-sm" id="wpb-og-type">
+                                                <option value="website">website</option>
+                                                <option value="article">article</option>
+                                                <option value="product">product</option>
+                                                <option value="profile">profile</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <textarea class="form-control form-control-sm mb-2" id="wpb-og-desc" rows="2" placeholder="OG Description (vacío = Meta Description)"></textarea>
+                                    <input type="text" class="form-control form-control-sm" id="wpb-og-image" placeholder="OG Image — URL de imagen para compartir">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="accordion mb-3" id="wpb-advanced">
                         <div class="accordion-item">
                             <h2 class="accordion-header">

@@ -292,6 +292,12 @@ $config = [
     'columns'     => [],
     'accessRoles' => (array)($_POST['accessRoles'] ?? []),
     'accessUsers' => (array)($_POST['accessUsers'] ?? []),
+    'metaTitle'   => $_POST['metaTitle'] ?? '',
+    'metaDesc'    => $_POST['metaDesc']  ?? '',
+    'ogTitle'     => $_POST['ogTitle']   ?? '',
+    'ogType'      => $_POST['ogType']    ?? 'website',
+    'ogDesc'      => $_POST['ogDesc']    ?? '',
+    'ogImage'     => $_POST['ogImage']   ?? '',
 ];
 
 // Look up the table's REAL primary-key column (so ordering/lookups work for

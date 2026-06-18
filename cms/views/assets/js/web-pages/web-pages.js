@@ -241,6 +241,12 @@ Web Pages builder (template + live preview)
             template:  $template.val(),
             customCss: $("#wpb-css").val(),
             customJs:  $("#wpb-js").val(),
+            metaTitle: $("#wpb-meta-title").val(),
+            metaDesc:  $("#wpb-meta-desc").val(),
+            ogTitle:   $("#wpb-og-title").val(),
+            ogType:    $("#wpb-og-type").val(),
+            ogDesc:    $("#wpb-og-desc").val(),
+            ogImage:   $("#wpb-og-image").val(),
             private:   $("input[name='wpb-visibility']:checked").val() === "private" ? 1 : 0,
             "accessRoles[]": $(".wpb-role:checked").map(function () { return this.value; }).get(),
             "accessUsers[]": $(".wpb-user:checked").map(function () { return this.value; }).get()
@@ -290,6 +296,12 @@ Web Pages builder (template + live preview)
         $template.val(c.template || "");
         $("#wpb-css").val(c.customCss || "");
         $("#wpb-js").val(c.customJs || "");
+        $("#wpb-meta-title").val(c.metaTitle || "");
+        $("#wpb-meta-desc").val(c.metaDesc || "");
+        $("#wpb-og-title").val(c.ogTitle || "");
+        $("#wpb-og-type").val(c.ogType || "website");
+        $("#wpb-og-desc").val(c.ogDesc || "");
+        $("#wpb-og-image").val(c.ogImage || "");
         $("input[name='wpb-visibility'][value='" + (c.private ? "private" : "public") + "']").prop("checked", true);
         $("#wpb-access").toggle(!!c.private);
         var roles = c.accessRoles || [], users = (c.accessUsers || []).map(String);
@@ -329,7 +341,8 @@ Web Pages builder (template + live preview)
     function resetForm() {
         $editing.val("");
         $genLbl.text("Crear página");
-        $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js").val("");
+        $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js,#wpb-meta-title,#wpb-meta-desc,#wpb-og-title,#wpb-og-desc,#wpb-og-image").val("");
+        $("#wpb-og-type").val("website");
         if (cmTemplate) { cmTemplate.setValue(""); }
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }

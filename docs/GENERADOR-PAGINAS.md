@@ -117,6 +117,18 @@ Tras el login, la página verifica el rol/usuario; si no está autorizado muestr
 
 ---
 
+## SEO y redes sociales
+
+Cada página tiene una sección **"SEO y redes sociales"** (acordeón) para:
+
+- **Meta Title** y **Meta Description** (lo que ve Google).
+- **Open Graph**: OG Title, OG Type, OG Description y OG Image (lo que se muestra
+  al compartir el enlace en redes).
+
+La página generada emite estos *meta tags* automáticamente. (Antes el SEO vivía
+en el modal de secciones del CMS; ahora es parte de cada página web, que es a
+quien le corresponde.)
+
 ## Editores de código
 
 Los campos **HTML / CSS / JavaScript** usan editores **CodeMirror** con
