@@ -66,9 +66,32 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                             envuelve el HTML con el botón <span class="badge bg-secondary">Repetir</span>.
                         </div>
                         <div id="wpb-fields" class="mb-2"><span class="text-muted small">Elige una tabla</span></div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="wpb-repeat" disabled>
-                            <i class="bi bi-arrow-repeat me-1"></i>Repetir por cada registro
-                        </button>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="wpb-repeat" disabled>
+                                <i class="bi bi-arrow-repeat me-1"></i>Repetir por cada registro
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="wpb-form" disabled>
+                                <i class="bi bi-ui-checks me-1"></i>Insertar formulario (crear/editar)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label fw-semibold d-block mb-2">Acceso a la página</label>
+                        <div class="d-flex gap-2 flex-wrap" id="wpb-visibility">
+                            <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-public" value="public" checked>
+                            <label class="btn btn-outline-success px-3" for="wpb-vis-public"><i class="bi bi-globe2 me-1"></i>Pública</label>
+                            <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-private" value="private">
+                            <label class="btn btn-outline-primary px-3" for="wpb-vis-private"><i class="bi bi-lock-fill me-1"></i>Privada (con login)</label>
+                        </div>
+                    </div>
+
+                    <div id="wpb-access" class="border rounded p-2 mb-3" style="display:none;">
+                        <div class="small text-muted mb-2">Permitir acceso a (si no marcas nada, cualquier usuario logueado entra):</div>
+                        <label class="form-label small fw-semibold mb-1">Grupos / roles</label>
+                        <div id="wpb-roles" class="mb-2"><span class="text-muted small">—</span></div>
+                        <label class="form-label small fw-semibold mb-1">Usuarios específicos</label>
+                        <div id="wpb-users" style="max-height:120px; overflow:auto;"><span class="text-muted small">—</span></div>
                     </div>
 
                     <div class="mb-3">

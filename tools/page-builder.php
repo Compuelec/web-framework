@@ -56,7 +56,15 @@ function pb_isSystemTable($table) {
 /**
  * Replace {{field}} tags in a fragment with one row's escaped values.
  */
-function pb_replaceFields($html, array $row) {
+function pb_replaceFields($html, array $row, array $formRow = []) {
+    // Form blocks: {{#form}} ...inputs... {{/form}} → a submit form. Inputs are
+    // prefilled only in edit mode ($formRow); create forms appear empty.
+    $html = preg_replace_callback('/\{\{#form\}\}(.*?)\{\{\/form\}\}/s', function ($m) use ($formRow) {
+        return '<form method="post" enctype="multipart/form-data" class="wpb-form">'
+             . pb_formFields($m[1], $formRow)
+             . '</form>';
+    }, $html);
+
     // Expand image-gallery blocks first: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
     // Repeats the inner HTML once per URL in the field's JSON array.
     $html = preg_replace_callback('/\{\{#imagenes\s+([a-zA-Z0-9_]+)\s*\}\}(.*?)\{\{\/imagenes\}\}/s', function ($m) use ($row) {
@@ -76,6 +84,30 @@ function pb_replaceFields($html, array $row) {
         $val = array_key_exists($m[1], $row) ? $row[$m[1]] : '';
         return htmlspecialchars(is_scalar($val) ? (string) $val : '', ENT_QUOTES);
     }, $html);
+}
+
+/**
+ * Render form-input tags inside a {{#form}} block, prefilled from $row:
+ *   {{input campo}} {{textarea campo}} {{file campo}} {{submit Texto}}
+ */
+function pb_formFields($html, array $row) {
+    $val = function ($k) use ($row) {
+        return htmlspecialchars((string) (array_key_exists($k, $row) && is_scalar($row[$k]) ? $row[$k] : ''), ENT_QUOTES);
+    };
+    $html = preg_replace_callback('/\{\{\s*input\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($val) {
+        return '<input type="text" class="form-control mb-2" name="' . $m[1] . '" value="' . $val($m[1]) . '" placeholder="' . $m[1] . '">';
+    }, $html);
+    $html = preg_replace_callback('/\{\{\s*textarea\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($val) {
+        return '<textarea class="form-control mb-2" name="' . $m[1] . '" rows="4" placeholder="' . $m[1] . '">' . $val($m[1]) . '</textarea>';
+    }, $html);
+    $html = preg_replace_callback('/\{\{\s*file\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) {
+        return '<input type="file" class="form-control mb-2" name="' . $m[1] . '">';
+    }, $html);
+    $html = preg_replace_callback('/\{\{\s*submit(?:\s+([^}]+?))?\s*\}\}/', function ($m) {
+        $text = isset($m[1]) && trim($m[1]) !== '' ? trim($m[1]) : 'Guardar';
+        return '<button type="submit" class="btn btn-primary">' . htmlspecialchars($text, ENT_QUOTES) . '</button>';
+    }, $html);
+    return $html;
 }
 
 /**
@@ -107,21 +139,21 @@ function pb_imageUrls($raw) {
  * Render a template against the record set; tags outside a repeat block use
  * the $single record.
  */
-function pb_renderTemplate($template, array $records, array $single) {
+function pb_renderTemplate($template, array $records, array $single, array $formRow = []) {
     // Split on the repeat block, capturing the inner HTML. Even-index parts are
     // outside any block (rendered once with $single); odd-index parts are the
     // captured inner blocks (rendered once per record). Each segment is filled
     // exactly once, so field values that happen to contain {{...}} are never
-    // re-evaluated.
+    // re-evaluated. $formRow prefills {{#form}} inputs (edit mode only).
     $parts = preg_split('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
     $out = '';
     foreach ($parts as $i => $part) {
         if ($i % 2 === 1) {
             foreach ($records as $rec) {
-                $out .= pb_replaceFields($part, (array) $rec);
+                $out .= pb_replaceFields($part, (array) $rec, []);
             }
         } else {
-            $out .= pb_replaceFields($part, $single);
+            $out .= pb_replaceFields($part, $single, $formRow);
         }
     }
     return $out;
@@ -175,6 +207,15 @@ function pb_normalizeConfig(array $raw) {
         throw new InvalidArgumentException('Nombre de archivo inválido.');
     }
 
+    // The table's column names — used to validate form submissions on the
+    // generated page (only real columns are written).
+    $columns = [];
+    foreach ((array)($raw['columns'] ?? []) as $c) {
+        if (pb_isIdentifier($c)) {
+            $columns[] = $c;
+        }
+    }
+
     return [
         'table'       => $table,
         'suffix'      => $suffix,
@@ -182,10 +223,18 @@ function pb_normalizeConfig(array $raw) {
         'titleColumn' => $titleColumn,
         'fileName'    => $fileName,
         'heading'     => (string)($raw['heading'] ?? ''),
-        // The user's HTML template with {{field}} / {{#cada}} tags.
+        // The user's HTML template with {{field}} / {{#cada}} / {{#form}} tags.
         'template'    => (string)($raw['template'] ?? ''),
         'customCss'   => (string)($raw['customCss'] ?? ''),
         'customJs'    => (string)($raw['customJs'] ?? ''),
+        // Interactive options.
+        'private'     => !empty($raw['private']),   // require login to view/submit
+        'columns'     => $columns,                  // writable columns for forms
+        // Access control (only applies when private). Empty both = any logged-in
+        // user. accessRoles = allowed rol_admin values; accessUsers = allowed
+        // admin ids.
+        'accessRoles' => array_values(array_filter(array_map('strval', (array)($raw['accessRoles'] ?? [])), 'strlen')),
+        'accessUsers' => array_values(array_filter(array_map('strval', (array)($raw['accessUsers'] ?? [])), 'strlen')),
     ];
 }
 
@@ -235,10 +284,98 @@ if (is_array(\$siteCfg) && !empty(\$siteCfg['timezone'])) {
 require_once __DIR__ . '/../controllers/api.controller.php';
 
 \$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name'])) ? \$siteCfg['site']['name'] : 'My Website';
+\$baseUrl  = (is_array(\$siteCfg) && isset(\$siteCfg['site']['base_url'])) ? rtrim(\$siteCfg['site']['base_url'], '/') . '/' : '/';
 
 \$table    = \$cfg['table'] ?? '';
 \$idColumn = \$cfg['idColumn'] ?? 'id';
 \$template = \$cfg['template'] ?? '';
+\$columns  = !empty(\$cfg['columns']) ? \$cfg['columns'] : [];
+\$private  = !empty(\$cfg['private']);
+
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+\$authKey  = 'wpb_auth_' . preg_replace('/[^a-zA-Z0-9_]/', '', (\$cfg['fileName'] ?? 'page'));
+\$recordId = isset(\$_GET['id']) ? \$_GET['id'] : null;
+
+// Logout
+if (isset(\$_GET['wpb_logout'])) {
+    unset(\$_SESSION[\$authKey]);
+    header('Location: ' . strtok(\$_SERVER['REQUEST_URI'], '?'));
+    exit;
+}
+
+\$accessRoles = isset(\$cfg['accessRoles']) && is_array(\$cfg['accessRoles']) ? \$cfg['accessRoles'] : [];
+\$accessUsers = isset(\$cfg['accessUsers']) && is_array(\$cfg['accessUsers']) ? \$cfg['accessUsers'] : [];
+\$loginError  = null;
+\$formMessage = null;
+
+// Login for private pages — validates against existing admins via the API.
+\$user = (isset(\$_SESSION[\$authKey]) && is_array(\$_SESSION[\$authKey])) ? \$_SESSION[\$authKey] : null;
+if (\$private && \$user === null && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset(\$_POST['wpb_login'])) {
+    try {
+        \$resp = ApiController::getByFilter('admins', 'email_admin', trim(\$_POST['wpb_email'] ?? ''));
+        if (isset(\$resp->status) && \$resp->status == 200 && !empty(\$resp->results)) {
+            \$admin = (array) \$resp->results[0];
+            if (!empty(\$admin['password_admin']) && password_verify((string)(\$_POST['wpb_password'] ?? ''), \$admin['password_admin'])) {
+                \$user = [
+                    'id'    => (string)(\$admin['id_admin'] ?? ''),
+                    'role'  => (string)(\$admin['rol_admin'] ?? ''),
+                    'email' => (string)(\$admin['email_admin'] ?? ''),
+                ];
+                session_regenerate_id(true); // prevent session fixation
+                \$_SESSION[\$authKey] = \$user;
+            } else { \$loginError = 'Credenciales inválidas.'; }
+        } else { \$loginError = 'Credenciales inválidas.'; }
+    } catch (Throwable \$e) { \$loginError = 'No se pudo validar el acceso.'; }
+}
+
+\$isAuthed = !\$private || \$user !== null;
+
+// Access check: a logged-in user must match an allowed role or be an allowed
+// user; if no roles/users are configured, any logged-in user is allowed.
+\$hasAccess = true;
+if (\$private) {
+    \$hasAccess = false;
+    if (\$user !== null) {
+        if (empty(\$accessRoles) && empty(\$accessUsers)) {
+            \$hasAccess = true;
+        } elseif (in_array(\$user['role'], \$accessRoles, true) || in_array(\$user['id'], \$accessUsers, true)) {
+            \$hasAccess = true;
+        }
+    }
+}
+
+// Form submit (create / update) — only when authorized AND allowed.
+if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset(\$_POST['wpb_login'])) {
+    \$fields = [];
+    foreach (\$columns as \$col) {
+        if (\$col === \$idColumn) { continue; }
+        if (isset(\$_POST[\$col]) && is_scalar(\$_POST[\$col])) { \$fields[\$col] = trim((string) \$_POST[\$col]); }
+    }
+    foreach (\$_FILES as \$col => \$file) {
+        if (!in_array(\$col, \$columns, true) || \$col === \$idColumn) { continue; }
+        if (!isset(\$file['error']) || \$file['error'] !== UPLOAD_ERR_OK) { continue; }
+        \$ext = strtolower(pathinfo(\$file['name'], PATHINFO_EXTENSION));
+        if (!in_array(\$ext, ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx','txt','csv','zip'], true)) { continue; }
+        \$uploadDir = __DIR__ . '/../uploads';
+        if (!is_dir(\$uploadDir)) { @mkdir(\$uploadDir, 0775, true); }
+        \$newName = bin2hex(random_bytes(8)) . '.' . \$ext;
+        if (@move_uploaded_file(\$file['tmp_name'], \$uploadDir . '/' . \$newName)) {
+            \$fields[\$col] = \$baseUrl . 'uploads/' . \$newName;
+        }
+    }
+    if (\$fields) {
+        try {
+            // Only authorized private pages may UPDATE an existing record;
+            // public pages can only CREATE (prevents anonymous edits via ?id).
+            if (\$recordId !== null && \$recordId !== '' && \$private) {
+                ApiController::update(\$table, \$recordId, \$fields, \$idColumn);
+            } else {
+                ApiController::create(\$table, \$fields);
+            }
+            \$formMessage = 'Guardado correctamente.';
+        } catch (Throwable \$e) { \$formMessage = 'No se pudo guardar.'; }
+    }
+}
 
 \$records = [];
 \$error   = null;
@@ -263,7 +400,31 @@ if (!function_exists('wpb_fields')) {
         foreach (\$decoded as \$u) { if (is_scalar(\$u) && \$u !== '') { \$urls[] = (string) \$u; } }
         return \$urls;
     }
-    function wpb_fields(\$html, array \$row) {
+    function wpb_form_fields(\$html, array \$row) {
+        \$val = function (\$k) use (\$row) {
+            return htmlspecialchars((string) (array_key_exists(\$k, \$row) && is_scalar(\$row[\$k]) ? \$row[\$k] : ''), ENT_QUOTES);
+        };
+        \$html = preg_replace_callback('/\\{\\{\\s*input\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$val) {
+            return '<input type="text" class="form-control mb-2" name="' . \$m[1] . '" value="' . \$val(\$m[1]) . '" placeholder="' . \$m[1] . '">';
+        }, \$html);
+        \$html = preg_replace_callback('/\\{\\{\\s*textarea\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$val) {
+            return '<textarea class="form-control mb-2" name="' . \$m[1] . '" rows="4" placeholder="' . \$m[1] . '">' . \$val(\$m[1]) . '</textarea>';
+        }, \$html);
+        \$html = preg_replace_callback('/\\{\\{\\s*file\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) {
+            return '<input type="file" class="form-control mb-2" name="' . \$m[1] . '">';
+        }, \$html);
+        \$html = preg_replace_callback('/\\{\\{\\s*submit(?:\\s+([^}]+?))?\\s*\\}\\}/', function (\$m) {
+            \$text = isset(\$m[1]) && trim(\$m[1]) !== '' ? trim(\$m[1]) : 'Guardar';
+            return '<button type="submit" class="btn btn-primary">' . htmlspecialchars(\$text, ENT_QUOTES) . '</button>';
+        }, \$html);
+        return \$html;
+    }
+    function wpb_fields(\$html, array \$row, array \$formRow = []) {
+        // Form blocks: {{#form}} ...inputs... {{/form}} — prefilled only in edit
+        // mode (\$formRow), so create forms appear empty.
+        \$html = preg_replace_callback('/\\{\\{#form\\}\\}(.*?)\\{\\{\\/form\\}\\}/s', function (\$m) use (\$formRow) {
+            return '<form method="post" enctype="multipart/form-data" class="wpb-form">' . wpb_form_fields(\$m[1], \$formRow) . '</form>';
+        }, \$html);
         // Image-gallery blocks: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
         \$html = preg_replace_callback('/\\{\\{#imagenes\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/imagenes\\}\\}/s', function (\$m) use (\$row) {
             \$urls = wpb_image_urls(array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '');
@@ -279,23 +440,22 @@ if (!function_exists('wpb_fields')) {
             return htmlspecialchars(is_scalar(\$val) ? (string) \$val : '', ENT_QUOTES);
         }, \$html);
     }
-    function wpb_render(\$template, array \$records, array \$single) {
+    function wpb_render(\$template, array \$records, array \$single, array \$formRow = []) {
         // Split on the repeat block (capturing inner HTML) so each segment is
         // filled exactly once — no re-evaluation of {{...}} found in data.
         \$parts = preg_split('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
         \$out = '';
         foreach (\$parts as \$i => \$part) {
             if (\$i % 2 === 1) {
-                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec); }
+                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec, []); }
             } else {
-                \$out .= wpb_fields(\$part, \$single);
+                \$out .= wpb_fields(\$part, \$single, \$formRow);
             }
         }
         return \$out;
     }
 }
 
-\$recordId = isset(\$_GET['id']) ? \$_GET['id'] : null;
 \$single   = [];
 if (\$recordId !== null && \$recordId !== '') {
     foreach (\$records as \$rec) {
@@ -308,7 +468,10 @@ if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = '';
 
-\$body = \$error ? '' : wpb_render(\$template, \$records, \$single);
+// In edit mode (?id) the form is prefilled with that record; in create mode it
+// is empty (so a new submission doesn't show the first record's data).
+\$formRow = (\$recordId !== null && \$recordId !== '') ? \$single : [];
+\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single, \$formRow);
 
 ob_start();
 ?>
@@ -321,7 +484,34 @@ ob_start();
         <h1 class="mb-4"><?php echo htmlspecialchars(\$cfg['heading'], ENT_QUOTES); ?></h1>
     <?php endif; ?>
 
-    <?php if (\$error): ?>
+    <?php if (\$private && \$isAuthed): ?>
+        <p class="text-end"><a href="?wpb_logout=1" class="small">Cerrar sesión</a></p>
+    <?php endif; ?>
+
+    <?php if (\$formMessage): ?>
+        <div class="alert alert-info"><?php echo htmlspecialchars(\$formMessage, ENT_QUOTES); ?></div>
+    <?php endif; ?>
+
+    <?php if (\$private && !\$isAuthed): ?>
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card"><div class="card-body">
+                    <h5 class="mb-3">Iniciar sesión</h5>
+                    <?php if (\$loginError): ?>
+                        <div class="alert alert-danger py-2"><?php echo htmlspecialchars(\$loginError, ENT_QUOTES); ?></div>
+                    <?php endif; ?>
+                    <form method="post">
+                        <input type="hidden" name="wpb_login" value="1">
+                        <input type="email" name="wpb_email" class="form-control mb-2" placeholder="Email" required>
+                        <input type="password" name="wpb_password" class="form-control mb-3" placeholder="Contraseña" required>
+                        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                    </form>
+                </div></div>
+            </div>
+        </div>
+    <?php elseif (!\$hasAccess): ?>
+        <div class="alert alert-warning">No tienes permiso para ver esta página.</div>
+    <?php elseif (\$error): ?>
         <div class="alert alert-warning"><?php echo htmlspecialchars(\$error, ENT_QUOTES); ?></div>
     <?php else: ?>
         <?php echo \$body; ?>

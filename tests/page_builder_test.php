@@ -114,6 +114,46 @@ it('round-trips the config through generate/extract', function() {
     assertSame('.x{color:red}', $back['customCss']);
 });
 
+it('renders a {{#form}} block, prefilled only in edit mode', function() {
+    $tpl = '{{#form}}{{input dir}}{{textarea desc}}{{file foto}}{{submit Enviar}}{{/form}}';
+    // Edit mode: 4th arg ($formRow) prefills the inputs.
+    $edit = pb_renderTemplate($tpl, [], ['dir' => 'X'], ['dir' => 'Calle 1', 'desc' => 'd']);
+    assertTrue(strpos($edit, '<form method="post"') !== false, 'wraps in a form');
+    assertTrue(strpos($edit, 'name="dir" value="Calle 1"') !== false, 'text input prefilled in edit');
+    assertTrue(strpos($edit, '<textarea') !== false && strpos($edit, 'name="desc"') !== false, 'textarea');
+    assertTrue(strpos($edit, 'type="file"') !== false && strpos($edit, 'name="foto"') !== false, 'file input');
+    assertTrue(strpos($edit, 'Enviar</button>') !== false, 'submit label');
+    // Create mode: no $formRow → inputs are empty even if a display record exists.
+    $create = pb_renderTemplate($tpl, [], ['dir' => 'Calle 1']);
+    assertTrue(strpos($create, 'name="dir" value=""') !== false, 'create form is empty');
+});
+
+it('normalizes private flag and columns', function() {
+    $c = pb_normalizeConfig(['table' => 'products', 'private' => 1, 'columns' => ['name_product', 'bad col']]);
+    assertTrue($c['private'] === true);
+    assertSame(['name_product'], $c['columns']);
+});
+
+it('normalizes access roles and users', function() {
+    $c = pb_normalizeConfig(['table' => 'products', 'accessRoles' => ['empleado', '', 'rrhh'], 'accessUsers' => [5, '']]);
+    assertSame(['empleado', 'rrhh'], $c['accessRoles']);
+    assertSame(['5'], $c['accessUsers']);
+});
+
+it('generates valid PHP for a private page with a form', function() {
+    $src = buildConfigurablePage([
+        'table' => 'products', 'private' => true, 'columns' => ['name_product'],
+        'template' => '{{#form}}{{input name_product}}{{submit}}{{/form}}',
+    ]);
+    $tmp = tempnam(sys_get_temp_dir(), 'pb');
+    file_put_contents($tmp, $src);
+    $out = []; $code = 0;
+    exec(PHP_BINARY . ' -l ' . escapeshellarg($tmp) . ' 2>&1', $out, $code);
+    @unlink($tmp);
+    assertSame(0, $code, 'should be valid PHP: ' . implode("\n", $out));
+    assertTrue(strpos($src, 'password_verify') !== false, 'embeds login check');
+});
+
 it('generates valid PHP that embeds the renderer', function() {
     $tmp = tempnam(sys_get_temp_dir(), 'pb');
     file_put_contents($tmp, buildConfigurablePage(['table' => 'products', 'template' => '{{#cada}}{{name_product}}{{/cada}}']));
