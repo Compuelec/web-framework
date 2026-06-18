@@ -113,10 +113,14 @@ class Permissions {
 
     /**
      * A copy-pasteable command to make a path writable by the web user.
+     *
+     * Chowns to the web user without a hardcoded group (the group differs by
+     * OS — staff on macOS, www-data/apache/nginx on Linux) and uses 755, since
+     * once the web user owns the directory it needs no group-write to write.
      */
     public static function fixCommand($path) {
-        return 'sudo chown -R ' . self::webUser() . ':staff ' . escapeshellarg($path)
-             . ' && sudo chmod -R 775 ' . escapeshellarg($path);
+        return 'sudo chown -R ' . self::webUser() . ' ' . escapeshellarg($path)
+             . ' && sudo chmod -R 755 ' . escapeshellarg($path);
     }
 
     /**

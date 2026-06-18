@@ -94,7 +94,10 @@ Diagnoses and repairs writable-directory permissions.
 
     $rows.on("click", ".sh-copy", function () {
         var input = document.getElementById($(this).data("target"));
-        if (input) {
+        if (!input) { return; }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value);
+        } else {
             input.select();
             try { document.execCommand("copy"); } catch (e) {}
         }
