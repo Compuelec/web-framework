@@ -137,6 +137,13 @@ resaltado de sintaxis, números de línea, auto-cierre de etiquetas y
 
 ---
 
+## Crear páginas por CLI / agentes de IA
+
+También puedes crear páginas **desde la línea de comandos** (útil para automatizar
+o para un agente de IA) con `php tools/make-page.php <config.json>`. Generan el mismo
+formato, así que **aparecen en esta lista** y se editan igual. Ver
+[AGENTE-CREAR-PAGINAS.md](AGENTE-CREAR-PAGINAS.md).
+
 ## Requisito: `web/config.php`
 
 Las páginas públicas cargan datos a través de la API usando `web/config.php`. El

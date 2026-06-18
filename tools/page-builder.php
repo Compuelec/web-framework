@@ -190,14 +190,16 @@ function pb_deriveSuffix($table) {
  * @return array
  */
 function pb_normalizeConfig(array $raw) {
+    // The table is optional: an empty table means a static page (no data binding),
+    // useful for landing/contact pages. A non-empty table must be a valid identifier.
     $table = (string)($raw['table'] ?? '');
-    if (!pb_isIdentifier($table)) {
+    if ($table !== '' && !pb_isIdentifier($table)) {
         throw new InvalidArgumentException('Tabla inválida.');
     }
 
-    $suffix      = pb_isIdentifier($raw['suffix'] ?? '')      ? $raw['suffix']      : pb_deriveSuffix($table);
-    $idColumn    = pb_isIdentifier($raw['idColumn'] ?? '')    ? $raw['idColumn']    : ('id_' . $suffix);
-    $titleColumn = pb_isIdentifier($raw['titleColumn'] ?? '') ? $raw['titleColumn'] : ('name_' . $suffix);
+    $suffix      = pb_isIdentifier($raw['suffix'] ?? '')      ? $raw['suffix']      : ($table !== '' ? pb_deriveSuffix($table) : '');
+    $idColumn    = pb_isIdentifier($raw['idColumn'] ?? '')    ? $raw['idColumn']    : ($suffix !== '' ? 'id_' . $suffix : 'id');
+    $titleColumn = pb_isIdentifier($raw['titleColumn'] ?? '') ? $raw['titleColumn'] : ($suffix !== '' ? 'name_' . $suffix : 'name');
 
     $fileName = trim((string)($raw['fileName'] ?? ''));
     if ($fileName === '') {
@@ -386,15 +388,17 @@ if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' 
 
 \$records = [];
 \$error   = null;
-try {
-    \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 200);
-    if (\$response->status == 200) {
-        \$records = \$response->results;
-    } elseif (\$response->status != 404) {
+if (\$table !== '') { // static pages (no table) skip the data fetch
+    try {
+        \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 200);
+        if (\$response->status == 200) {
+            \$records = \$response->results;
+        } elseif (\$response->status != 404) {
+            \$error = 'Could not load data.';
+        }
+    } catch (Throwable \$e) {
         \$error = 'Could not load data.';
     }
-} catch (Throwable \$e) {
-    \$error = 'Could not load data.';
 }
 
 // Template renderer (mirrors tools/page-builder.php).
