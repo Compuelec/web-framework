@@ -58,7 +58,12 @@ Web Pages builder (template + live preview)
             var s = document.createElement("script");
             s.src = base + files[i++];
             s.onload = next;
-            s.onerror = function () { next(); };
+            s.onerror = function () {
+                // Abort on any failure: restore the original CodeMirror and leave
+                // WPB_CM unset so initEditors falls back to the plain textareas.
+                window.CodeMirror = prev;
+                cb();
+            };
             document.head.appendChild(s);
         })();
     }
@@ -68,7 +73,9 @@ Web Pages builder (template + live preview)
         if (!CM || !CM.hint || !CM.hint.css) { return; } // CM5 unavailable → keep textareas
 
         function make(id, mode, hint) {
-            var cm = CM.fromTextArea(document.getElementById(id), {
+            var el = document.getElementById(id);
+            if (!el) { return null; }
+            var cm = CM.fromTextArea(el, {
                 mode: mode, lineNumbers: true, lineWrapping: true,
                 matchBrackets: true, autoCloseBrackets: true,
                 autoCloseTags: (mode === "htmlmixed"),
@@ -89,9 +96,9 @@ Web Pages builder (template + live preview)
         cmCss = make("wpb-css", "css", CM.hint.css);
         cmJs = make("wpb-js", "javascript", CM.hint.javascript);
 
-        cmTemplate.on("change", function () { cmTemplate.save(); schedulePreview(); });
-        cmCss.on("change", function () { cmCss.save(); schedulePreview(); });
-        cmJs.on("change", function () { cmJs.save(); });
+        if (cmTemplate) { cmTemplate.on("change", function () { cmTemplate.save(); schedulePreview(); }); }
+        if (cmCss) { cmCss.on("change", function () { cmCss.save(); schedulePreview(); }); }
+        if (cmJs) { cmJs.on("change", function () { cmJs.save(); }); }
 
         // CSS/JS editors live in a collapsed accordion — refresh on open.
         $("#wpb-adv-body").on("shown.bs.collapse", function () {
