@@ -83,6 +83,77 @@ function wpb_ensureWebConfig() {
     }
 }
 
+/* ===================== shared header / footer ===================== */
+// One header.php + footer.php for the whole public site, edited from the CMS.
+// They live in web/partials/ and are included by web/views/template.php. They
+// are part of the public view, so the builder never lists or deletes them.
+function wpb_partialsDir() {
+    $web = realpath(__DIR__ . '/../../web');
+    return $web === false ? false : $web . DIRECTORY_SEPARATOR . 'partials';
+}
+function wpb_partialPath($which) {
+    $dir = wpb_partialsDir();
+    if ($dir === false) { return false; }
+    return $dir . DIRECTORY_SEPARATOR . ($which === 'footer' ? 'footer.php' : 'header.php');
+}
+function wpb_defaultHeader() {
+    return "<!-- Shared header for the public pages. Edit from CMS > Paginas Web. -->\n"
+         . "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark\">\n"
+         . "    <div class=\"container\">\n"
+         . "        <a class=\"navbar-brand\" href=\"<?php echo \$baseUrl; ?>\"><?php echo \$siteName ?? 'My Website'; ?></a>\n"
+         . "    </div>\n"
+         . "</nav>\n";
+}
+function wpb_defaultFooter() {
+    return "<!-- Shared footer for the public pages. Edit from CMS > Paginas Web. -->\n"
+         . "<footer class=\"bg-dark text-light py-4 mt-5\">\n"
+         . "    <div class=\"container text-center\">\n"
+         . "        <p class=\"mb-0\">&copy; <?php echo date('Y'); ?> <?php echo \$siteName ?? 'My Website'; ?></p>\n"
+         . "    </div>\n"
+         . "</footer>\n";
+}
+function wpb_ensurePartials() {
+    $dir = wpb_partialsDir();
+    if ($dir !== false && !is_dir($dir)) { @mkdir($dir, 0775, true); }
+    $h = wpb_partialPath('header');
+    $f = wpb_partialPath('footer');
+    if ($h && !file_exists($h)) { @file_put_contents($h, wpb_defaultHeader()); }
+    if ($f && !file_exists($f)) { @file_put_contents($f, wpb_defaultFooter()); }
+}
+
+/* ===================== partials: get ===================== */
+if ($action === 'getPartials') {
+    wpb_ensurePartials();
+    $h = wpb_partialPath('header');
+    $f = wpb_partialPath('footer');
+    echo json_encode([
+        'success' => true,
+        'header'  => ($h && is_file($h)) ? (string)@file_get_contents($h) : wpb_defaultHeader(),
+        'footer'  => ($f && is_file($f)) ? (string)@file_get_contents($f) : wpb_defaultFooter(),
+    ]);
+    exit;
+}
+
+/* ===================== partials: save ===================== */
+if ($action === 'savePartials') {
+    $dir = wpb_partialsDir();
+    if ($dir !== false && !is_dir($dir)) { @mkdir($dir, 0775, true); }
+    $hPath = wpb_partialPath('header');
+    $fPath = wpb_partialPath('footer');
+    if ($hPath === false || $fPath === false) {
+        echo json_encode(['success' => false, 'error' => 'No se encontró el directorio web/.']);
+        exit;
+    }
+    $okH = @file_put_contents($hPath, (string)($_POST['header'] ?? '')) !== false;
+    $okF = @file_put_contents($fPath, (string)($_POST['footer'] ?? '')) !== false;
+    if ($okH && $okF) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'No se pudo escribir en web/partials/ (revisa permisos).']);
+    }
+    exit;
+}
+
 /* ============================ meta ============================ */
 // Roles (groups) and users available to restrict a page's access.
 if ($action === 'meta') {

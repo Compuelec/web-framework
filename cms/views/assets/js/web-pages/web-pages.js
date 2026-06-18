@@ -416,6 +416,68 @@ Web Pages builder (template + live preview)
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
+    /* ---------- shared header / footer (one for all public pages) ---------- */
+    var cmHeader = null, cmFooter = null;
+
+    function makePartialEditor(id) {
+        var CM = window.WPB_CM;
+        if (!CM || !CM.hint || !CM.hint.css) { return null; } // CM5 unavailable → plain textarea
+        var el = document.getElementById(id);
+        if (!el) { return null; }
+        var cm = CM.fromTextArea(el, {
+            mode: "htmlmixed", lineNumbers: true, lineWrapping: true,
+            matchBrackets: true, autoCloseBrackets: true, autoCloseTags: true,
+            extraKeys: { "Ctrl-Space": "autocomplete" }
+        });
+        cm.setSize(null, 320);
+        cm.on("inputRead", function (editor, change) {
+            if (change.origin !== "+input") { return; }
+            var ch = change.text[0];
+            if (ch && /[\w<.{#-]/.test(ch)) { editor.showHint({ hint: CM.hint.html, completeSingle: false }); }
+        });
+        return cm;
+    }
+
+    function loadPartials() {
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "getPartials" } })
+            .done(function (res) {
+                if (!res || !res.success) { fncToastr("warning", "No se pudieron cargar el header/footer"); return; }
+                $("#wpb-header-code").val(res.header || "");
+                $("#wpb-footer-code").val(res.footer || "");
+                if (!cmHeader) { cmHeader = makePartialEditor("wpb-header-code"); }
+                if (!cmFooter) { cmFooter = makePartialEditor("wpb-footer-code"); }
+                if (cmHeader) { cmHeader.setValue(res.header || ""); setTimeout(function () { cmHeader.refresh(); }, 60); }
+                if (cmFooter) { cmFooter.setValue(res.footer || ""); }
+            })
+            .fail(function () { fncToastr("warning", "Error al cargar header/footer"); });
+    }
+
+    $("#wpbPartialsModal").on("shown.bs.modal", loadPartials);
+    // CodeMirror needs a visible box: refresh each editor when its tab is shown.
+    $('#wpb-partials-tabs [data-bs-target="#wpb-tab-footer"]').on("shown.bs.tab", function () { if (cmFooter) { cmFooter.refresh(); } });
+    $('#wpb-partials-tabs [data-bs-target="#wpb-tab-header"]').on("shown.bs.tab", function () { if (cmHeader) { cmHeader.refresh(); } });
+
+    $("#wpb-partials-save").on("click", function () {
+        if (cmHeader) { cmHeader.save(); }
+        if (cmFooter) { cmFooter.save(); }
+        var $btn = $(this).prop("disabled", true);
+        $("#wpb-partials-status").text("Guardando…");
+        $.ajax({
+            url: url, method: "POST", dataType: "json",
+            data: { action: "savePartials", header: $("#wpb-header-code").val(), footer: $("#wpb-footer-code").val() }
+        })
+        .done(function (res) {
+            if (res && res.success) {
+                fncToastr("success", "Header y footer guardados");
+                $("#wpbPartialsModal").modal("hide");
+            } else {
+                fncToastr("warning", (res && res.error) || "No se pudo guardar");
+            }
+        })
+        .fail(function () { fncToastr("warning", "Error de red al guardar"); })
+        .always(function () { $btn.prop("disabled", false); $("#wpb-partials-status").text(""); });
+    });
+
     // Defer initial loads to DOM-ready so the CSRF ajaxSend hook is active.
     $(function () {
         initEditors();

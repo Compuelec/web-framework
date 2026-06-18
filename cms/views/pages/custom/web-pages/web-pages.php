@@ -28,7 +28,10 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
             </h4>
             <small class="text-muted">Escribe tu HTML e inserta los datos de tu tabla donde quieras</small>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="wpb-partials" data-bs-toggle="modal" data-bs-target="#wpbPartialsModal"><i class="bi bi-layout-text-window-reverse me-1"></i>Header y Footer</button>
+            <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
+        </div>
     </div>
 
     <div class="row g-3">
@@ -180,6 +183,38 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                 <div class="card-body p-0">
                     <iframe id="wpb-preview" style="width:100%; height:600px; border:0;" title="Vista previa"></iframe>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shared Header / Footer editor (one for all public pages; cannot be deleted) -->
+<div class="modal fade" id="wpbPartialsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-layout-text-window-reverse me-2"></i>Header y Footer del sitio</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Uno para <strong>todas</strong> las páginas públicas. Se guardan en <code>web/partials/header.php</code> y <code>web/partials/footer.php</code> (no se pueden eliminar). Puedes usar HTML; <code>&lt;?php echo $baseUrl; ?&gt;</code> y <code>&lt;?php echo $siteName; ?&gt;</code> están disponibles.</p>
+                <ul class="nav nav-tabs mb-2" id="wpb-partials-tabs">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#wpb-tab-header" type="button"><i class="bi bi-window-dock me-1"></i>Header</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#wpb-tab-footer" type="button"><i class="bi bi-window me-1"></i>Footer</button></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="wpb-tab-header">
+                        <textarea id="wpb-header-code" rows="14" class="form-control font-monospace"></textarea>
+                    </div>
+                    <div class="tab-pane fade" id="wpb-tab-footer">
+                        <textarea id="wpb-footer-code" rows="14" class="form-control font-monospace"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="text-muted small me-auto" id="wpb-partials-status"></span>
+                <button type="button" class="btn btn-dark rounded" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-default backColor rounded" id="wpb-partials-save"><i class="bi bi-check-lg me-1"></i>Guardar</button>
             </div>
         </div>
     </div>
