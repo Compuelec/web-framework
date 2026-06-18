@@ -164,6 +164,36 @@ if ($action === 'delete') {
     exit;
 }
 
+/* ============================ preview ============================ */
+// Render the template against real data so the builder can show a live preview.
+if ($action === 'preview') {
+    $table    = (string)($_POST['table'] ?? '');
+    $template = (string)($_POST['template'] ?? '');
+    if (!pb_isIdentifier($table)) {
+        echo json_encode(['success' => false, 'error' => 'Tabla inválida']);
+        exit;
+    }
+    $rows = [];
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            // $table is validated as a bare identifier, so it is safe to quote.
+            $stmt = $link->query('SELECT * FROM `' . $table . '` LIMIT 24');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            Logger::warning('web-pages preview query failed', ['error' => $e->getMessage()]);
+        }
+    }
+    $single = isset($rows[0]) ? $rows[0] : [];
+    echo json_encode([
+        'success' => true,
+        'html'    => pb_renderTemplate($template, $rows, $single),
+        'css'     => (string)($_POST['customCss'] ?? ''),
+        'count'   => count($rows),
+    ]);
+    exit;
+}
+
 /* ============================ generate ============================ */
 if ($action !== 'generate') {
     echo json_encode(['success' => false, 'error' => 'Unknown action']);
@@ -171,19 +201,12 @@ if ($action !== 'generate') {
 }
 
 $config = [
-    'table'       => $_POST['table']   ?? '',
-    'fileName'    => $_POST['name']    ?? '',
-    'titleColumn' => $_POST['title']   ?? '',
-    'columns'     => (array)($_POST['columns'] ?? []),
-    'heading'     => $_POST['heading'] ?? '',
-    'intro'       => $_POST['intro']   ?? '',
-    'layout'      => $_POST['layout']  ?? 'cards',
-    'accent'      => $_POST['accent']  ?? '#0d6efd',
-    'perRow'      => $_POST['perRow']  ?? 3,
-    'withDetail'  => !empty($_POST['detail']),
-    'customCss'   => $_POST['customCss']  ?? '',
-    'customHtml'  => $_POST['customHtml'] ?? '',
-    'customJs'    => $_POST['customJs']   ?? '',
+    'table'     => $_POST['table']     ?? '',
+    'fileName'  => $_POST['name']      ?? '',
+    'heading'   => $_POST['heading']   ?? '',
+    'template'  => $_POST['template']  ?? '',
+    'customCss' => $_POST['customCss'] ?? '',
+    'customJs'  => $_POST['customJs']  ?? '',
 ];
 
 try {
@@ -194,9 +217,6 @@ try {
 }
 
 $targets = [['file' => $cfg['fileName'], 'source' => buildConfigurablePage($cfg)]];
-if ($cfg['withDetail']) {
-    $targets[] = ['file' => $cfg['detailFile'], 'source' => buildConfigurableDetail($cfg)];
-}
 
 if ($pagesDir === false) {
     echo json_encode(['success' => false, 'error' => 'web/pages directory not found']);

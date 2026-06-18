@@ -1,5 +1,5 @@
 /*=============================================
-Web Pages builder (visual, configurable)
+Web Pages builder (template + live preview)
 =============================================*/
 
 (function () {
@@ -12,14 +12,17 @@ Web Pages builder (visual, configurable)
     var ajaxPath = window.CMS_AJAX_PATH || "/ajax";
     var url      = ajaxPath + "/web-pages.ajax.php";
 
-    var $table   = $("#wpb-table");
-    var $title   = $("#wpb-title");
-    var $cols    = $("#wpb-columns");
-    var $gen     = $("#wpb-generate");
-    var $genLbl  = $("#wpb-generate-label");
-    var $result  = $("#wpb-result");
-    var $editing = $("#wpb-editing");
-    var $pages   = $("#wpb-pages");
+    var $table    = $("#wpb-table");
+    var $template = $("#wpb-template");
+    var $fields   = $("#wpb-fields");
+    var $repeat   = $("#wpb-repeat");
+    var $gen      = $("#wpb-generate");
+    var $genLbl   = $("#wpb-generate-label");
+    var $result   = $("#wpb-result");
+    var $editing  = $("#wpb-editing");
+    var $pages    = $("#wpb-pages");
+
+    var previewTimer = null;
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -27,108 +30,124 @@ Web Pages builder (visual, configurable)
         });
     }
 
-    /* ---------- load tables (custom/user tables only) ---------- */
+    /* ---------- tables (custom only) ---------- */
     function loadTables() {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "tables" } })
             .done(function (res) {
-                if (!res || !res.success) {
-                    $table.empty().append('<option value="">Error al cargar tablas</option>');
-                    return;
-                }
+                if (!res || !res.success) { $table.empty().append('<option value="">Error al cargar tablas</option>'); return; }
                 var tables = Array.isArray(res.tables) ? res.tables : [];
                 $table.empty();
-                if (!tables.length) {
-                    $table.append('<option value="">No hay tablas propias todavía</option>');
-                    return;
-                }
+                if (!tables.length) { $table.append('<option value="">No hay tablas propias todavía</option>'); return; }
                 $table.append('<option value="">— Elige una tabla —</option>');
                 tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
             })
             .fail(function () { $table.empty().append('<option value="">Error al cargar tablas</option>'); });
     }
 
-    /* ---------- load columns ---------- */
-    function loadColumns(table, selected, titleCol, cb) {
-        $title.prop("disabled", true).empty().append("<option>Cargando…</option>");
-        $cols.html('<span class="text-muted small">Cargando…</span>');
+    /* ---------- fields (clickable tags) ---------- */
+    function loadFields(table, cb) {
+        $fields.html('<span class="text-muted small">Cargando…</span>');
+        $repeat.prop("disabled", true);
         $gen.prop("disabled", true);
 
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "columns", table: table } })
             .done(function (res) {
-                var columns = (res && res.columns) || [];
-
-                // Title dropdown
-                $title.empty();
-                columns.forEach(function (c) { $title.append($("<option>").val(c).text(c)); });
-                var preferredTitle = titleCol || columns.filter(function (c) { return /^name_|^title_/.test(c); })[0];
-                if (preferredTitle) { $title.val(preferredTitle); }
-                $title.prop("disabled", false);
-
-                // Column checkboxes
-                var html = "";
-                columns.forEach(function (c) {
-                    var checked = selected ? (selected.indexOf(c) !== -1) : !/^id_/.test(c);
-                    var id = "wpbc-" + c;
-                    html += '<div class="form-check"><input class="form-check-input wpb-col" type="checkbox" value="' +
-                        escapeHtml(c) + '" id="' + escapeHtml(id) + '"' + (checked ? " checked" : "") +
-                        '><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(c) + "</label></div>";
+                var cols = (res && res.columns) || [];
+                if (!cols.length) { $fields.html('<span class="text-danger small">Sin columnas</span>'); return; }
+                $fields.empty();
+                cols.forEach(function (c) {
+                    var $chip = $('<button type="button" class="btn btn-sm btn-light border me-1 mb-1"></button>');
+                    $chip.html("<code>{{" + escapeHtml(c) + "}}</code>");
+                    $chip.on("click", function () { insertAtCursor("{{" + c + "}}"); });
+                    $fields.append($chip);
                 });
-                $cols.html(html);
-
+                $repeat.prop("disabled", false);
                 $gen.prop("disabled", false);
                 $("#wpb-name").attr("placeholder", table);
                 if (cb) { cb(); }
             })
-            .fail(function () { $cols.html('<span class="text-danger small">Error al cargar columnas</span>'); });
+            .fail(function () { $fields.html('<span class="text-danger small">Error al cargar campos</span>'); });
+    }
+
+    /* ---------- editor helpers ---------- */
+    function insertAtCursor(text) {
+        var el = $template[0];
+        var start = el.selectionStart || 0, end = el.selectionEnd || 0;
+        var val = el.value;
+        el.value = val.slice(0, start) + text + val.slice(end);
+        el.selectionStart = el.selectionEnd = start + text.length;
+        el.focus();
+        schedulePreview();
+    }
+
+    function insertRepeat() {
+        var el = $template[0];
+        var start = el.selectionStart || 0, end = el.selectionEnd || 0;
+        var val = el.value;
+        var sel = val.slice(start, end) || "\n  <!-- HTML por cada registro: usa {{campo}} -->\n";
+        var block = "{{#cada}}" + sel + "{{/cada}}";
+        el.value = val.slice(0, start) + block + val.slice(end);
+        el.focus();
+        schedulePreview();
+    }
+
+    /* ---------- live preview ---------- */
+    function schedulePreview() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(runPreview, 450);
+    }
+
+    function setPreview(html, count, css) {
+        var doc = '<!doctype html><html><head><meta charset="utf-8">' +
+            '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+            '<style>body{padding:1rem}' + (css || "") + '</style></head><body>' + (html || "") + '</body></html>';
+        document.getElementById("wpb-preview").srcdoc = doc;
+        $("#wpb-preview-info").text(count ? (count + " registro(s)") : "");
+    }
+
+    function runPreview() {
+        var table = $table.val();
+        if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
+        $.ajax({
+            url: url, method: "POST", dataType: "json",
+            data: { action: "preview", table: table, template: $template.val(), customCss: $("#wpb-css").val() }
+        }).done(function (res) {
+            if (!res || !res.success) { setPreview('<p style="color:#c00">' + escapeHtml((res && res.error) || "Error") + "</p>", 0); return; }
+            setPreview(res.html, res.count, res.css);
+        }).fail(function () { setPreview('<p style="color:#c00">No se pudo generar la vista previa.</p>', 0); });
     }
 
     /* ---------- existing pages ---------- */
     function loadPages() {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "list" } })
             .done(function (res) {
-                if (!res || !res.success) {
-                    $pages.html('<div class="list-group-item text-danger small">' + escapeHtml((res && res.error) || "Error al cargar.") + "</div>");
-                    return;
-                }
+                if (!res || !res.success) { $pages.html('<div class="list-group-item text-danger small">' + escapeHtml((res && res.error) || "Error al cargar.") + "</div>"); return; }
                 var pages = res.pages || [];
-                if (!pages.length) {
-                    $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>');
-                    return;
-                }
+                if (!pages.length) { $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>'); return; }
                 $pages.empty();
                 pages.forEach(function (p) {
-                    var $item = $('<div class="list-group-item d-flex justify-content-between align-items-start"></div>');
-                    var $info = $('<a href="#" class="flex-grow-1 text-decoration-none text-body">' +
-                        '<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + "</div>" +
-                        '<div class="small text-muted">' + escapeHtml(p.file) + ".php · " + escapeHtml(p.table) + "</div></a>");
+                    var $item = $('<div class="list-group-item d-flex justify-content-between align-items-start px-2"></div>');
+                    var $info = $('<a href="#" class="flex-grow-1 text-decoration-none text-body small"></a>');
+                    $info.html('<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + "</div><div class='text-muted'>" + escapeHtml(p.file) + ".php</div>");
                     $info.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
-                    var $del = $('<button class="btn btn-sm btn-link text-danger p-0 ms-2" title="Eliminar"><i class="bi bi-trash"></i></button>');
+                    var $del = $('<button class="btn btn-sm btn-link text-danger p-0 ms-1" title="Eliminar"><i class="bi bi-trash"></i></button>');
                     $del.on("click", function (e) { e.preventDefault(); deletePage(p.file); });
                     $pages.append($item.append($info).append($del));
                 });
             })
-            .fail(function () {
-                $pages.html('<div class="list-group-item text-danger small">No se pudieron cargar las páginas.</div>');
-            });
+            .fail(function () { $pages.html('<div class="list-group-item text-danger small">No se pudieron cargar las páginas.</div>'); });
     }
 
-    /* ---------- collect / apply config ---------- */
+    /* ---------- config in/out ---------- */
     function collectConfig() {
-        var columns = $cols.find(".wpb-col:checked").map(function () { return this.value; }).get();
         return {
             action:    "generate",
             table:     $table.val(),
             name:      $("#wpb-name").val(),
             heading:   $("#wpb-heading").val(),
-            intro:     $("#wpb-intro").val(),
-            title:     $title.val(),
-            "columns[]": columns,
-            layout:    $("input[name='wpb-layout']:checked").val(),
-            perRow:    $("#wpb-perrow").val(),
-            accent:    $("#wpb-accent").val(),
-            detail:    $("#wpb-detail").is(":checked") ? 1 : 0,
+            template:  $template.val(),
             customCss: $("#wpb-css").val(),
-            customHtml: $("#wpb-html").val(),
             customJs:  $("#wpb-js").val()
         };
     }
@@ -136,22 +155,17 @@ Web Pages builder (visual, configurable)
     function applyConfig(c) {
         $table.val(c.table);
         $("#wpb-heading").val(c.heading || "");
-        $("#wpb-intro").val(c.intro || "");
         $("#wpb-name").val(c.fileName || "");
-        $("input[name='wpb-layout'][value='" + (c.layout || "cards") + "']").prop("checked", true);
-        $("#wpb-perrow").val(String(c.perRow || 3));
-        $("#wpb-accent").val(c.accent || "#0d6efd");
-        $("#wpb-detail").prop("checked", !!c.withDetail);
+        $template.val(c.template || "");
         $("#wpb-css").val(c.customCss || "");
-        $("#wpb-html").val(c.customHtml || "");
         $("#wpb-js").val(c.customJs || "");
-        loadColumns(c.table, c.columns || [], c.titleColumn);
+        loadFields(c.table, runPreview);
     }
 
     function loadForEdit(file) {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "load", file: file } })
             .done(function (res) {
-                if (!res || !res.success) { return; }
+                if (!res || !res.success) { fncSweetAlert("error", (res && res.error) || "No se pudo cargar.", ""); return; }
                 $editing.val(file);
                 $genLbl.text("Guardar cambios");
                 applyConfig(res.config);
@@ -159,15 +173,12 @@ Web Pages builder (visual, configurable)
     }
 
     function deletePage(file) {
-        fncSweetAlert("confirm", '¿Eliminar la página "' + file + '"? Se borrará el archivo .php y su página de detalle si existe.')
+        fncSweetAlert("confirm", '¿Eliminar la página "' + file + '"? Esta acción no se puede deshacer.')
             .then(function (confirmed) {
                 if (!confirmed) { return; }
                 $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "delete", file: file } })
                     .done(function (res) {
-                        if (!res || !res.success) {
-                            fncSweetAlert("error", (res && res.error) || "No se pudo eliminar.", "");
-                            return;
-                        }
+                        if (!res || !res.success) { fncSweetAlert("error", (res && res.error) || "No se pudo eliminar.", ""); return; }
                         if ($editing.val() === file) { resetForm(); }
                         fncToastr("success", "Página eliminada");
                         loadPages();
@@ -179,16 +190,13 @@ Web Pages builder (visual, configurable)
     function resetForm() {
         $editing.val("");
         $genLbl.text("Crear página");
-        $("#wpb-heading,#wpb-intro,#wpb-name,#wpb-css,#wpb-html,#wpb-js").val("");
-        $("#wpb-accent").val("#0d6efd");
-        $("input[name='wpb-layout'][value='cards']").prop("checked", true);
-        $("#wpb-perrow").val("3");
-        $("#wpb-detail").prop("checked", false);
+        $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js").val("");
         $table.val("");
-        $title.prop("disabled", true).empty().append("<option>Elige una tabla</option>");
-        $cols.html('<span class="text-muted small">Elige una tabla</span>');
+        $fields.html('<span class="text-muted small">Elige una tabla</span>');
+        $repeat.prop("disabled", true);
         $gen.prop("disabled", true);
         $result.html("");
+        setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
     }
 
     /* ---------- generate ---------- */
@@ -199,16 +207,13 @@ Web Pages builder (visual, configurable)
 
         $.ajax({ url: url, method: "POST", dataType: "json", data: collectConfig() })
             .done(function (res) {
-                if (!res || !res.success) {
-                    fncSweetAlert("error", (res && res.error) || "Error desconocido.", "");
-                    return;
-                }
+                if (!res || !res.success) { fncSweetAlert("error", (res && res.error) || "Error desconocido.", ""); return; }
                 if (res.written) {
                     var links = res.files.map(function (f) { return "<li><code>web/pages/" + escapeHtml(f) + "</code></li>"; }).join("");
                     var viewUrl = (window.CMS_BASE_PATH || "").replace(/\/cms$/, "") + "/" + escapeHtml(res.urlPath);
-                    fncToastr("success", "Página creada correctamente");
-                    $result.html(resultCard("Archivos creados",
-                        "<ul class='mb-2'>" + links + "</ul>" +
+                    fncToastr("success", "Página guardada correctamente");
+                    $result.html(resultCard("Listo",
+                        "<ul class='mb-2 small'>" + links + "</ul>" +
                         '<a class="btn btn-sm btn-primary" target="_blank" href="' + viewUrl + '"><i class="bi bi-box-arrow-up-right me-1"></i>Ver página</a>'));
                     loadPages();
                 } else {
@@ -227,7 +232,7 @@ Web Pages builder (visual, configurable)
     }
 
     function resultCard(title, body) {
-        return '<div class="card"><div class="card-body"><h6 class="card-title">' + escapeHtml(title) + "</h6><div>" + body + "</div></div></div>";
+        return '<div class="alert alert-success mb-0"><h6 class="mb-1">' + escapeHtml(title) + "</h6><div>" + body + "</div></div>";
     }
 
     function downloadFile(name, contents) {
@@ -242,16 +247,18 @@ Web Pages builder (visual, configurable)
     /* ---------- events ---------- */
     $table.on("change", function () {
         var t = $(this).val();
-        if (t) { loadColumns(t, null, null); } else { resetForm(); }
+        if (t) { loadFields(t, runPreview); } else { resetForm(); }
     });
+    $template.on("input", schedulePreview);
+    $("#wpb-css").on("input", schedulePreview);
+    $repeat.on("click", insertRepeat);
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
-    // Defer the initial loads to DOM-ready so the global CSRF ajaxSend hook
-    // (registered by auth-interceptor on DOMContentLoaded) is active before the
-    // list POST fires — otherwise it would be rejected as an invalid CSRF token.
+    // Defer initial loads to DOM-ready so the CSRF ajaxSend hook is active.
     $(function () {
         loadTables();
         loadPages();
+        setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
     });
 })();
