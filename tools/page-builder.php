@@ -63,7 +63,10 @@ function pb_replaceFields($html, array $row) {
         $urls = pb_imageUrls(array_key_exists($m[1], $row) ? $row[$m[1]] : '');
         $out  = '';
         foreach ($urls as $url) {
-            $out .= str_replace('{{url}}', htmlspecialchars($url, ENT_QUOTES), $m[2]);
+            $escaped = htmlspecialchars($url, ENT_QUOTES);
+            $out .= preg_replace_callback('/\{\{\s*url\s*\}\}/', function () use ($escaped) {
+                return $escaped;
+            }, $m[2]);
         }
         return $out;
     }, $html);
@@ -265,7 +268,10 @@ if (!function_exists('wpb_fields')) {
         \$html = preg_replace_callback('/\\{\\{#imagenes\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/imagenes\\}\\}/s', function (\$m) use (\$row) {
             \$urls = wpb_image_urls(array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '');
             \$out = '';
-            foreach (\$urls as \$url) { \$out .= str_replace('{{url}}', htmlspecialchars(\$url, ENT_QUOTES), \$m[2]); }
+            foreach (\$urls as \$url) {
+                \$escUrl = htmlspecialchars(\$url, ENT_QUOTES);
+                \$out .= preg_replace_callback('/\\{\\{\\s*url\\s*\\}\\}/', function () use (\$escUrl) { return \$escUrl; }, \$m[2]);
+            }
             return \$out;
         }, \$html);
         return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {

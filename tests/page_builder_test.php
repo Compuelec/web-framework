@@ -63,6 +63,12 @@ it('decodes URL-encoded image arrays in a gallery block', function() {
     assertSame('<img src="a.jpg"><img src="b.jpg">', $out);
 });
 
+it('image gallery handles spaced {{ url }} and $/backslash safely', function() {
+    $row = ['imgs' => json_encode(['a$1.jpg', 'b\\x.jpg'])];
+    $out = pb_replaceFields('{{#imagenes imgs}}<img src="{{ url }}">{{/imagenes}}', $row);
+    assertSame('<img src="a$1.jpg"><img src="b\\x.jpg">', $out);
+});
+
 it('pb_imageUrls returns an empty list for non-array values', function() {
     assertSame([], pb_imageUrls(''));
     assertSame([], pb_imageUrls('not json'));
