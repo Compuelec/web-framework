@@ -159,7 +159,25 @@ Configura las reglas de reescritura apropiadas para las rutas de la API.
 2. Si es la primera vez, el sistema te mostrará el instalador
 3. Completa el formulario de instalación para crear el administrador inicial y configurar las tablas base
 
-### 7. Permisos de archivos
+### 7. Setup automático (recomendado)
+
+Tras instalar **o restaurar un respaldo**, ejecuta el script de setup una vez.
+Crea los `config.php` faltantes (incluido un `web/config.php` funcional derivado
+de `cms/config.php`), crea los directorios escribibles y ajusta dueño y permisos:
+
+```bash
+sudo ./setup.sh
+# En Linux (Apache/Nginx) indica el usuario del servidor si no es www-data:
+# sudo ./setup.sh apache
+```
+
+Es idempotente: nunca sobrescribe un `config.php` existente y puedes correrlo
+las veces que necesites. Esto evita el problema de "la página pública no carga
+datos" (que ocurre cuando falta `web/config.php`) y los problemas de permisos.
+
+### 8. Permisos de archivos (manual)
+
+Si prefieres hacerlo a mano en vez de `setup.sh`:
 
 ```bash
 # Asegúrate de que el servidor web tenga permisos de escritura en:
