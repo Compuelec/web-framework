@@ -230,6 +230,11 @@ function pb_normalizeConfig(array $raw) {
         // Interactive options.
         'private'     => !empty($raw['private']),   // require login to view/submit
         'columns'     => $columns,                  // writable columns for forms
+        // Access control (only applies when private). Empty both = any logged-in
+        // user. accessRoles = allowed rol_admin values; accessUsers = allowed
+        // admin ids.
+        'accessRoles' => array_values(array_filter(array_map('strval', (array)($raw['accessRoles'] ?? [])), 'strlen')),
+        'accessUsers' => array_values(array_filter(array_map('strval', (array)($raw['accessUsers'] ?? [])), 'strlen')),
     ];
 }
 
@@ -298,26 +303,48 @@ if (isset(\$_GET['wpb_logout'])) {
     exit;
 }
 
-\$isAuthed    = !\$private || !empty(\$_SESSION[\$authKey]);
+\$accessRoles = isset(\$cfg['accessRoles']) && is_array(\$cfg['accessRoles']) ? \$cfg['accessRoles'] : [];
+\$accessUsers = isset(\$cfg['accessUsers']) && is_array(\$cfg['accessUsers']) ? \$cfg['accessUsers'] : [];
 \$loginError  = null;
 \$formMessage = null;
 
 // Login for private pages — validates against existing admins via the API.
-if (\$private && !\$isAuthed && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset(\$_POST['wpb_login'])) {
+\$user = (isset(\$_SESSION[\$authKey]) && is_array(\$_SESSION[\$authKey])) ? \$_SESSION[\$authKey] : null;
+if (\$private && \$user === null && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset(\$_POST['wpb_login'])) {
     try {
         \$resp = ApiController::getByFilter('admins', 'email_admin', trim(\$_POST['wpb_email'] ?? ''));
         if (isset(\$resp->status) && \$resp->status == 200 && !empty(\$resp->results)) {
             \$admin = (array) \$resp->results[0];
             if (!empty(\$admin['password_admin']) && password_verify((string)(\$_POST['wpb_password'] ?? ''), \$admin['password_admin'])) {
-                \$_SESSION[\$authKey] = true;
-                \$isAuthed = true;
+                \$user = [
+                    'id'    => (string)(\$admin['id_admin'] ?? ''),
+                    'role'  => (string)(\$admin['rol_admin'] ?? ''),
+                    'email' => (string)(\$admin['email_admin'] ?? ''),
+                ];
+                \$_SESSION[\$authKey] = \$user;
             } else { \$loginError = 'Credenciales inválidas.'; }
         } else { \$loginError = 'Credenciales inválidas.'; }
     } catch (Throwable \$e) { \$loginError = 'No se pudo validar el acceso.'; }
 }
 
-// Form submit (create / update) — only when authorized.
-if (\$isAuthed && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset(\$_POST['wpb_login'])) {
+\$isAuthed = !\$private || \$user !== null;
+
+// Access check: a logged-in user must match an allowed role or be an allowed
+// user; if no roles/users are configured, any logged-in user is allowed.
+\$hasAccess = true;
+if (\$private) {
+    \$hasAccess = false;
+    if (\$user !== null) {
+        if (empty(\$accessRoles) && empty(\$accessUsers)) {
+            \$hasAccess = true;
+        } elseif (in_array(\$user['role'], \$accessRoles, true) || in_array(\$user['id'], \$accessUsers, true)) {
+            \$hasAccess = true;
+        }
+    }
+}
+
+// Form submit (create / update) — only when authorized AND allowed.
+if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !isset(\$_POST['wpb_login'])) {
     \$fields = [];
     foreach (\$columns as \$col) {
         if (\$col === \$idColumn) { continue; }
@@ -437,7 +464,7 @@ if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
 \$pageDescription = '';
 
-\$body = (\$error || (\$private && !\$isAuthed)) ? '' : wpb_render(\$template, \$records, \$single);
+\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single);
 
 ob_start();
 ?>
@@ -475,6 +502,8 @@ ob_start();
                 </div></div>
             </div>
         </div>
+    <?php elseif (!\$hasAccess): ?>
+        <div class="alert alert-warning">No tienes permiso para ver esta página.</div>
     <?php elseif (\$error): ?>
         <div class="alert alert-warning"><?php echo htmlspecialchars(\$error, ENT_QUOTES); ?></div>
     <?php else: ?>

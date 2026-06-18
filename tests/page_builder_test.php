@@ -130,6 +130,12 @@ it('normalizes private flag and columns', function() {
     assertSame(['name_product'], $c['columns']);
 });
 
+it('normalizes access roles and users', function() {
+    $c = pb_normalizeConfig(['table' => 'products', 'accessRoles' => ['empleado', '', 'rrhh'], 'accessUsers' => [5, '']]);
+    assertSame(['empleado', 'rrhh'], $c['accessRoles']);
+    assertSame(['5'], $c['accessUsers']);
+});
+
 it('generates valid PHP for a private page with a form', function() {
     $src = buildConfigurablePage([
         'table' => 'products', 'private' => true, 'columns' => ['name_product'],

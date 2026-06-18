@@ -83,6 +83,24 @@ function wpb_ensureWebConfig() {
     }
 }
 
+/* ============================ meta ============================ */
+// Roles (groups) and users available to restrict a page's access.
+if ($action === 'meta') {
+    $roles = [];
+    $users = [];
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            $roles = $link->query("SELECT DISTINCT rol_admin FROM admins WHERE rol_admin IS NOT NULL AND rol_admin <> '' ORDER BY rol_admin")->fetchAll(PDO::FETCH_COLUMN);
+            $users = $link->query("SELECT id_admin AS id, email_admin AS email FROM admins ORDER BY email_admin")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            Logger::warning('web-pages meta failed', ['error' => $e->getMessage()]);
+        }
+    }
+    echo json_encode(['success' => true, 'roles' => $roles, 'users' => $users]);
+    exit;
+}
+
 /* ============================ tables ============================ */
 // List user/custom data tables only (framework + plugin tables are hidden).
 if ($action === 'tables') {
@@ -270,8 +288,10 @@ $config = [
     'template'  => $_POST['template']  ?? '',
     'customCss' => $_POST['customCss'] ?? '',
     'customJs'  => $_POST['customJs']  ?? '',
-    'private'   => !empty($_POST['private']),
-    'columns'   => [],
+    'private'     => !empty($_POST['private']),
+    'columns'     => [],
+    'accessRoles' => (array)($_POST['accessRoles'] ?? []),
+    'accessUsers' => (array)($_POST['accessUsers'] ?? []),
 ];
 
 // Look up the table's REAL primary-key column (so ordering/lookups work for

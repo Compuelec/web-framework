@@ -241,8 +241,26 @@ Web Pages builder (template + live preview)
             template:  $template.val(),
             customCss: $("#wpb-css").val(),
             customJs:  $("#wpb-js").val(),
-            private:   $("#wpb-private").is(":checked") ? 1 : 0
+            private:   $("#wpb-private").is(":checked") ? 1 : 0,
+            "accessRoles[]": $(".wpb-role:checked").map(function () { return this.value; }).get(),
+            "accessUsers[]": $(".wpb-user:checked").map(function () { return this.value; }).get()
         };
+    }
+
+    function loadMeta() {
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "meta" } })
+            .done(function (res) {
+                if (!res || !res.success) { return; }
+                var roles = res.roles || [], users = res.users || [];
+                $("#wpb-roles").html(roles.length ? roles.map(function (r) {
+                    var id = "wpb-role-" + r;
+                    return '<div class="form-check form-check-inline"><input class="form-check-input wpb-role" type="checkbox" value="' + escapeHtml(r) + '" id="' + escapeHtml(id) + '"><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(r) + "</label></div>";
+                }).join("") : '<span class="text-muted small">No hay roles</span>');
+                $("#wpb-users").html(users.length ? users.map(function (u) {
+                    var id = "wpb-user-" + u.id;
+                    return '<div class="form-check"><input class="form-check-input wpb-user" type="checkbox" value="' + escapeHtml(u.id) + '" id="' + escapeHtml(id) + '"><label class="form-check-label small" for="' + escapeHtml(id) + '">' + escapeHtml(u.email) + "</label></div>";
+                }).join("") : '<span class="text-muted small">No hay usuarios</span>');
+            });
     }
 
     // Build a {{#form}} block from the table's columns and insert it.
@@ -273,6 +291,10 @@ Web Pages builder (template + live preview)
         $("#wpb-css").val(c.customCss || "");
         $("#wpb-js").val(c.customJs || "");
         $("#wpb-private").prop("checked", !!c.private);
+        $("#wpb-access").toggle(!!c.private);
+        var roles = c.accessRoles || [], users = (c.accessUsers || []).map(String);
+        $(".wpb-role").each(function () { this.checked = roles.indexOf(this.value) !== -1; });
+        $(".wpb-user").each(function () { this.checked = users.indexOf(this.value) !== -1; });
         if (cmTemplate) { cmTemplate.setValue(c.template || ""); }
         if (cmCss) { cmCss.setValue(c.customCss || ""); }
         if (cmJs) { cmJs.setValue(c.customJs || ""); }
@@ -313,6 +335,8 @@ Web Pages builder (template + live preview)
         if (cmJs) { cmJs.setValue(""); }
         $table.val("");
         $("#wpb-private").prop("checked", false);
+        $("#wpb-access").hide();
+        $(".wpb-role, .wpb-user").prop("checked", false);
         $fields.html('<span class="text-muted small">Elige una tabla</span>');
         $repeat.prop("disabled", true);
         $formBtn.prop("disabled", true);
@@ -375,6 +399,7 @@ Web Pages builder (template + live preview)
     $("#wpb-css").on("input", schedulePreview);
     $repeat.on("click", insertRepeat);
     $formBtn.on("click", insertFormSnippet);
+    $("#wpb-private").on("change", function () { $("#wpb-access").toggle(this.checked); });
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
@@ -382,6 +407,7 @@ Web Pages builder (template + live preview)
     $(function () {
         initEditors();
         loadTables();
+        loadMeta();
         loadPages();
         setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
     });
