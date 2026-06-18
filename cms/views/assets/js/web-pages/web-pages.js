@@ -27,6 +27,7 @@ Web Pages builder (template + live preview)
     var previewTimer = null;
     var previewXhr   = null;
     var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
+    var partialMode = null; // 'header' | 'footer' while editing a shared partial
 
     /* ---------- code editors (CodeMirror 5) ---------- */
     // CodeMirror 5 is bundled and loaded by the builder view, captured as
@@ -192,6 +193,7 @@ Web Pages builder (template + live preview)
     }
 
     function runPreview() {
+        if (partialMode) { return; } // header/footer have no data preview
         var table = $table.val();
         if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
         // Abort any in-flight preview so a slow earlier response can't overwrite
@@ -210,13 +212,26 @@ Web Pages builder (template + live preview)
     }
 
     /* ---------- existing pages ---------- */
+    // Pinned header/footer items (always shown, cannot be deleted).
+    function renderPinnedPartials() {
+        [["header", "Header", "bi-window-dock"], ["footer", "Footer", "bi-window"]].forEach(function (p) {
+            var $item = $('<a href="#" class="list-group-item list-group-item-action px-2 py-2" data-partial="' + p[0] + '"></a>');
+            $item.html('<div class="fw-semibold"><i class="bi ' + p[2] + ' me-1"></i>' + p[1] + "</div><div class='text-muted' style='font-size:.72rem'>web/partials/" + p[0] + ".php</div>");
+            $item.on("click", function (e) { e.preventDefault(); loadPartial(p[0]); });
+            $pages.append($item);
+        });
+        $pages.append('<div class="list-group-item bg-light text-muted px-2 py-1" style="font-size:.72rem;letter-spacing:.03em">PÁGINAS</div>');
+    }
+
     function loadPages() {
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "list" } })
             .done(function (res) {
-                if (!res || !res.success) { $pages.html('<div class="list-group-item text-danger small">' + escapeHtml((res && res.error) || "Error al cargar.") + "</div>"); return; }
-                var pages = res.pages || [];
-                if (!pages.length) { $pages.html('<div class="list-group-item text-muted small">Aún no hay páginas.</div>'); return; }
                 $pages.empty();
+                renderPinnedPartials();
+                if (partialMode) { $('#wpb-pages [data-partial="' + partialMode + '"]').addClass("active"); }
+                if (!res || !res.success) { $pages.append('<div class="list-group-item text-danger small">' + escapeHtml((res && res.error) || "Error al cargar.") + "</div>"); return; }
+                var pages = res.pages || [];
+                if (!pages.length) { $pages.append('<div class="list-group-item text-muted small">Aún no hay páginas.</div>'); return; }
                 pages.forEach(function (p) {
                     var $item = $('<div class="list-group-item d-flex justify-content-between align-items-start px-2"></div>');
                     var $info = $('<a href="#" class="flex-grow-1 text-decoration-none text-body small"></a>');
@@ -227,7 +242,7 @@ Web Pages builder (template + live preview)
                     $pages.append($item.append($info).append($del));
                 });
             })
-            .fail(function () { $pages.html('<div class="list-group-item text-danger small">No se pudieron cargar las páginas.</div>'); });
+            .fail(function () { $pages.empty(); renderPinnedPartials(); $pages.append('<div class="list-group-item text-danger small">No se pudieron cargar las páginas.</div>'); });
     }
 
     /* ---------- config in/out ---------- */
@@ -314,6 +329,7 @@ Web Pages builder (template + live preview)
     }
 
     function loadForEdit(file) {
+        exitPartialMode();
         $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "load", file: file } })
             .done(function (res) {
                 if (!res || !res.success) { fncSweetAlert("error", (res && res.error) || "No se pudo cargar.", ""); return; }
@@ -339,6 +355,7 @@ Web Pages builder (template + live preview)
     }
 
     function resetForm() {
+        exitPartialMode();
         $editing.val("");
         $genLbl.text("Crear página");
         $("#wpb-heading,#wpb-name,#wpb-template,#wpb-css,#wpb-js,#wpb-meta-title,#wpb-meta-desc,#wpb-og-title,#wpb-og-desc,#wpb-og-image").val("");
@@ -360,6 +377,7 @@ Web Pages builder (template + live preview)
 
     /* ---------- generate ---------- */
     function generate() {
+        if (partialMode) { savePartial(); return; }
         if (!$table.val()) { return; }
         $gen.prop("disabled", true);
         $result.html("");
@@ -416,67 +434,61 @@ Web Pages builder (template + live preview)
     $gen.on("click", generate);
     $("#wpb-new").on("click", resetForm);
 
-    /* ---------- shared header / footer (one for all public pages) ---------- */
-    var cmHeader = null, cmFooter = null;
-
-    function makePartialEditor(id) {
-        var CM = window.WPB_CM;
-        if (!CM || !CM.hint || !CM.hint.css) { return null; } // CM5 unavailable → plain textarea
-        var el = document.getElementById(id);
-        if (!el) { return null; }
-        var cm = CM.fromTextArea(el, {
-            mode: "htmlmixed", lineNumbers: true, lineWrapping: true,
-            matchBrackets: true, autoCloseBrackets: true, autoCloseTags: true,
-            extraKeys: { "Ctrl-Space": "autocomplete" }
-        });
-        cm.setSize(null, 320);
-        cm.on("inputRead", function (editor, change) {
-            if (change.origin !== "+input") { return; }
-            var ch = change.text[0];
-            if (ch && /[\w<.{#-]/.test(ch)) { editor.showHint({ hint: CM.hint.html, completeSingle: false }); }
-        });
-        return cm;
+    /* ---------- shared header / footer (pinned items, edited like a page) ---------- */
+    // partialMode is 'header' | 'footer' while editing a partial, else null.
+    function setEd(cm, id, v) {
+        $("#" + id).val(v);
+        if (cm) { cm.setValue(v); setTimeout(function () { cm.refresh(); }, 30); }
     }
 
-    function loadPartials() {
-        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "getPartials" } })
+    function enterPartialMode(which) {
+        partialMode = which;
+        $editing.val("");
+        $(".wpb-page-only").hide();
+        $result.html("");
+        $gen.prop("disabled", false);
+        $genLbl.text(which === "footer" ? "Guardar footer" : "Guardar header");
+        $("#wpb-pages .list-group-item, #wpb-pages [data-partial]").removeClass("active");
+        $('#wpb-pages [data-partial="' + which + '"]').addClass("active");
+        $("#wpb-adv-body").addClass("show"); // CSS/JS box is shared and useful here
+        setPreview('<div style="padding:1.5rem;font-family:sans-serif;color:#888">El header/footer se ve en las páginas públicas. Guarda y ábrelas para verlo.</div>', 0);
+    }
+
+    function exitPartialMode() {
+        if (!partialMode) { return; }
+        partialMode = null;
+        $(".wpb-page-only").show();
+        $("#wpb-access").toggle($("input[name='wpb-visibility']:checked").val() === "private");
+        $('#wpb-pages [data-partial]').removeClass("active");
+        $genLbl.text("Crear página");
+    }
+
+    function loadPartial(which) {
+        $.ajax({ url: url, method: "POST", dataType: "json", data: { action: "getPartial", which: which } })
             .done(function (res) {
-                if (!res || !res.success) { fncToastr("warning", "No se pudieron cargar el header/footer"); return; }
-                $("#wpb-header-code").val(res.header || "");
-                $("#wpb-footer-code").val(res.footer || "");
-                if (!cmHeader) { cmHeader = makePartialEditor("wpb-header-code"); }
-                if (!cmFooter) { cmFooter = makePartialEditor("wpb-footer-code"); }
-                if (cmHeader) { cmHeader.setValue(res.header || ""); setTimeout(function () { cmHeader.refresh(); }, 60); }
-                if (cmFooter) { cmFooter.setValue(res.footer || ""); }
+                if (!res || !res.success) { fncToastr("warning", "No se pudo cargar."); return; }
+                enterPartialMode(which);
+                setEd(cmTemplate, "wpb-template", res.html || "");
+                setEd(cmCss, "wpb-css", res.css || "");
+                setEd(cmJs, "wpb-js", res.js || "");
             })
-            .fail(function () { fncToastr("warning", "Error al cargar header/footer"); });
+            .fail(function () { fncToastr("warning", "Error al cargar."); });
     }
 
-    $("#wpbPartialsModal").on("shown.bs.modal", loadPartials);
-    // CodeMirror needs a visible box: refresh each editor when its tab is shown.
-    $('#wpb-partials-tabs [data-bs-target="#wpb-tab-footer"]').on("shown.bs.tab", function () { if (cmFooter) { cmFooter.refresh(); } });
-    $('#wpb-partials-tabs [data-bs-target="#wpb-tab-header"]').on("shown.bs.tab", function () { if (cmHeader) { cmHeader.refresh(); } });
-
-    $("#wpb-partials-save").on("click", function () {
-        if (cmHeader) { cmHeader.save(); }
-        if (cmFooter) { cmFooter.save(); }
-        var $btn = $(this).prop("disabled", true);
-        $("#wpb-partials-status").text("Guardando…");
+    function savePartial() {
+        syncEditors();
+        $gen.prop("disabled", true);
         $.ajax({
             url: url, method: "POST", dataType: "json",
-            data: { action: "savePartials", header: $("#wpb-header-code").val(), footer: $("#wpb-footer-code").val() }
+            data: { action: "savePartial", which: partialMode, html: $template.val(), css: $("#wpb-css").val(), js: $("#wpb-js").val() }
         })
         .done(function (res) {
-            if (res && res.success) {
-                fncToastr("success", "Header y footer guardados");
-                $("#wpbPartialsModal").modal("hide");
-            } else {
-                fncToastr("warning", (res && res.error) || "No se pudo guardar");
-            }
+            if (res && res.success) { fncToastr("success", (res.which === "footer" ? "Footer" : "Header") + " guardado"); }
+            else { fncSweetAlert("error", (res && res.error) || "No se pudo guardar.", ""); }
         })
-        .fail(function () { fncToastr("warning", "Error de red al guardar"); })
-        .always(function () { $btn.prop("disabled", false); $("#wpb-partials-status").text(""); });
-    });
+        .fail(function () { fncSweetAlert("error", "No se pudo contactar al servidor.", ""); })
+        .always(function () { $gen.prop("disabled", false); });
+    }
 
     // Defer initial loads to DOM-ready so the CSRF ajaxSend hook is active.
     $(function () {

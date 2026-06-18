@@ -28,10 +28,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
             </h4>
             <small class="text-muted">Escribe tu HTML e inserta los datos de tu tabla donde quieras</small>
         </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" id="wpb-partials" data-bs-toggle="modal" data-bs-target="#wpbPartialsModal"><i class="bi bi-layout-text-window-reverse me-1"></i>Header y Footer</button>
-            <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
-        </div>
+        <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
     </div>
 
     <div class="row g-3">
@@ -51,7 +48,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                 <div class="card-body">
                     <input type="hidden" id="wpb-editing" value="">
 
-                    <div class="row">
+                    <div class="row wpb-page-only">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-semibold" for="wpb-table">Tabla de datos</label>
                             <select class="form-select form-select-sm" id="wpb-table"><option value="">Cargando…</option></select>
@@ -62,7 +59,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="mb-2 wpb-page-only">
                         <label class="form-label fw-semibold mb-1">Insertar datos</label>
                         <div class="small text-muted mb-1">
                             Haz clic en un campo para insertar su etiqueta. Para listar <b>todos</b> los registros,
@@ -79,7 +76,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div class="mb-3 mt-3">
+                    <div class="mb-3 mt-3 wpb-page-only">
                         <label class="form-label fw-semibold d-block mb-2">Acceso a la página</label>
                         <div class="d-flex gap-2 flex-wrap" id="wpb-visibility">
                             <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-public" value="public" checked>
@@ -89,7 +86,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div id="wpb-access" class="border rounded p-2 mb-3" style="display:none;">
+                    <div id="wpb-access" class="border rounded p-2 mb-3 wpb-page-only" style="display:none;">
                         <div class="small text-muted mb-2">Permitir acceso a (si no marcas nada, cualquier usuario logueado entra):</div>
                         <label class="form-label small fw-semibold mb-1">Grupos / roles</label>
                         <div id="wpb-roles" class="mb-2"><span class="text-muted small">—</span></div>
@@ -103,7 +100,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                             placeholder="&lt;div class=&quot;row&quot;&gt;&#10;  {{#cada}}&#10;    &lt;div class=&quot;col-4&quot;&gt;{{name}}&lt;/div&gt;&#10;  {{/cada}}&#10;&lt;/div&gt;"></textarea>
                     </div>
 
-                    <div class="accordion mb-3" id="wpb-seo-acc">
+                    <div class="accordion mb-3 wpb-page-only" id="wpb-seo-acc">
                         <div class="accordion-item">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#wpb-seo-body">
@@ -157,7 +154,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                     </div>
 
                     <div class="d-flex align-items-end gap-2">
-                        <div class="flex-grow-1">
+                        <div class="flex-grow-1 wpb-page-only">
                             <label class="form-label fw-semibold" for="wpb-name">Nombre del archivo</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="wpb-name" placeholder="se completa con la tabla">
@@ -183,38 +180,6 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                 <div class="card-body p-0">
                     <iframe id="wpb-preview" style="width:100%; height:600px; border:0;" title="Vista previa"></iframe>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Shared Header / Footer editor (one for all public pages; cannot be deleted) -->
-<div class="modal fade" id="wpbPartialsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-layout-text-window-reverse me-2"></i>Header y Footer del sitio</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small">Uno para <strong>todas</strong> las páginas públicas. Se guardan en <code>web/partials/header.php</code> y <code>web/partials/footer.php</code> (no se pueden eliminar). Puedes usar HTML; <code>&lt;?php echo $baseUrl; ?&gt;</code> y <code>&lt;?php echo $siteName; ?&gt;</code> están disponibles.</p>
-                <ul class="nav nav-tabs mb-2" id="wpb-partials-tabs">
-                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#wpb-tab-header" type="button"><i class="bi bi-window-dock me-1"></i>Header</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#wpb-tab-footer" type="button"><i class="bi bi-window me-1"></i>Footer</button></li>
-                </ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="wpb-tab-header">
-                        <textarea id="wpb-header-code" rows="14" class="form-control font-monospace"></textarea>
-                    </div>
-                    <div class="tab-pane fade" id="wpb-tab-footer">
-                        <textarea id="wpb-footer-code" rows="14" class="form-control font-monospace"></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <span class="text-muted small me-auto" id="wpb-partials-status"></span>
-                <button type="button" class="btn btn-dark rounded" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-default backColor rounded" id="wpb-partials-save"><i class="bi bi-check-lg me-1"></i>Guardar</button>
             </div>
         </div>
     </div>
