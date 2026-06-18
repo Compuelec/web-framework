@@ -523,8 +523,9 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
         var activeColor  = getVal('te-active-color');
         var activeBorder = getVal('te-active-border');
 
-        root.style.setProperty('--tp-primary',       primary);
-        root.style.setProperty('--tp-sidebar-bg',    sidebarBg);
+        root.style.setProperty('--cms-accent',        primary);
+        root.style.setProperty('--tp-primary',        primary);
+        root.style.setProperty('--tp-sidebar-bg',     sidebarBg);
         root.style.setProperty('--tp-active-bg',     activeBg);
         root.style.setProperty('--tp-active-color',  activeColor);
         root.style.setProperty('--tp-active-border', activeBorder);

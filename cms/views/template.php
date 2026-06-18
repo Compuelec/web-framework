@@ -167,30 +167,32 @@ if($adminTable !== null && is_object($adminTable)){
 			$_accent = !empty($_SESSION['cms_theme']['theme_primary']) ? $_SESSION['cms_theme']['theme_primary'] : $admin->color_admin;
 			?>
 
+			:root{ --cms-accent: <?php echo $_accent ?>; }
+
 			.backColor{
-				background: <?php echo $_accent ?> !important;
+				background: var(--cms-accent) !important;
 				color: #FFF !important;
 				border: 0 !important;
 			}
 
 			.form-check-input:checked{
-				background-color: <?php echo $_accent ?> !important;
-			    border-color: <?php echo $_accent ?> !important;
+				background-color: var(--cms-accent) !important;
+			    border-color: var(--cms-accent) !important;
 			}
 
 			.textColor{
-				color: <?php echo $_accent ?> !important;
+				color: var(--cms-accent) !important;
 			}
 
 			.page-item.active .page-link {
 				z-index: 3;
 				color: #fff !important;
-				background-color: <?php echo $_accent ?> !important;
-				border-color: <?php echo $_accent ?> !important;
+				background-color: var(--cms-accent) !important;
+				border-color: var(--cms-accent) !important;
 			}
 
 			.page-link {
-				color: <?php echo $_accent ?> !important;
+				color: var(--cms-accent) !important;
 			}
 
 		</style>
