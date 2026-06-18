@@ -25,6 +25,10 @@ during the security audit (no database required):
 - **`Connection::internalWriteTables`** — the token-less (`token=no`) write allow-list is limited to CMS-internal tables.
 - **`Connection::tokenValidate`** — JWT signature verification: tampered, forged (wrong secret), expired, and malformed tokens are all rejected.
 
+`tests/logger_test.php` — the central `Logger` (`core/logger.php`): formatted
+output with level + timestamp + JSON context, all log levels, and that it
+never throws. Writes to a temp file so the real application log is untouched.
+
 ## Adding tests
 
 Create `tests/<name>_test.php` and `require` it from `tests/run.php`.

@@ -172,6 +172,6 @@ switch ($action) {
 }
 
 } catch (Throwable $e) {
-    error_log("Theme settings AJAX error: " . $e->getMessage());
+    Logger::error("Theme settings AJAX error", ['exception' => $e->getMessage()]);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }

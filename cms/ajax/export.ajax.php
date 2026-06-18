@@ -136,7 +136,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Export AJAX error: " . $e->getMessage());
+    Logger::error("Export AJAX error", ['exception' => $e->getMessage()]);
     header('HTTP/1.1 500 Internal Server Error');
     echo "Internal server error";
 }

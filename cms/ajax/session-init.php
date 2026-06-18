@@ -20,6 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../controllers/session.controller.php';
 require_once __DIR__ . '/../../api/models/connection.php';
+require_once __DIR__ . '/../../core/logger.php';
 
 $userId = null;
 $userToken = null;

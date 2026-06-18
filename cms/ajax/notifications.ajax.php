@@ -145,7 +145,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Notifications AJAX error: " . $e->getMessage());
+    Logger::error("Notifications AJAX error", ['exception' => $e->getMessage()]);
     echo json_encode([
         'success' => false,
         'error' => 'Internal server error'
