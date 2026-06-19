@@ -86,8 +86,8 @@ $link = Connection::connect();
 if ($link === null) { mt_fail('Could not connect to the database.'); }
 
 // ---- guard: table / section must not already exist ---------------------------
-$exists = $link->query("SHOW TABLES LIKE " . $link->quote($name))->fetch();
-if ($exists) { mt_fail("Table '{$name}' already exists. Choose another name."); }
+$q = $link->query("SHOW TABLES LIKE " . $link->quote($name));
+if ($q && $q->fetch()) { mt_fail("Table '{$name}' already exists. Choose another name."); }
 $dupPage = $link->prepare("SELECT 1 FROM pages WHERE url_page = ? LIMIT 1");
 $dupPage->execute([$name]);
 if ($dupPage->fetch()) { mt_fail("A section with url '{$name}' already exists."); }
@@ -108,7 +108,8 @@ foreach ($cols as $c) {
 
 // ---- 2) register the section (pages + modules + columns) ---------------------
 $today = date('Y-m-d');
-$order = (int)$link->query("SELECT COALESCE(MAX(order_page),0)+1 FROM pages")->fetchColumn();
+$qOrder = $link->query("SELECT COALESCE(MAX(order_page),0)+1 FROM pages");
+$order  = $qOrder ? (int)$qOrder->fetchColumn() : 1;
 
 $ins = $link->prepare(
     "INSERT INTO pages (title_page, url_page, icon_page, type_page, parent_page, order_page, date_created_page)

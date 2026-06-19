@@ -27,7 +27,8 @@ function wpb_findCwebp() {
         dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . 'cwebp',
     ];
     if (function_exists('shell_exec')) {
-        $which = @shell_exec((stripos(PHP_OS, 'WIN') === 0 ? 'where' : 'command -v') . ' cwebp 2>/dev/null');
+        $isWin = (stripos(PHP_OS, 'WIN') === 0);
+        $which = @shell_exec(($isWin ? 'where' : 'command -v') . ' cwebp ' . ($isWin ? '2>nul' : '2>/dev/null'));
         if ($which) {
             $first = trim(strtok($which, "\n"));
             if ($first !== '') { array_unshift($candidates, $first); }
@@ -69,9 +70,10 @@ function wpb_optimizeImage($path, array $opts = []) {
     // 1) cwebp binary.
     $bin = wpb_findCwebp();
     if ($bin && function_exists('exec')) {
+        $null = (stripos(PHP_OS, 'WIN') === 0) ? '2>nul' : '2>/dev/null';
         $cmd = escapeshellarg($bin) . ' -quiet -q ' . $quality;
         if ($resize) { $cmd .= ' -resize ' . $resize . ' 0'; }
-        $cmd .= ' ' . escapeshellarg($path) . ' -o ' . escapeshellarg($webp) . ' 2>/dev/null';
+        $cmd .= ' ' . escapeshellarg($path) . ' -o ' . escapeshellarg($webp) . ' ' . $null;
         @exec($cmd, $out, $code);
         $ok = ($code === 0 && is_file($webp) && filesize($webp) > 0);
     }
@@ -82,8 +84,11 @@ function wpb_optimizeImage($path, array $opts = []) {
     }
 
     if ($ok) {
-        // Keep WebP only if it actually saved space; otherwise discard it.
-        if (filesize($webp) < filesize($path)) {
+        // Keep WebP only if both sizes are readable and it actually saved space;
+        // otherwise discard it (filesize() returning false must not delete the original).
+        $webpSize = @filesize($webp);
+        $pathSize = @filesize($path);
+        if ($webpSize !== false && $pathSize !== false && $webpSize < $pathSize) {
             @unlink($path);
             return $webp;
         }

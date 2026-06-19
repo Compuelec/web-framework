@@ -101,7 +101,12 @@ $pagesDir = $root . '/web/pages';
 if (!is_dir($pagesDir)) { @mkdir($pagesDir, 0775, true); }
 $path = $pagesDir . '/' . $cfg['fileName'] . '.php';
 
-if (@file_put_contents($path, $source) === false) {
+// Write to a temp file then rename over the target, so this works even when the
+// existing page was created by another user (e.g. the web server via the CMS) as
+// long as web/pages is writable — a direct overwrite would fail on its permissions.
+$tmp = $path . '.tmp' . uniqid('', true);
+if (@file_put_contents($tmp, $source) === false || !@rename($tmp, $path)) {
+    @unlink($tmp);
     fail('Could not write ' . $path . ' (check write permissions on web/pages).');
 }
 @chmod($path, 0664); // group-writable so the CMS (web server) can edit it too

@@ -357,7 +357,7 @@ if (is_writable($pagesDir)) {
         // owns web/pages, this replaces the page even when the existing file was
         // created by another user (e.g. via tools/make-page.php on the CLI), where
         // a direct overwrite would fail. chmod 0664 so CLI tools can edit it too.
-        $tmp = $path . '.tmp' . getmypid();
+        $tmp = $path . '.tmp' . uniqid('', true);
         if (@file_put_contents($tmp, $tgt['source']) === false || !@rename($tmp, $path)) {
             @unlink($tmp);
             $ok = false;
