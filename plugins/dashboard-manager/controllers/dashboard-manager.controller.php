@@ -217,7 +217,7 @@ class DashboardManagerController {
 
             $stmt = $this->link->prepare("
                 SELECT al.action_log, al.entity_log, al.entity_id_log,
-                       al.description_log, al.date_created_log, a.name_admin
+                       al.description_log, al.date_created_log, a.title_admin AS name_admin
                 FROM activity_logs al
                 LEFT JOIN admins a ON al.admin_id_log = a.id_admin
                 ORDER BY al.id_log DESC
