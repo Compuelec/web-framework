@@ -1,6 +1,13 @@
 Options All -Indexes
 Options -MultiViews
 
+# Serve uploaded WebP/AVIF images with the correct MIME type (some servers/XAMPP
+# don't know them, showing binary text instead of the image when opened directly).
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType image/avif .avif
+</IfModule>
+
 RewriteEngine On
 
 # Protect sensitive files

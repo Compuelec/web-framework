@@ -3,6 +3,14 @@
 # Disable directory listing
 Options All -Indexes
 
+# Serve modern image formats with the correct MIME type. Some servers (and XAMPP)
+# don't know .webp/.avif, so opening one directly shows binary text instead of the
+# image. This applies to subdirectories too (e.g. the uploads folder).
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType image/avif .avif
+</IfModule>
+
 # Protect sensitive files
 <FilesMatch "^(config\.php|config\.example\.php|\.env|\.env\.local|VERSION|composer\.json|composer\.lock|package\.json|package-lock\.json|\.gitignore|\.gitattributes)$">
     Order allow,deny
