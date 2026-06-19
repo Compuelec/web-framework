@@ -82,6 +82,14 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
           throw new Error(`No CMS module found with id_module ${moduleId}.`);
         }
         const actualSuffix = String(modules[0].suffix_module ?? "");
+        // Fail closed: a module with no suffix has no columns table to describe,
+        // and an empty `resolvedSuffix` would later skip `assertNotDenied`,
+        // re-opening the deny-list bypass through a suffix-less module.
+        if (!actualSuffix) {
+          throw new Error(
+            `Module with id_module ${moduleId} has no table suffix; it is not a describable table.`,
+          );
+        }
         if (suffix && suffix.toLowerCase() !== actualSuffix.toLowerCase()) {
           throw new Error(
             `The provided suffix "${suffix}" does not match the module suffix "${actualSuffix}".`,

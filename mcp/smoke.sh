@@ -28,6 +28,11 @@ if [[ ! -f dist/index.js ]]; then
   exit 1
 fi
 
+# Unique temp file for the server's stderr — avoids the symlink/permission
+# pitfalls of a hardcoded path in a shared /tmp (CWE-377). Left on disk on
+# purpose so it can be inspected after a failing run.
+STDERR_LOG="$(mktemp "${TMPDIR:-/tmp}/mcp-smoke.XXXXXX")"
+
 # JSON-RPC request helpers ---------------------------------------------------
 # initialize + initialized handshake is required before any tools/call.
 req_init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
@@ -66,7 +71,7 @@ echo "▶ Running MCP smoke test against: $FW_API_BASE_URL"
 echo
 
 # Run the server, collect all JSON-RPC responses (one per line on stdout).
-raw="$( { build_stream; sleep 2; } | node dist/index.js 2>/tmp/mcp-smoke.stderr || true )"
+raw="$( { build_stream; sleep 2; } | node dist/index.js 2>"$STDERR_LOG" || true )"
 
 # Pretty-print each labelled case by matching its response id.
 print_case() {
@@ -77,7 +82,7 @@ print_case() {
   local line
   line="$(printf '%s\n' "$raw" | grep -E "\"id\":$id[,}]" | head -n1 || true)"
   if [[ -z "$line" ]]; then
-    echo "  (no response — server may have errored; see /tmp/mcp-smoke.stderr)"
+    echo "  (no response — server may have errored; see $STDERR_LOG)"
     return
   fi
   # tools/call results carry text content; unwrap it for readability, else raw.
@@ -130,4 +135,4 @@ for c in "${CASES[@]}"; do
   esac
 done
 
-echo "✔ Done. Server stderr (if any) in /tmp/mcp-smoke.stderr"
+echo "✔ Done. Server stderr (if any) in $STDERR_LOG"
