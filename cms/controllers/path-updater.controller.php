@@ -321,13 +321,55 @@ class PathUpdaterController {
         }
         
         clearstatcache(true, $configPath);
-        
+
         return [
             'success' => true,
             'message' => 'Configuración de la API actualizada'
         ];
     }
-    
+
+    /**
+     * Updates the URLs in web/config.php (the public site config) to the current
+     * domain: api.base_url (so the public site reaches the API) and site.base_url
+     * (the public site's own base, used for assets and links). Without this the
+     * public pages keep the packaged/old domain (e.g. localhost), so their CSS/JS
+     * load cross-origin and get blocked by CSP. Non-blocking.
+     */
+    public static function updateWebConfigUrlsOnly($domainInfo) {
+        $configPath  = __DIR__ . '/../../web/config.php';
+        $examplePath = __DIR__ . '/../../web/config.example.php';
+
+        if (!file_exists($configPath) && file_exists($examplePath)) {
+            if (!@copy($examplePath, $configPath)) {
+                return ['success' => false, 'message' => 'No se pudo crear web/config.php desde el ejemplo'];
+            }
+            @chmod($configPath, 0644);
+        }
+        if (!file_exists($configPath)) {
+            return ['success' => false, 'message' => 'No se encontró web/config.php'];
+        }
+        if (!is_writable($configPath)) {
+            return ['success' => false, 'message' => 'web/config.php no tiene permisos de escritura (puede continuar la instalación)'];
+        }
+
+        $config = require $configPath;
+        if (!is_array($config)) { $config = []; }
+        if (!isset($config['api']))  { $config['api']  = []; }
+        if (!isset($config['site'])) { $config['site'] = []; }
+
+        $config['api']['base_url']  = $domainInfo['api_url'] . '/';
+        $config['site']['base_url'] = rtrim($domainInfo['base_url'], '/') . '/web/';
+
+        $configContent = self::generateConfigFile($config);
+        $result = @file_put_contents($configPath, $configContent, LOCK_EX);
+        if ($result === false) {
+            return ['success' => false, 'message' => 'No se pudo escribir web/config.php (puede continuar la instalación)'];
+        }
+        clearstatcache(true, $configPath);
+
+        return ['success' => true, 'message' => 'URLs del sitio público actualizadas'];
+    }
+
     /**
      * Updates the API configuration file
      */
