@@ -107,8 +107,17 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
           throw new Error(`Module with suffix "${suffix}" returned an invalid id_module.`);
         }
+        // Same fail-closed guard as the id_module branch: an empty suffix_module
+        // (note `??` does not catch "") would leave resolvedSuffix="" and skip
+        // assertNotDenied below.
+        const actualSuffix = String(modules[0].suffix_module ?? "");
+        if (!actualSuffix) {
+          throw new Error(
+            `Module with suffix "${suffix}" has no table suffix; it is not a describable table.`,
+          );
+        }
         moduleId = resolvedId;
-        resolvedSuffix = String(modules[0].suffix_module ?? suffix);
+        resolvedSuffix = actualSuffix;
       }
 
       if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
