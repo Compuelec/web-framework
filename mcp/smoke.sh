@@ -49,13 +49,14 @@ declare -a CASES=(
   '8|search_records no matches (empty -> count:0, not error)|tools/call|{"name":"search_records","arguments":{"table":"pages","linkTo":"id_page","equalTo":99999}}'
   '9|get_record missing PK (found:false, not error)|tools/call|{"name":"get_record","arguments":{"table":"pages","id_column":"id_page","id":99999}}'
   '10|read_page id_page=8 (page + modules)|tools/call|{"name":"read_page","arguments":{"id_page":8}}'
+  '11|resources/list (expect 9 docs)|resources/list|{}'
+  '12|read framework://docs/SEGURIDAD|resources/read|{"uri":"framework://docs/SEGURIDAD"}'
   # Regression for the describe_table deny-list bypass (fixed in PR #48):
   # passing a real id_module together with a NON-matching suffix used to skip
   # both resolution branches and validate the client-supplied suffix instead of
   # the DB one, leaking the schema of a denied module. It must now be rejected.
-  "13|describe_table BYPASS REGRESSION (id_module=${REG_MODULE_ID} + mismatched suffix -> must reject)|tools/call|{\"name\":\"describe_table\",\"arguments\":{\"id_module\":${REG_MODULE_ID},\"suffix\":\"zzz_not_real\"}}"
-  '11|resources/list (expect 9 docs)|resources/list|{}'
-  '12|read framework://docs/SEGURIDAD|resources/read|{"uri":"framework://docs/SEGURIDAD"}'
+  # Kept last (id 14) so the printed log stays in ascending order.
+  "14|describe_table BYPASS REGRESSION (id_module=${REG_MODULE_ID} + mismatched suffix -> must reject)|tools/call|{\"name\":\"describe_table\",\"arguments\":{\"id_module\":${REG_MODULE_ID},\"suffix\":\"zzz_not_real\"}}"
 )
 
 # Build the full request stream once and pipe it to a single server process.
@@ -73,6 +74,25 @@ echo
 # Run the server, collect all JSON-RPC responses (one per line on stdout).
 raw="$( { build_stream; sleep 2; } | node dist/index.js 2>"$STDERR_LOG" || true )"
 
+# Select the JSON-RPC response whose top-level `id` equals the argument.
+# Parses each stdout line with Node (matching the parsed `.id`) instead of a
+# textual grep, so a payload that happens to contain `"id":N` — e.g. JSON
+# embedded in a tool result — can never be picked by mistake.
+pick_resp() {
+  printf '%s\n' "$raw" | node -e '
+    const want = Number(process.argv[1]);
+    let s = "";
+    process.stdin.on("data", (d) => (s += d)).on("end", () => {
+      for (const line of s.split("\n")) {
+        if (!line.trim()) continue;
+        try {
+          const m = JSON.parse(line);
+          if (m && m.id === want) { process.stdout.write(line); return; }
+        } catch { /* not a JSON-RPC line */ }
+      }
+    });' "$1"
+}
+
 # Pretty-print each labelled case by matching its response id.
 print_case() {
   local id="$1" label="$2"
@@ -80,7 +100,7 @@ print_case() {
   echo "▌ [$id] $label"
   echo "──────────────────────────────────────────────────────────────"
   local line
-  line="$(printf '%s\n' "$raw" | grep -E "\"id\":$id[,}]" | head -n1 || true)"
+  line="$(pick_resp "$id" || true)"
   if [[ -z "$line" ]]; then
     echo "  (no response — server may have errored; see $STDERR_LOG)"
     return
@@ -118,7 +138,7 @@ for c in "${CASES[@]}"; do
       echo "──────────────────────────────────────────────────────────────"
       # Parse the JSON-RPC response with Node rather than counting with grep/wc,
       # which would miscount if a tool description happened to contain "name":.
-      printf '%s\n' "$raw" | grep -E '"id":2[,}]' | head -n1 | node -e '
+      pick_resp 2 | node -e '
         let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
           const tools=((JSON.parse(s||"{}").result)||{}).tools||[];
           console.log("  tools advertised: "+tools.length);
@@ -130,7 +150,7 @@ for c in "${CASES[@]}"; do
       echo "──────────────────────────────────────────────────────────────"
       echo "▌ [11] $label"
       echo "──────────────────────────────────────────────────────────────"
-      printf '%s\n' "$raw" | grep -E '"id":11[,}]' | head -n1 | node -e '
+      pick_resp 11 | node -e '
         let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
           const resources=((JSON.parse(s||"{}").result)||{}).resources||[];
           console.log("  resources advertised: "+resources.length);

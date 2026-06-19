@@ -78,21 +78,15 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
         ) as unknown as ModuleRow[];
-        if (modules.length === 0) {
-          throw new Error(`No CMS module found with id_module ${moduleId}.`);
+        const actualSuffix = modules.length > 0 ? String(modules[0].suffix_module ?? "") : "";
+        // Collapse "not found", "no suffix" and "denied" into one identical error
+        // so id_module can't be used as an oracle to enumerate which ids map to
+        // denied or hidden modules — the same invisibility `list_tables` and the
+        // suffix branch already uphold. (Non-denied modules are public, so the
+        // mismatch error below may safely echo their real suffix.)
+        if (!actualSuffix || cfg.denyTables.has(actualSuffix.toLowerCase())) {
+          throw new Error(`No describable module for id_module ${moduleId}.`);
         }
-        const actualSuffix = String(modules[0].suffix_module ?? "");
-        // Fail closed: a module with no suffix has no columns table to describe,
-        // and an empty `resolvedSuffix` would later skip `assertNotDenied`,
-        // re-opening the deny-list bypass through a suffix-less module.
-        if (!actualSuffix) {
-          throw new Error(
-            `Module with id_module ${moduleId} has no table suffix; it is not a describable table.`,
-          );
-        }
-        // Deny-list check first, so a mismatch error can never leak the real
-        // suffix of a denied module.
-        assertNotDenied(actualSuffix, cfg.denyTables);
         if (suffix && suffix.toLowerCase() !== actualSuffix.toLowerCase()) {
           throw new Error(
             `The provided suffix "${suffix}" does not match the module suffix "${actualSuffix}".`,
