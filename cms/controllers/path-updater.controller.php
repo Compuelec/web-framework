@@ -354,8 +354,8 @@ class PathUpdaterController {
 
         $config = require $configPath;
         if (!is_array($config)) { $config = []; }
-        if (!isset($config['api']))  { $config['api']  = []; }
-        if (!isset($config['site'])) { $config['site'] = []; }
+        if (!isset($config['api'])  || !is_array($config['api']))  { $config['api']  = []; }
+        if (!isset($config['site']) || !is_array($config['site'])) { $config['site'] = []; }
 
         $config['api']['base_url']  = $domainInfo['api_url'] . '/';
         $config['site']['base_url'] = rtrim($domainInfo['base_url'], '/') . '/web/';
