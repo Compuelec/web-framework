@@ -93,7 +93,27 @@ if($adminTable !== null && is_object($adminTable)){
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/9966/9966194.png">
+	<?php
+	// Browser-tab icon: use the favicon configured in Apariencia
+	// (theme_brand_favicon), falling back to the default icon. The theme is
+	// cached in the session and reused below for the accent color.
+	if (!isset($_SESSION['cms_theme'])) {
+		try {
+			$_themeLink = Connection::connect();
+			if ($_themeLink) {
+				$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+				$_SESSION['cms_theme'] = [];
+				foreach (($_themeStmt ? $_themeStmt->fetchAll(PDO::FETCH_OBJ) : []) as $_r) {
+					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+				}
+			}
+		} catch (Throwable $e) { /* fall back to the default icon */ }
+	}
+	$_favicon = !empty($_SESSION['cms_theme']['theme_brand_favicon'])
+		? $_SESSION['cms_theme']['theme_brand_favicon']
+		: 'https://cdn-icons-png.flaticon.com/512/9966/9966194.png';
+	?>
+	<link rel="icon" href="<?php echo htmlspecialchars($_favicon, ENT_QUOTES) ?>">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

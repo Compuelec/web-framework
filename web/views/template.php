@@ -43,6 +43,19 @@ if ($_seoMeta) {
 }
 
 $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
+
+// Favicon configured in the CMS → Apariencia (theme_brand_favicon), shared with
+// the admin panel. Normal pages already have it in $seoSettings (loaded from
+// cms_settings); builder-generated pages don't, so fall back to a single lookup.
+$_favicon = $_seoSettings['theme_brand_favicon'] ?? '';
+if ($_favicon === '' && class_exists('ApiController')) {
+    try {
+        $_favResp = ApiController::getByFilter('cms_settings', 'key_setting', 'theme_brand_favicon');
+        if (isset($_favResp->status) && $_favResp->status === 200 && !empty($_favResp->results)) {
+            $_favicon = $_favResp->results[0]->value_setting ?? '';
+        }
+    } catch (Throwable $e) { /* no favicon configured */ }
+}
 ?>
     <title><?php echo $_safe($_metaTitle) ?: 'My Website'; ?></title>
     <meta name="description" content="<?php echo $_safe($_metaDesc); ?>">
@@ -60,6 +73,10 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
     <meta property="og:image"       content="<?php echo $_safe($_ogImage); ?>">
     <?php endif ?>
     
+    <?php if ($_favicon): ?>
+    <link rel="icon" href="<?php echo $_safe($_favicon); ?>">
+    <?php endif ?>
+
     <!-- Bootstrap CSS -->
     <link href="<?php echo $baseUrl; ?>views/assets/plugins/bootstrap5/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
