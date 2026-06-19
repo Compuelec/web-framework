@@ -4,7 +4,7 @@
  */
 ?>
 
-<?php $projectBasePath = preg_replace('#/cms$#', '', $cmsBasePath); // "" at root, not "/" (avoids //plugins/... protocol-relative URLs) ?>
+<?php $projectBasePath = preg_replace('#/cms$#', '', $cmsBasePath ?? ''); // "" at root, not "/" (avoids //plugins/... protocol-relative URLs) ?>
 <link rel="stylesheet" href="<?php echo $projectBasePath ?>/plugins/rbac-manager/assets/css/rbac-manager.css">
 
 <div class="container-fluid py-4">
