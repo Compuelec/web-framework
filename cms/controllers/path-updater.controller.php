@@ -642,11 +642,19 @@ class PathUpdaterController {
             } catch (PDOException $e) { /* table may not exist */ }
 
             // Fall back to scanning every text column for a stored URL (covers
-            // user tables with image URLs).
+            // user tables with image URLs). Restrict to columns whose NAME looks
+            // like a URL/image (not every text column) so this doesn't full-scan
+            // the whole database — it only needs ONE sample URL to derive the base.
             $cols = $link->prepare(
                 "SELECT TABLE_NAME t, COLUMN_NAME c FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = :db
-                   AND DATA_TYPE IN ('char','varchar','tinytext','text','mediumtext','longtext','json')"
+                   AND DATA_TYPE IN ('char','varchar','tinytext','text','mediumtext','longtext')
+                   AND (COLUMN_NAME LIKE '%imag%' OR COLUMN_NAME LIKE '%img%'
+                     OR COLUMN_NAME LIKE '%url%'  OR COLUMN_NAME LIKE '%link%'
+                     OR COLUMN_NAME LIKE '%logo%' OR COLUMN_NAME LIKE '%foto%'
+                     OR COLUMN_NAME LIKE '%photo%' OR COLUMN_NAME LIKE '%file%'
+                     OR COLUMN_NAME LIKE '%banner%' OR COLUMN_NAME LIKE '%portada%'
+                     OR COLUMN_NAME LIKE '%avatar%')"
             );
             $cols->execute([':db' => $dbConfig['name']]);
             foreach ($cols->fetchAll(PDO::FETCH_ASSOC) as $col) {

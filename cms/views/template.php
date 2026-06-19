@@ -777,6 +777,11 @@ if($adminTable !== null && is_object($adminTable)){
 									break;
 								}
 							}
+							// Guard: if every query failed (API down, etc.) keep $page a
+							// valid object so the checks below don't fatal on ->status.
+							if (!$page || !is_object($page) || !isset($page->status)) {
+								$page = (object)['status' => 404, 'results' => []];
+							}
 
 							if($page->status == 200 && $page->results[0]->type_page == "modules"){
 
