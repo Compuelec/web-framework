@@ -15,6 +15,9 @@ export type Config = {
   auth: AuthCredentials | null;
   callbackHost: string;
   openBrowserOnLogin: boolean;
+  phpCmd: string | null;
+  repoRoot: string | null;
+  cliTimeoutMs: number;
 };
 
 export function loadConfig(): Config {
@@ -61,5 +64,32 @@ export function loadConfig(): Config {
   const openBrowserRaw = (process.env.FW_OPEN_BROWSER ?? "").toLowerCase();
   const openBrowserOnLogin = openBrowserRaw === "1" || openBrowserRaw === "true";
 
-  return { apiBaseUrl, apiKey, denyTables, httpTimeoutMs, auth, callbackHost, openBrowserOnLogin };
+  // Scaffolding tools (`create_section`, `create_page`) need to spawn the
+  // framework's `tools/*.php` scripts. Both vars are optional at load time:
+  // tools that need them surface a clear error when called without them.
+  // - phpCmd: command (and any prefix) used to run PHP. Examples:
+  //     "php"                                  (same host as MCP)
+  //     "docker exec -i wf_web php"            (framework in Docker)
+  //     "ssh server php"                       (framework on a remote host)
+  // - repoRoot: path inside whatever environment phpCmd runs in, pointing at
+  //   the framework checkout root (where /tools/*.php and /api live).
+  const phpCmd = process.env.FW_PHP_CMD?.trim() || null;
+  const repoRoot = process.env.FW_REPO_ROOT?.trim().replace(/\/+$/, "") || null;
+
+  const parsedCliTimeout = Number(process.env.FW_CLI_TIMEOUT_MS ?? 30000);
+  const cliTimeoutMs =
+    Number.isFinite(parsedCliTimeout) && parsedCliTimeout > 0 ? parsedCliTimeout : 30000;
+
+  return {
+    apiBaseUrl,
+    apiKey,
+    denyTables,
+    httpTimeoutMs,
+    auth,
+    callbackHost,
+    openBrowserOnLogin,
+    phpCmd,
+    repoRoot,
+    cliTimeoutMs,
+  };
 }

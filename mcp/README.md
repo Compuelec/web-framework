@@ -30,7 +30,14 @@ cualquier cliente MCP (Claude Desktop, Claude Code, Cursor, etc.) con el
 |---|---|
 | `create_record` | Inserta una fila en una tabla. Falla si no hay sesión activa. |
 | `update_record` | Modifica una fila por PK. Falla si no hay sesión activa. |
-| `delete_record` | **Destructiva.** Two-step: la primera llamada devuelve un challenge `delete-<table>-<id>`. La segunda llamada debe pasar ese string exacto como `confirm_phrase` o se rechaza. |
+| `delete_record` | **Destructiva.** Two-step: la primera llamada devuelve un nonce random `delete-<table>-<id>-<hex>` con TTL 5 min. La segunda llamada debe pasar ese string exacto como `confirm_phrase` o se rechaza. |
+
+### Scaffolding para agentes (requieren `FW_PHP_CMD` + `FW_REPO_ROOT`)
+
+| Tool | Lo que hace |
+|---|---|
+| `create_section` | Envuelve `tools/make-table.php`: crea tabla MySQL + sección CMS con CRUD automático. `dry_run:true` previsualiza sin tocar la DB. Respeta el deny-list. |
+| `create_page` | Envuelve `tools/make-page.php`: genera `web/pages/<name>.php` con el formato del visual-builder (queda editable desde el CMS). Opcionalmente bindea la página a una tabla. |
 
 ## Resources
 
@@ -46,6 +53,10 @@ framework://docs/GENERADOR-PAGINAS
 framework://docs/DESARROLLO
 framework://docs/INSTALACION
 framework://docs/MANUAL-USUARIO
+
+# Stable alias para el LLM — apunta a la misma fuente que docs/AGENTE-CREAR-PAGINAS.
+# Leerlo antes de invocar create_section / create_page.
+framework://agent/guide
 ```
 
 ## Requisitos
@@ -172,10 +183,9 @@ UI web local con tools, resources, request/response inspector.
 
 ## Próximos PRs
 
-- **PR3** — `create_table`, `create_page` y `run_migration` envolviendo
-  `tools/*.php` por `child_process` con `dry_run`.
-- **PR4** — Resources de esquema (`framework://table/{n}/schema`) y prompts
-  guiados (`scaffold_section`, `seed_records`).
+- **PR4** — `run_migration` (con `dry_run` y allow-list de migration files);
+  resources de esquema (`framework://table/{n}/schema`) y prompts guiados
+  (`scaffold_section`, `seed_records`).
 - **PR5** — `mcp.policy.json` con allow-list por tool, audit log, transporte
   SSE autenticado.
 - **PR6** — Tools de plugins (RBAC, workflow) + packaging para `npx`.

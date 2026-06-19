@@ -9,6 +9,7 @@ import { registerRecordTools } from "./tools/records.js";
 import { registerPageTools } from "./tools/pages.js";
 import { registerAuthTools } from "./tools/auth.js";
 import { registerLoginTool } from "./tools/login.js";
+import { registerScaffoldTools } from "./tools/scaffold.js";
 import { registerDocResources } from "./resources/docs.js";
 
 async function main(): Promise<void> {
@@ -20,7 +21,7 @@ async function main(): Promise<void> {
 
   const server = new McpServer({
     name: "web-framework-mcp",
-    version: "0.2.0",
+    version: "0.3.0",
   });
 
   registerAuthTools(server, tokenStore);
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
   registerTableTools(server, api, cfg);
   registerRecordTools(server, api, cfg, tokenStore);
   registerPageTools(server, api);
+  registerScaffoldTools(server, cfg);
   registerDocResources(server);
 
   // Eager-login so the first write doesn't pay the login latency and any credential
