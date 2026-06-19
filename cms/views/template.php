@@ -760,10 +760,22 @@ if($adminTable !== null && is_object($adminTable)){
 
 						<?php 
 
-							// Try order_page=0 first (dashboard), then fall back to order_page=1
-							$page = CurlController::request("pages?linkTo=order_page&equalTo=0", "GET", array());
-							if (!$page || !is_object($page) || $page->status != 200 || empty($page->results)) {
-								$page = CurlController::request("pages?linkTo=order_page&equalTo=1", "GET", array());
+							// Home = the Dashboard. Resolve it explicitly by url_page
+							// (reliable), then by order_page=0 (the design convention),
+							// then order_page=1. Without the url_page lookup the home
+							// could land on another page that shares order_page=1
+							// (e.g. Administradores).
+							$_homeQueries = [
+								"pages?linkTo=url_page&equalTo=dashboard",
+								"pages?linkTo=order_page&equalTo=0",
+								"pages?linkTo=order_page&equalTo=1",
+							];
+							$page = null;
+							foreach ($_homeQueries as $_hq) {
+								$page = CurlController::request($_hq, "GET", array());
+								if ($page && is_object($page) && isset($page->status) && $page->status == 200 && !empty($page->results)) {
+									break;
+								}
 							}
 
 							if($page->status == 200 && $page->results[0]->type_page == "modules"){
