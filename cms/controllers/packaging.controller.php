@@ -157,6 +157,44 @@ class PackagingController {
             '**/.cursor/**',
             '**/.vscode/**',
             '**/.idea/**',
+            // AI / dev-tooling config dirs and files — not needed at runtime
+            '.claude',
+            '.claude/**',
+            '**/.claude',
+            '**/.claude/**',
+            '.qodo',
+            '.qodo/**',
+            '**/.qodo',
+            '**/.qodo/**',
+            '.specify',
+            '.specify/**',
+            '**/.specify',
+            '**/.specify/**',
+            '.cursorrules',
+            '**/.cursorrules',
+            'CLAUDE.md',
+            '**/CLAUDE.md',
+            // MCP server (dev tooling, bundles its own node_modules) — not needed at runtime
+            'mcp',
+            'mcp/**',
+            '**/mcp/**',
+            // Documentation and spec artifacts — not needed at runtime
+            'docs',
+            'docs/**',
+            '**/docs/**',
+            'specs',
+            'specs/**',
+            '**/specs/**',
+            // Test suite — not needed at runtime
+            'tests',
+            'tests/**',
+            '**/tests/**',
+            // Dev screenshot tooling — not needed at runtime
+            'screenshots',
+            'screenshots/**',
+            '**/screenshots/**',
+            'save-screenshot.php',
+            '**/save-screenshot.php',
             '**/*.log',
             '**/*.tmp',
             '**/*.temp',
@@ -175,6 +213,15 @@ class PackagingController {
             '**/desktop.ini',
             '**/package.php',
             '**/packages/**',
+            // Root-level forms: the **/X/** globs above only match nested paths,
+            // so add bare names to also exclude these at the project root (e.g.
+            // packages/ holds previously built ZIPs that must not be re-bundled).
+            'package.php',
+            'packages',
+            'backups',
+            'logs',
+            'tmp',
+            'node_modules',
         ];
         
         $includePatterns = [
