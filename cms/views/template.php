@@ -83,7 +83,27 @@ if($adminTable !== null && is_object($adminTable)){
 		}
 		
 	}
-	
+
+}
+
+// Load the global Apariencia theme once (cms_settings: theme_*) and cache it in
+// the session, so the favicon, accent color and sidebar CSS variables below can
+// all read $_SESSION['cms_theme'] without repeating the query.
+if (!isset($_SESSION['cms_theme'])) {
+	try {
+		$_themeLink = Connection::connect();
+		if ($_themeLink) {
+			$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+			// Only cache when the query succeeded; otherwise leave the session
+			// unset so a later request retries (e.g. before the table exists).
+			if ($_themeStmt) {
+				$_SESSION['cms_theme'] = [];
+				foreach ($_themeStmt->fetchAll(PDO::FETCH_OBJ) as $_r) {
+					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+				}
+			}
+		}
+	} catch (Throwable $e) { /* fall back to defaults / admin color */ }
 }
 
 ?>
@@ -93,7 +113,14 @@ if($adminTable !== null && is_object($adminTable)){
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/9966/9966194.png">
+	<?php
+	// Browser-tab icon: favicon configured in Apariencia (theme_brand_favicon),
+	// falling back to the default icon. Theme loaded once at the top of the file.
+	$_favicon = !empty($_SESSION['cms_theme']['theme_brand_favicon'])
+		? $_SESSION['cms_theme']['theme_brand_favicon']
+		: 'https://cdn-icons-png.flaticon.com/512/9966/9966194.png';
+	?>
+	<link rel="icon" href="<?php echo htmlspecialchars($_favicon, ENT_QUOTES) ?>">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,18 +179,7 @@ if($adminTable !== null && is_object($adminTable)){
 			(theme_primary); falls back to the admin's color until configured.
 			=============================================*/
 			<?php
-			if (!isset($_SESSION['cms_theme'])) {
-				try {
-					$_accentLink = Connection::connect();
-					if ($_accentLink) {
-						$_accentStmt = $_accentLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
-						$_SESSION['cms_theme'] = [];
-						foreach (($_accentStmt ? $_accentStmt->fetchAll(PDO::FETCH_OBJ) : []) as $_r) {
-							$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
-						}
-					}
-				} catch (Throwable $e) { /* fall back to color_admin */ }
-			}
+			// Theme loaded once at the top of the file; fall back to color_admin.
 			$_accent = !empty($_SESSION['cms_theme']['theme_primary']) ? $_SESSION['cms_theme']['theme_primary'] : $admin->color_admin;
 			?>
 
@@ -306,24 +322,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css?v=2">
 
 	<?php
-	// Inject CMS theme CSS variables from cms_settings table
-	// Cache in session to avoid a DB query on every request
-	if (!isset($_SESSION['cms_theme'])) {
-		try {
-			require_once __DIR__ . '/../../api/models/connection.php';
-			$_themeLink = Connection::connect();
-			if ($_themeLink) {
-				$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
-				$_themeRows = $_themeStmt ? $_themeStmt->fetchAll(PDO::FETCH_OBJ) : [];
-				$_SESSION['cms_theme'] = [];
-				foreach ($_themeRows as $_r) {
-					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
-				}
-			}
-		} catch (Exception $_e) {
-			// Silently use defaults if table doesn't exist yet
-		}
-	}
+	// CMS theme CSS variables — theme loaded once at the top of the file.
 	$_t = array_merge([
 		'theme_primary'       => '#6c5ffc',
 		'theme_sidebar_bg'    => '#ffffff',

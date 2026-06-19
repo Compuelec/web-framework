@@ -116,7 +116,7 @@ Web Pages builder (template + live preview)
                     var type = types[c] || "";
                     var snippet, label;
                     if (type === "image") {
-                        snippet = '<img src="{{' + c + '}}" alt="" style="max-width:200px">';
+                        snippet = '<img src="{{img ' + c + '}}" alt="" style="max-width:200px">';
                         label = '<i class="bi bi-image me-1"></i>' + escapeHtml(c);
                     } else if (type === "multiimage") {
                         snippet = "{{#imagenes " + c + '}}<img src="{{url}}" alt="" style="max-width:150px">{{/imagenes}}';

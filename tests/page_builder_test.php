@@ -69,6 +69,18 @@ it('image gallery handles spaced {{ url }} and $/backslash safely', function() {
     assertSame('<img src="a$1.jpg"><img src="b\\x.jpg">', $out);
 });
 
+it('decodes a single-image {{img campo}} tag (URL-encoded value)', function() {
+    $row = ['foto' => urlencode('https://site.com/a b.jpg')];
+    $out = pb_replaceFields('<img src="{{img foto}}">', $row);
+    assertSame('<img src="https://site.com/a b.jpg">', $out);
+});
+
+it('single-image {{img campo}} escapes HTML and tolerates a missing field', function() {
+    assertSame('<img src="">', pb_replaceFields('<img src="{{img nope}}">', ['x' => 'y']));
+    $row = ['foto' => urlencode('a"b&c.jpg')];
+    assertSame('<img src="a&quot;b&amp;c.jpg">', pb_replaceFields('<img src="{{img foto}}">', $row));
+});
+
 it('pb_imageUrls returns an empty list for non-array values', function() {
     assertSame([], pb_imageUrls(''));
     assertSame([], pb_imageUrls('not json'));

@@ -157,6 +157,44 @@ class PackagingController {
             '**/.cursor/**',
             '**/.vscode/**',
             '**/.idea/**',
+            // AI / dev-tooling config dirs and files — not needed at runtime
+            '.claude',
+            '.claude/**',
+            '**/.claude',
+            '**/.claude/**',
+            '.qodo',
+            '.qodo/**',
+            '**/.qodo',
+            '**/.qodo/**',
+            '.specify',
+            '.specify/**',
+            '**/.specify',
+            '**/.specify/**',
+            '.cursorrules',
+            '**/.cursorrules',
+            'CLAUDE.md',
+            '**/CLAUDE.md',
+            // MCP server (dev tooling, bundles its own node_modules) — not needed at runtime
+            'mcp',
+            'mcp/**',
+            '**/mcp/**',
+            // Documentation and spec artifacts — not needed at runtime
+            'docs',
+            'docs/**',
+            '**/docs/**',
+            'specs',
+            'specs/**',
+            '**/specs/**',
+            // Test suite — not needed at runtime
+            'tests',
+            'tests/**',
+            '**/tests/**',
+            // Dev screenshot tooling — not needed at runtime
+            'screenshots',
+            'screenshots/**',
+            '**/screenshots/**',
+            'save-screenshot.php',
+            '**/save-screenshot.php',
             '**/*.log',
             '**/*.tmp',
             '**/*.temp',
@@ -175,6 +213,15 @@ class PackagingController {
             '**/desktop.ini',
             '**/package.php',
             '**/packages/**',
+            // Root-level forms: the **/X/** globs above only match nested paths,
+            // so add bare names to also exclude these at the project root (e.g.
+            // packages/ holds previously built ZIPs that must not be re-bundled).
+            'package.php',
+            'packages',
+            'backups',
+            'logs',
+            'tmp',
+            'node_modules',
         ];
         
         $includePatterns = [
@@ -344,25 +391,38 @@ class PackagingController {
      * Recursively add files to ZIP
      */
     private static function addToZip($zip, $dir, $rootDir, $excludePatterns, $includePatterns) {
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        // Prune excluded directories at the source: when the callback returns
+        // false for a directory, RecursiveCallbackFilterIterator does not descend
+        // into it, so huge ignored trees (e.g. node_modules, .git) are never even
+        // scanned. Trade-off: a file inside a pruned directory can no longer be
+        // rescued by an include pattern (we never descend to evaluate it); include
+        // patterns only apply to files whose ancestors are all kept.
+        $directory = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $filter = new RecursiveCallbackFilterIterator($directory, function ($current) use ($rootDir, $excludePatterns, $includePatterns) {
+            $path = $current->getRealPath();
+            // Broken symlink (or otherwise unresolvable) — drop it rather than
+            // passing false down to the matchers.
+            if ($path === false) {
+                return false;
+            }
+            if (self::shouldExclude($path, $rootDir, $excludePatterns)) {
+                return self::shouldInclude($path, $rootDir, $includePatterns);
+            }
+            return true;
+        });
+        $files = new RecursiveIteratorIterator($filter, RecursiveIteratorIterator::SELF_FIRST);
         
         $filesCount = 0;
         
         foreach ($files as $file) {
             $filePath = $file->getRealPath();
             
-            // Check if this is a directory - if it should be excluded, skip it and all its contents
+            // Directories are never added to the ZIP themselves; files inside an
+            // excluded directory are filtered out by the parent-path check below.
+            // (Do not manually advance the iterator here — the foreach already
+            // advances it, and a second next() would skip the following entry.)
             if ($file->isDir()) {
-                if (self::shouldExclude($filePath, $rootDir, $excludePatterns)) {
-                    // Skip this directory and all its contents by calling next() multiple times
-                    // This prevents processing any files within excluded directories
-                    $files->next();
-                    continue;
-                }
-                continue; // Skip directories, we only add files
+                continue;
             }
             
             // For files, check if they should be excluded

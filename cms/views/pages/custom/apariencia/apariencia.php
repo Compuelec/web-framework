@@ -75,6 +75,24 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
                     </div>
                     <div class="form-text">Se muestra junto al nombre en el menú. El color usa el <strong>Color primario</strong> de abajo.</div>
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold d-block">Favicon</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="te-brand-favicon-preview" class="border rounded d-flex align-items-center justify-content-center" style="width:64px;height:64px;background:#f8f9fa;overflow:hidden;">
+                            <i class="bi bi-image text-muted"></i>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <input type="hidden" id="te-brand-favicon" value="">
+                            <label class="btn btn-sm btn-outline-primary mb-0">
+                                <i class="bi bi-upload me-1"></i>Subir favicon
+                                <input type="file" accept="image/*,.ico" id="te-brand-favicon-file" class="d-none">
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="te-brand-favicon-clear">Quitar</button>
+                            <span class="spinner-border spinner-border-sm text-primary" id="te-brand-favicon-spin" style="display:none;"></span>
+                        </div>
+                    </div>
+                    <div class="form-text">Ícono de la pestaña del navegador (CMS y sitio público). Recomendado: cuadrado, 32×32 px o más.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -277,6 +295,7 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
             if (brandSymbolEl) brandSymbolEl.value = t.theme_brand_symbol || '';
             setSymbolPreview(t.theme_brand_symbol || '');
             setBrandLogo(t.theme_brand_logo || '');
+            setBrandFavicon(t.theme_brand_favicon || '');
             applyPreview();
         });
     }
@@ -291,6 +310,17 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
         var preview = document.getElementById('te-brand-logo-preview');
         if (url) {
             preview.innerHTML = '<img alt="logo" style="width:100%;height:100%;object-fit:contain;">';
+            preview.firstChild.src = url;
+        } else {
+            preview.innerHTML = '<i class="bi bi-image text-muted"></i>';
+        }
+    }
+
+    function setBrandFavicon(url) {
+        document.getElementById('te-brand-favicon').value = url || '';
+        var preview = document.getElementById('te-brand-favicon-preview');
+        if (url) {
+            preview.innerHTML = '<img alt="favicon" style="width:100%;height:100%;object-fit:contain;">';
             preview.firstChild.src = url;
         } else {
             preview.innerHTML = '<i class="bi bi-image text-muted"></i>';
@@ -418,6 +448,29 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
         var logoClear = document.getElementById('te-brand-logo-clear');
         if (logoClear) logoClear.addEventListener('click', function () { setBrandLogo(''); });
 
+        // Brand favicon upload / clear (mirrors the logo flow)
+        var faviconInput = document.getElementById('te-brand-favicon-file');
+        if (faviconInput) faviconInput.addEventListener('change', function () {
+            if (!this.files || !this.files.length) return;
+            var spin = document.getElementById('te-brand-favicon-spin');
+            spin.style.display = '';
+            var data = new FormData();
+            data.append('file', this.files[0]);
+            data.append('folder', '1');
+            data.append('token', window.CMS_TOKEN || '');
+            fetch((window.CMS_AJAX_PATH || '') + '/files.ajax.php', { method: 'POST', body: data })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    spin.style.display = 'none';
+                    if (res && res.status === 200 && res.link) { setBrandFavicon(res.link); }
+                    else { fncToastr('error', (res && res.error) || 'No se pudo subir el favicon'); }
+                })
+                .catch(function () { spin.style.display = 'none'; fncToastr('error', 'Error al subir el favicon'); });
+            this.value = '';
+        });
+        var faviconClear = document.getElementById('te-brand-favicon-clear');
+        if (faviconClear) faviconClear.addEventListener('click', function () { setBrandFavicon(''); });
+
         // Symbol preview as you type (when not using the picker)
         var symInput = document.getElementById('te-brand-symbol');
         if (symInput) symInput.addEventListener('input', function () { setSymbolPreview(this.value); });
@@ -443,6 +496,7 @@ $isSuperadmin = ($_SESSION['admin']->rol_admin ?? '') === 'superadmin';
             params.append('theme_brand_title', getVal('te-brand-title'));
             params.append('theme_brand_symbol', getVal('te-brand-symbol'));
             params.append('theme_brand_logo', document.getElementById('te-brand-logo').value);
+            params.append('theme_brand_favicon', document.getElementById('te-brand-favicon').value);
 
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
