@@ -94,9 +94,13 @@ if (!isset($_SESSION['cms_theme'])) {
 		$_themeLink = Connection::connect();
 		if ($_themeLink) {
 			$_themeStmt = $_themeLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
-			$_SESSION['cms_theme'] = [];
-			foreach (($_themeStmt ? $_themeStmt->fetchAll(PDO::FETCH_OBJ) : []) as $_r) {
-				$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+			// Only cache when the query succeeded; otherwise leave the session
+			// unset so a later request retries (e.g. before the table exists).
+			if ($_themeStmt) {
+				$_SESSION['cms_theme'] = [];
+				foreach ($_themeStmt->fetchAll(PDO::FETCH_OBJ) as $_r) {
+					$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+				}
 			}
 		}
 	} catch (Throwable $e) { /* fall back to defaults / admin color */ }

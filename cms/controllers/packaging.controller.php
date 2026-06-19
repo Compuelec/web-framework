@@ -391,10 +391,19 @@ class PackagingController {
      * Recursively add files to ZIP
      */
     private static function addToZip($zip, $dir, $rootDir, $excludePatterns, $includePatterns) {
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        // Prune excluded directories at the source: when the callback returns
+        // false for a directory, RecursiveCallbackFilterIterator does not descend
+        // into it, so huge ignored trees (e.g. node_modules, .git) are never even
+        // scanned. An explicit include pattern can still rescue a single file.
+        $directory = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $filter = new RecursiveCallbackFilterIterator($directory, function ($current) use ($rootDir, $excludePatterns, $includePatterns) {
+            $path = $current->getRealPath();
+            if (self::shouldExclude($path, $rootDir, $excludePatterns)) {
+                return self::shouldInclude($path, $rootDir, $includePatterns);
+            }
+            return true;
+        });
+        $files = new RecursiveIteratorIterator($filter, RecursiveIteratorIterator::SELF_FIRST);
         
         $filesCount = 0;
         

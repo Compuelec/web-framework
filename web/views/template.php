@@ -51,7 +51,7 @@ $_favicon = $_seoSettings['theme_brand_favicon'] ?? '';
 if ($_favicon === '' && class_exists('ApiController')) {
     try {
         $_favResp = ApiController::getByFilter('cms_settings', 'key_setting', 'theme_brand_favicon');
-        if (isset($_favResp->status) && $_favResp->status === 200 && !empty($_favResp->results)) {
+        if (is_object($_favResp) && isset($_favResp->status) && $_favResp->status === 200 && !empty($_favResp->results)) {
             $_favicon = $_favResp->results[0]->value_setting ?? '';
         }
     } catch (Throwable $e) { /* no favicon configured */ }
