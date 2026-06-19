@@ -61,7 +61,7 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
     <?php endif ?>
     
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="<?php echo $baseUrl; ?>views/assets/plugins/bootstrap5/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -138,9 +138,9 @@ $_safe = function($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
     <?php } ?>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?php echo $baseUrl; ?>views/assets/plugins/bootstrap5/bootstrap.bundle.min.js"></script>
     <!-- jQuery (optional, for AJAX) -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="<?php echo $baseUrl; ?>views/assets/plugins/jquery/jquery.min.js"></script>
     
     <!-- Custom JS -->
     <script src="<?php echo $baseUrl; ?>views/assets/js/main.js"></script>

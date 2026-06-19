@@ -118,10 +118,14 @@ class InstallController{
 			// If files are not writable, we continue anyway - user can update URLs manually
 			$cmsConfigResult = PathUpdaterController::updateCmsConfigUrlsOnly($domainInfo);
 			$apiConfigResult = PathUpdaterController::updateApiConfigUrlsOnly($domainInfo);
-			
+			$webConfigResult = PathUpdaterController::updateWebConfigUrlsOnly($domainInfo);
+
 			// Log warnings if URLs couldn't be updated, but don't stop installation
 			if (!$cmsConfigResult['success']) {
 				error_log("Warning: Could not update CMS URLs: " . $cmsConfigResult['message']);
+			}
+			if (!$webConfigResult['success']) {
+				error_log("Warning: Could not update public site (web) URLs: " . $webConfigResult['message']);
 			}
 			if (!$apiConfigResult['success']) {
 				error_log("Warning: Could not update API URLs: " . $apiConfigResult['message']);

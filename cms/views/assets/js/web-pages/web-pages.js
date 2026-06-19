@@ -183,10 +183,14 @@ Web Pages builder (template + live preview)
         previewTimer = setTimeout(runPreview, 450);
     }
 
+    // Local Bootstrap (same-origin) for the preview iframe — avoids the CDN
+    // (third-party tracking-prevention warnings + blocked source map under CSP).
+    var bsCssUrl = (window.location.origin || "") + (window.CMS_BASE_PATH || "") + "/views/assets/plugins/bootstrap5/bootstrap.min.css";
+
     function setPreview(html, count, css) {
         var doc = '<!doctype html><html><head><meta charset="utf-8">' +
             '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+            '<link href="' + bsCssUrl + '" rel="stylesheet">' +
             '<style>body{padding:1rem}' + (css || "") + '</style></head><body>' + (html || "") + '</body></html>';
         document.getElementById("wpb-preview").srcdoc = doc;
         $("#wpb-preview-info").text(count ? (count + " registro(s)") : "");
