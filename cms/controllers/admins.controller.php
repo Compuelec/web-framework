@@ -67,11 +67,15 @@ class AdminsController{
 					logActivity('login', 'admin', $login->results[0]->id_admin, 'Successful login');
 				}
 
+				// Redirect to the CMS root (dashboard). Don't location.reload():
+				// login is often shown at <base>/login (session expiry / logout),
+				// and reloading /login would route to a non-existent "login" page
+				// ("Página no disponible") instead of the dashboard.
 				echo '<script>
 
 					fncMatPreloader("off");
 					fncFormatInputs();
-					location.reload();
+					window.location.href = "'.TemplateController::cmsBasePath().'/";
 
 				</script>';
 
@@ -203,11 +207,15 @@ class AdminsController{
 					logActivity('login', 'admin', $admin->results[0]->id_admin, 'Login with security code');
 				}
 
+				// Redirect to the CMS root (dashboard). Don't location.reload():
+				// login is often shown at <base>/login (session expiry / logout),
+				// and reloading /login would route to a non-existent "login" page
+				// ("Página no disponible") instead of the dashboard.
 				echo '<script>
 
 					fncMatPreloader("off");
 					fncFormatInputs();
-					location.reload();
+					window.location.href = "'.TemplateController::cmsBasePath().'/";
 
 				</script>';
 

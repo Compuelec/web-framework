@@ -242,13 +242,34 @@ Cada módulo tipo `tables` te da, sin código:
 - Organiza archivos en **carpetas** con límite de tamaño configurable.
 - Subida por *drag & drop*, búsqueda, vistas grid/lista, filtros por tipo.
 - Los campos `image`/`video`/`file` de los formularios abren este gestor para seleccionar archivo.
+- **Optimización automática de imágenes:** al subir, las imágenes (JPG/PNG) se
+  **comprimen y convierten a WebP** (mucho más livianas; mantienen la transparencia
+  de los PNG sin fondo) y se reducen si superan 1920px. Si el servidor no soporta
+  WebP, la imagen se sube sin cambios (no falla).
 
 ### 5.5 Dashboard (`/cms/`)
 Página de inicio con métricas y gráficos. Con el plugin **dashboard-manager** puedes añadir widgets
 arrastrables: métricas (count/sum/avg), gráficos, registros recientes, KPIs, accesos rápidos y HTML libre.
 
 ### 5.6 Apariencia (`/cms/apariencia`)
-Personaliza colores del panel (primario, sidebar, activos), fuente y fondo. Por admin.
+Personaliza la **identidad y los colores** del panel — todo se aplica **en vivo** al
+guardar (sin recargar):
+
+- **Marca / Identidad:** nombre del dashboard, **logo** (se sube directo y, si hay,
+  reemplaza el texto en el menú) y **símbolo / ícono** (con selector de íconos en
+  grilla). Antes vivían en el perfil; ahora se configuran aquí.
+- **Colores del tema:** color primario (el acento de todo el panel), fondo del
+  sidebar, ítems activos, con **paletas predefinidas**.
+
+> El **nombre, logo, símbolo y color** del dashboard se configuran aquí (ya no en
+> el perfil del superadmin).
+
+### 5.6.1 Secciones vs. Páginas Web
+- **Agregar Sección** (menú lateral) crea un **ítem del menú del CMS** (una tabla,
+  un enlace, etc.). *No* es una página pública.
+- **Páginas Web** (`/cms/web-pages`) es el **Generador de Páginas públicas**
+  (catálogos, landings…). El **SEO/Open Graph** de cada página se configura ahí.
+  Ver **[Generador de Páginas](GENERADOR-PAGINAS.md)**.
 
 ### 5.7 Búsqueda global, Activity logs, Notificaciones
 - **Búsqueda global:** barra superior que busca en páginas, módulos y datos (respetando permisos).
@@ -398,12 +419,21 @@ Variables que puedes inyectar antes del `include`:
 - `$seoMeta`, `$seoSettings` — datos SEO (ver §10).
 - `$additionalCSS`, `$additionalJS` — arrays de URLs extra.
 
-El template trae Bootstrap, navbar y footer, y **escapa la salida** con `htmlspecialchars(..., ENT_QUOTES)`.
-Escapa **siempre** los datos que imprimas tú también.
+El template trae Bootstrap y **escapa la salida** con `htmlspecialchars(..., ENT_QUOTES)`.
+El **header y el footer** salen de los partials compartidos (ver §9.4). Escapa
+**siempre** los datos que imprimas tú también.
 
-### 9.3 Páginas por slug
-`web/page.php?slug=<slug>` busca en `page_seo` por `slug_seo`, carga su SEO y renderiza con el template.
-Así conectas una página creada en el CMS con su URL pública amigable.
+### 9.3 Páginas por slug y URLs limpias
+`web/page.php?slug=<slug>` resuelve una URL amigable: si existe una página generada
+`web/pages/<slug>.php`, la sirve directo; si no, busca el SEO en `page_seo`. Con el
+`.htaccess`, las páginas quedan en **`/<slug>`** (sin `/pages/` ni `.php`).
+
+### 9.4 Header, footer y página de inicio (compartidos)
+- **Header y Footer:** uno solo para **todo el sitio**, editable desde el Generador
+  de Páginas (items fijados arriba de la lista, con su HTML/CSS/JS). No se pueden
+  borrar. Ver [Generador de Páginas](GENERADOR-PAGINAS.md).
+- **Página de inicio:** en el Generador, marca una página con **"Usar como página de
+  inicio"** y la raíz del dominio (`www.tudominio.cl/`) abrirá esa página.
 
 ---
 
@@ -497,6 +527,14 @@ temporales. Queda en `/packages/`.
 1. Sube y extrae el paquete.
 2. Configura `cms/config.php`, `api/config.php`, `web/config.php` con las credenciales del nuevo servidor.
 3. Entra a `/cms/install` → detecta `database.sql` y **restaura la BD automáticamente**.
+4. **Cambio de dominio automático:** el instalador detecta el dominio del paquete
+   (ej. `http://localhost/proyectos-web/web-framework`) y el dominio actual
+   (ej. `https://www.tudominio.cl`), y **reescribe todas las URLs en la base de
+   datos** — incluidas las de **imágenes** y enlaces guardados en cualquier tabla
+   (productos, propiedades, logo, SEO, etc.). No tienes que hacerlo a mano.
+
+> Ejemplo: una imagen `http://localhost/proyectos-web/web-framework/cms/views/assets/files/x.webp`
+> queda como `https://www.tudominio.cl/cms/views/assets/files/x.webp`.
 
 ### 12.3 Actualizar (`/cms/updates`)
 Comprueba *releases* en GitHub (configurable: `github_owner`, `github_repo`, token opcional) o en un servidor
@@ -550,6 +588,7 @@ flujo; el webhook valida el pago contra la API de Payku antes de marcarlo como p
 
 - **[../README.md](../README.md)** — índice general y referencia rápida.
 - **[GENERADOR-PAGINAS.md](GENERADOR-PAGINAS.md)** — el Generador de Páginas Web en detalle (tags, formularios, login/acceso).
+- **[AGENTE-CREAR-PAGINAS.md](AGENTE-CREAR-PAGINAS.md)** — crear secciones y páginas por **CLI** (para automatizar o con un agente de IA): `tools/make-table.php` (tabla + admin) y `tools/make-page.php` (página).
 - **[INSTALACION.md](INSTALACION.md)** — instalación, `setup.sh`, permisos y troubleshooting.
 - **[API.md](API.md)**, **[CMS-Y-TABLAS.md](CMS-Y-TABLAS.md)**, **[ARQUITECTURA.md](ARQUITECTURA.md)**, **[SEGURIDAD.md](SEGURIDAD.md)**, **[DESARROLLO.md](DESARROLLO.md)**.
 - **Generadores CLI** (`tools/make-controller`, `make-migration`, `make-plugin`) — siguen las convenciones del proyecto.

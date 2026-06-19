@@ -536,54 +536,61 @@ class PathUpdaterController {
             );
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
+            if ($oldDomain === '' || $newDomain === '' || $oldDomain === $newDomain) {
+                return [
+                    'success' => true,
+                    'updated_count' => 0,
+                    'updated_tables' => [],
+                    'message' => 'No domain change needed'
+                ];
+            }
+
             $updatedCount = 0;
             $updatedTables = [];
-            
-            // Fields that may contain URLs - table => [fields]
-            $urlFields = [
-                'folders' => ['url_folder'],
-                // Add more tables and fields as needed
-            ];
-            
-            foreach ($urlFields as $table => $fields) {
-                // Check if table exists
-                $checkTable = $link->query("SHOW TABLES LIKE '$table'");
-                if ($checkTable->rowCount() === 0) {
-                    continue;
-                }
-                
-                foreach ($fields as $field) {
-                    // Check if field exists
-                    $checkField = $link->query("SHOW COLUMNS FROM `$table` LIKE '$field'");
-                    if ($checkField->rowCount() === 0) {
-                        continue;
-                    }
-                    
-                    // Update URLs in this field
-                    $sql = "UPDATE `$table` SET `$field` = REPLACE(`$field`, :oldDomain, :newDomain) WHERE `$field` LIKE :pattern";
+
+            // Scan EVERY text-like column of EVERY table in this database for the
+            // old domain and replace it. This catches image URLs and links stored
+            // in any table — system tables (files, page_seo, …) AND user-created
+            // tables (productos.imagen_producto, propiedades.imagene_destacada, the
+            // multi-image JSON arrays, etc.) — not just a hardcoded list.
+            $colStmt = $link->prepare(
+                "SELECT TABLE_NAME AS t, COLUMN_NAME AS c
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = :db
+                   AND DATA_TYPE IN ('char','varchar','tinytext','text','mediumtext','longtext','json')"
+            );
+            $colStmt->execute([':db' => $dbConfig['name']]);
+            $columns = $colStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($columns as $col) {
+                $table = $col['t'];
+                $field = $col['c'];
+                // Identifiers come from information_schema (safe); backtick-quote them.
+                $sql = "UPDATE `{$table}` SET `{$field}` = REPLACE(`{$field}`, :oldDomain, :newDomain) WHERE `{$field}` LIKE :pattern";
+                try {
                     $stmt = $link->prepare($sql);
                     $stmt->execute([
                         ':oldDomain' => $oldDomain,
                         ':newDomain' => $newDomain,
-                        ':pattern' => '%' . $oldDomain . '%'
+                        ':pattern'   => '%' . $oldDomain . '%'
                     ]);
-                    
-                    $rowsAffected = $stmt->rowCount();
-                    if ($rowsAffected > 0) {
-                        $updatedCount += $rowsAffected;
-                        if (!isset($updatedTables[$table])) {
-                            $updatedTables[$table] = 0;
-                        }
-                        $updatedTables[$table] += $rowsAffected;
-                    }
+                } catch (PDOException $e) {
+                    // Skip columns that can't be updated (generated columns, etc.)
+                    continue;
+                }
+
+                $rowsAffected = $stmt->rowCount();
+                if ($rowsAffected > 0) {
+                    $updatedCount += $rowsAffected;
+                    $updatedTables[$table] = ($updatedTables[$table] ?? 0) + $rowsAffected;
                 }
             }
-            
+
             return [
                 'success' => true,
                 'updated_count' => $updatedCount,
                 'updated_tables' => $updatedTables,
-                'message' => "Updated $updatedCount records in database"
+                'message' => "Updated $updatedCount records across " . count($updatedTables) . " table(s)"
             ];
             
         } catch (PDOException $e) {
@@ -614,43 +621,56 @@ class PathUpdaterController {
                 $dbConfig['pass']
             );
             $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
-            // Check folders table for URLs
-            $checkTable = $link->query("SHOW TABLES LIKE 'folders'");
-            if ($checkTable->rowCount() > 0) {
-                $stmt = $link->query("SELECT url_folder FROM folders WHERE url_folder IS NOT NULL AND url_folder != '' LIMIT 5");
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($results as $result) {
-                    if (!empty($result['url_folder'])) {
-                        $url = trim($result['url_folder']);
-                        
-                        // Extract full base URL (protocol + domain + path if exists)
-                        if (preg_match('#^(https?://[^/]+(?:/[^/]*)?)#', $url, $matches)) {
-                            $baseUrl = rtrim($matches[1], '/');
-                            
-                            // Skip if it's already the current domain (will be checked later)
-                            // Return the first valid URL found
-                            if ($baseUrl && $baseUrl !== 'http://localhost' && $baseUrl !== 'https://localhost') {
-                                return $baseUrl;
-                            }
-                        }
-                    }
+
+            // The old base URL is the part of a stored absolute URL before a known
+            // framework segment (/cms/, /web/ or /api/). Using the full path (not
+            // just the host) captures subfolder installs correctly, e.g.
+            //   http://localhost/proyectos-web/web-framework/cms/views/assets/files/x.webp
+            //   → http://localhost/proyectos-web/web-framework
+            $extract = function ($val) {
+                if (is_string($val) && preg_match('#(https?://.+?)/(?:cms|web|api)/#i', $val, $m)) {
+                    return rtrim($m[1], '/');
                 }
-                
-                // If we found localhost URLs, return a generic localhost pattern
-                foreach ($results as $result) {
-                    if (!empty($result['url_folder'])) {
-                        $url = trim($result['url_folder']);
-                        if (preg_match('#^(https?://localhost(?:/[^/]*)?)#', $url, $matches)) {
-                            return rtrim($matches[1], '/');
-                        }
-                    }
-                }
+                return null;
+            };
+
+            // Prefer cms_settings (holds full URLs: logo, OG image, canonical base).
+            try {
+                $rows = $link->query("SELECT value_setting FROM cms_settings WHERE value_setting LIKE '%http%' LIMIT 100")
+                             ->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($rows as $v) { if ($b = $extract($v)) { return $b; } }
+            } catch (PDOException $e) { /* table may not exist */ }
+
+            // Fall back to scanning every text column for a stored URL (covers
+            // user tables with image URLs). Restrict to columns whose NAME looks
+            // like a URL/image (not every text column) so this doesn't full-scan
+            // the whole database — it only needs ONE sample URL to derive the base.
+            $cols = $link->prepare(
+                "SELECT TABLE_NAME t, COLUMN_NAME c FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = :db
+                   AND DATA_TYPE IN ('char','varchar','tinytext','text','mediumtext','longtext')
+                   AND (COLUMN_NAME LIKE '%imag%' OR COLUMN_NAME LIKE '%img%'
+                     OR COLUMN_NAME LIKE '%url%'  OR COLUMN_NAME LIKE '%link%'
+                     OR COLUMN_NAME LIKE '%logo%' OR COLUMN_NAME LIKE '%foto%'
+                     OR COLUMN_NAME LIKE '%photo%' OR COLUMN_NAME LIKE '%file%'
+                     OR COLUMN_NAME LIKE '%banner%' OR COLUMN_NAME LIKE '%portada%'
+                     OR COLUMN_NAME LIKE '%avatar%')"
+            );
+            $cols->execute([':db' => $dbConfig['name']]);
+            foreach ($cols->fetchAll(PDO::FETCH_ASSOC) as $col) {
+                try {
+                    $v = $link->query(
+                        "SELECT `{$col['c']}` FROM `{$col['t']}`
+                         WHERE `{$col['c']}` LIKE '%http%/cms/%'
+                            OR `{$col['c']}` LIKE '%http%/web/%'
+                            OR `{$col['c']}` LIKE '%http%/api/%' LIMIT 1"
+                    )->fetchColumn();
+                } catch (PDOException $e) { continue; }
+                if ($b = $extract($v)) { return $b; }
             }
-            
+
             return null;
-            
+
         } catch (PDOException $e) {
             return null;
         }
