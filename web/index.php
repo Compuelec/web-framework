@@ -13,6 +13,18 @@ ini_set("display_errors", $isLocal ? 1 : 0);
 ini_set("log_errors", 1);
 ini_set("error_log", __DIR__ . "/php_error_log");
 
+// If a home page was set from the page builder (web/partials/home.txt), serve it
+// at the site root. Falls through to the default landing below if none is set.
+$homeMarker = __DIR__ . '/partials/home.txt';
+if (is_file($homeMarker)) {
+    $home     = preg_replace('/[^a-z0-9_-]/i', '', trim((string) file_get_contents($homeMarker)));
+    $homeFile = __DIR__ . '/pages/' . $home . '.php';
+    if ($home !== '' && is_file($homeFile)) {
+        include $homeFile;
+        exit;
+    }
+}
+
 // Load configuration
 $configPath = __DIR__ . '/config.php';
 $config = null;

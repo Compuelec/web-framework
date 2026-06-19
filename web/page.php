@@ -29,7 +29,17 @@ $pageTitle  = is_array($config) && isset($config['site']['title'])  ? $config['s
 $seoMeta    = null;
 $seoSettings = [];
 
-$slug = isset($_GET['slug']) ? preg_replace('/[^a-z0-9-]/', '', strtolower(trim($_GET['slug']))) : '';
+$slug = isset($_GET['slug']) ? preg_replace('/[^a-z0-9_-]/', '', strtolower(trim($_GET['slug']))) : '';
+
+// If the page builder generated a page for this slug, serve it directly. This
+// gives generated pages clean URLs (/slug instead of /pages/slug.php).
+if ($slug !== '') {
+    $generatedPage = __DIR__ . '/pages/' . $slug . '.php';
+    if (is_file($generatedPage)) {
+        include $generatedPage;
+        exit;
+    }
+}
 
 if ($slug !== '') {
     try {

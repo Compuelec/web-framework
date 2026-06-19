@@ -99,3 +99,7 @@ specs/
 web/pages/*
 !web/pages/example-*.php
 !web/pages/.htaccess
+
+# Shared header/footer partials + home-page marker — auto-created per
+# installation by the builder
+web/partials/

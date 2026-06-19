@@ -148,33 +148,51 @@ if($adminTable !== null && is_object($adminTable)){
 			<?php endif ?>
 
 			/*=============================================
-			Dashboard Color
+			Dashboard Color — accent comes from the global Apariencia theme
+			(theme_primary); falls back to the admin's color until configured.
 			=============================================*/
+			<?php
+			if (!isset($_SESSION['cms_theme'])) {
+				try {
+					$_accentLink = Connection::connect();
+					if ($_accentLink) {
+						$_accentStmt = $_accentLink->query("SELECT key_setting, value_setting FROM cms_settings WHERE key_setting LIKE 'theme_%'");
+						$_SESSION['cms_theme'] = [];
+						foreach (($_accentStmt ? $_accentStmt->fetchAll(PDO::FETCH_OBJ) : []) as $_r) {
+							$_SESSION['cms_theme'][$_r->key_setting] = $_r->value_setting;
+						}
+					}
+				} catch (Throwable $e) { /* fall back to color_admin */ }
+			}
+			$_accent = !empty($_SESSION['cms_theme']['theme_primary']) ? $_SESSION['cms_theme']['theme_primary'] : $admin->color_admin;
+			?>
+
+			:root{ --cms-accent: <?php echo $_accent ?>; }
 
 			.backColor{
-				background: <?php echo $admin->color_admin ?> !important;
+				background: var(--cms-accent) !important;
 				color: #FFF !important;
 				border: 0 !important;
 			}
 
 			.form-check-input:checked{
-				background-color: <?php echo $admin->color_admin ?> !important;
-			    border-color: <?php echo $admin->color_admin ?> !important;
+				background-color: var(--cms-accent) !important;
+			    border-color: var(--cms-accent) !important;
 			}
 
 			.textColor{
-				color: <?php echo $admin->color_admin ?> !important;
+				color: var(--cms-accent) !important;
 			}
 
 			.page-item.active .page-link {
 				z-index: 3;
 				color: #fff !important;
-				background-color: <?php echo $admin->color_admin ?> !important;
-				border-color: <?php echo $admin->color_admin ?> !important;
+				background-color: var(--cms-accent) !important;
+				border-color: var(--cms-accent) !important;
 			}
 
 			.page-link {
-				color: <?php echo $admin->color_admin ?> !important;		
+				color: var(--cms-accent) !important;
 			}
 
 		</style>
@@ -285,7 +303,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/colors/colors.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/fms/fms.css">
 	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/chat/chat.css">
-	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css">
+	<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/improvements/improvements.css?v=2">
 
 	<?php
 	// Inject CMS theme CSS variables from cms_settings table
@@ -896,7 +914,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dashboard/dashboard.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/pages/pages.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.4"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=15"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=19"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/system-health/system-health.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>
@@ -908,7 +926,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/performance/performance.js"></script>
 		
 <?php endif ?>

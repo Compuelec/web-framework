@@ -190,14 +190,16 @@ function pb_deriveSuffix($table) {
  * @return array
  */
 function pb_normalizeConfig(array $raw) {
+    // The table is optional: an empty table means a static page (no data binding),
+    // useful for landing/contact pages. A non-empty table must be a valid identifier.
     $table = (string)($raw['table'] ?? '');
-    if (!pb_isIdentifier($table)) {
+    if ($table !== '' && !pb_isIdentifier($table)) {
         throw new InvalidArgumentException('Tabla inválida.');
     }
 
-    $suffix      = pb_isIdentifier($raw['suffix'] ?? '')      ? $raw['suffix']      : pb_deriveSuffix($table);
-    $idColumn    = pb_isIdentifier($raw['idColumn'] ?? '')    ? $raw['idColumn']    : ('id_' . $suffix);
-    $titleColumn = pb_isIdentifier($raw['titleColumn'] ?? '') ? $raw['titleColumn'] : ('name_' . $suffix);
+    $suffix      = pb_isIdentifier($raw['suffix'] ?? '')      ? $raw['suffix']      : ($table !== '' ? pb_deriveSuffix($table) : '');
+    $idColumn    = pb_isIdentifier($raw['idColumn'] ?? '')    ? $raw['idColumn']    : ($suffix !== '' ? 'id_' . $suffix : 'id');
+    $titleColumn = pb_isIdentifier($raw['titleColumn'] ?? '') ? $raw['titleColumn'] : ($suffix !== '' ? 'name_' . $suffix : 'name');
 
     $fileName = trim((string)($raw['fileName'] ?? ''));
     if ($fileName === '') {
@@ -235,6 +237,13 @@ function pb_normalizeConfig(array $raw) {
         // admin ids.
         'accessRoles' => array_values(array_filter(array_map('strval', (array)($raw['accessRoles'] ?? [])), 'strlen')),
         'accessUsers' => array_values(array_filter(array_map('strval', (array)($raw['accessUsers'] ?? [])), 'strlen')),
+        // SEO / Open Graph (emitted by the generated page's meta tags).
+        'metaTitle'   => (string)($raw['metaTitle'] ?? ''),
+        'metaDesc'    => (string)($raw['metaDesc'] ?? ''),
+        'ogTitle'     => (string)($raw['ogTitle'] ?? ''),
+        'ogType'      => (string)($raw['ogType'] ?? 'website'),
+        'ogDesc'      => (string)($raw['ogDesc'] ?? ''),
+        'ogImage'     => (string)($raw['ogImage'] ?? ''),
     ];
 }
 
@@ -379,15 +388,17 @@ if (\$isAuthed && \$hasAccess && (\$_SERVER['REQUEST_METHOD'] ?? '') === 'POST' 
 
 \$records = [];
 \$error   = null;
-try {
-    \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 200);
-    if (\$response->status == 200) {
-        \$records = \$response->results;
-    } elseif (\$response->status != 404) {
+if (\$table !== '') { // static pages (no table) skip the data fetch
+    try {
+        \$response = ApiController::getAll(\$table, '*', \$idColumn, 'DESC', 0, 200);
+        if (\$response->status == 200) {
+            \$records = \$response->results;
+        } elseif (\$response->status != 404) {
+            \$error = 'Could not load data.';
+        }
+    } catch (Throwable \$e) {
         \$error = 'Could not load data.';
     }
-} catch (Throwable \$e) {
-    \$error = 'Could not load data.';
 }
 
 // Template renderer (mirrors tools/page-builder.php).
@@ -466,7 +477,18 @@ if (\$recordId !== null && \$recordId !== '') {
 if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 
 \$pageTitle       = (!empty(\$cfg['heading']) ? \$cfg['heading'] : \$siteName) . ' - ' . \$siteName;
-\$pageDescription = '';
+\$pageDescription = \$cfg['metaDesc'] ?? '';
+
+// SEO / Open Graph meta — web/views/template.php emits these tags.
+\$seoMeta = (object) [
+    'meta_title_seo' => \$cfg['metaTitle'] ?? '',
+    'meta_desc_seo'  => \$cfg['metaDesc'] ?? '',
+    'og_title_seo'   => \$cfg['ogTitle'] ?? '',
+    'og_desc_seo'    => \$cfg['ogDesc'] ?? '',
+    'og_image_seo'   => \$cfg['ogImage'] ?? '',
+    'og_type_seo'    => !empty(\$cfg['ogType']) ? \$cfg['ogType'] : 'website',
+    'slug_seo'       => '',
+];
 
 // In edit mode (?id) the form is prefilled with that record; in create mode it
 // is empty (so a new submission doesn't show the first record's data).

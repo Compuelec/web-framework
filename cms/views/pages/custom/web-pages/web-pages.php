@@ -48,7 +48,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                 <div class="card-body">
                     <input type="hidden" id="wpb-editing" value="">
 
-                    <div class="row">
+                    <div class="row wpb-page-only">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-semibold" for="wpb-table">Tabla de datos</label>
                             <select class="form-select form-select-sm" id="wpb-table"><option value="">Cargando…</option></select>
@@ -59,7 +59,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="mb-2 wpb-page-only">
                         <label class="form-label fw-semibold mb-1">Insertar datos</label>
                         <div class="small text-muted mb-1">
                             Haz clic en un campo para insertar su etiqueta. Para listar <b>todos</b> los registros,
@@ -76,7 +76,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div class="mb-3 mt-3">
+                    <div class="mb-3 mt-3 wpb-page-only">
                         <label class="form-label fw-semibold d-block mb-2">Acceso a la página</label>
                         <div class="d-flex gap-2 flex-wrap" id="wpb-visibility">
                             <input type="radio" class="btn-check" name="wpb-visibility" id="wpb-vis-public" value="public" checked>
@@ -86,7 +86,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div id="wpb-access" class="border rounded p-2 mb-3" style="display:none;">
+                    <div id="wpb-access" class="border rounded p-2 mb-3 wpb-page-only" style="display:none;">
                         <div class="small text-muted mb-2">Permitir acceso a (si no marcas nada, cualquier usuario logueado entra):</div>
                         <label class="form-label small fw-semibold mb-1">Grupos / roles</label>
                         <div id="wpb-roles" class="mb-2"><span class="text-muted small">—</span></div>
@@ -98,6 +98,41 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         <label class="form-label fw-semibold" for="wpb-template">Tu HTML</label>
                         <textarea class="form-control font-monospace" id="wpb-template" rows="12"
                             placeholder="&lt;div class=&quot;row&quot;&gt;&#10;  {{#cada}}&#10;    &lt;div class=&quot;col-4&quot;&gt;{{name}}&lt;/div&gt;&#10;  {{/cada}}&#10;&lt;/div&gt;"></textarea>
+                    </div>
+
+                    <div class="accordion mb-3 wpb-page-only" id="wpb-seo-acc">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#wpb-seo-body">
+                                    <i class="bi bi-search me-2"></i>SEO y redes sociales
+                                </button>
+                            </h2>
+                            <div id="wpb-seo-body" class="accordion-collapse collapse" data-bs-parent="#wpb-seo-acc">
+                                <div class="accordion-body">
+                                    <label class="form-label small fw-semibold" for="wpb-meta-title">Meta Title (buscadores)</label>
+                                    <input type="text" class="form-control form-control-sm mb-2" id="wpb-meta-title" maxlength="60" placeholder="Título para Google (máx 60)">
+                                    <label class="form-label small fw-semibold" for="wpb-meta-desc">Meta Description</label>
+                                    <textarea class="form-control form-control-sm mb-2" id="wpb-meta-desc" rows="2" maxlength="160" placeholder="Descripción para buscadores (máx 160)"></textarea>
+                                    <hr class="my-2">
+                                    <div class="small text-muted mb-1"><i class="bi bi-share me-1"></i>Open Graph (al compartir en redes)</div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-8">
+                                            <input type="text" class="form-control form-control-sm" id="wpb-og-title" placeholder="OG Title (vacío = Meta Title)">
+                                        </div>
+                                        <div class="col-4">
+                                            <select class="form-select form-select-sm" id="wpb-og-type">
+                                                <option value="website">website</option>
+                                                <option value="article">article</option>
+                                                <option value="product">product</option>
+                                                <option value="profile">profile</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <textarea class="form-control form-control-sm mb-2" id="wpb-og-desc" rows="2" placeholder="OG Description (vacío = Meta Description)"></textarea>
+                                    <input type="text" class="form-control form-control-sm" id="wpb-og-image" placeholder="OG Image — URL de imagen para compartir">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="accordion mb-3" id="wpb-advanced">
@@ -118,8 +153,15 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
+                    <div class="form-check mb-2 wpb-page-only">
+                        <input class="form-check-input" type="checkbox" id="wpb-home">
+                        <label class="form-check-label small" for="wpb-home">
+                            <i class="bi bi-house-door me-1"></i>Usar como <strong>página de inicio</strong> (la raíz del dominio abrirá esta página)
+                        </label>
+                    </div>
+
                     <div class="d-flex align-items-end gap-2">
-                        <div class="flex-grow-1">
+                        <div class="flex-grow-1 wpb-page-only">
                             <label class="form-label fw-semibold" for="wpb-name">Nombre del archivo</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="wpb-name" placeholder="se completa con la tabla">

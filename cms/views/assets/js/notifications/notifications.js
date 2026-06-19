@@ -34,7 +34,7 @@ var NotificationSystem = {
                             0
                         </span>
                     </a>
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="notificationDropdown" style="width: 380px; max-height: 600px; overflow-y: auto; display: none; position: absolute; top: 100%; right: 0; margin-top: 5px; z-index: 1050;">
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="notificationDropdown" style="width: 380px; max-height: 600px; overflow-y: auto; display: none; position: absolute; top: 100%; right: 0; margin-top: 5px; z-index: 9999;">
                         <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
                             <h6 class="mb-0 fw-bold">Notificaciones</h6>
                             <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" id="markAllRead" style="font-size: 0.75rem;">Marcar todas como leídas</button>

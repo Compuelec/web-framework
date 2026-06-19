@@ -50,11 +50,19 @@ Styles for CMS improvements
     position: relative;
 }
 
+/* Keep the top navbar (and the notifications dropdown it hosts) above the page
+   content, so the dropdown never renders behind cards/buttons. */
+.navbar {
+    position: relative;
+    z-index: 1040;
+}
+
 #notificationDropdown {
     border-radius: 12px;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
     border: 1px solid #dee2e6 !important;
     padding: 0 !important;
+    z-index: 9999 !important;
 }
 
 #notificationDropdown .dropdown-divider {

@@ -996,6 +996,17 @@ class InstallController{
 							}
 						}
 
+						// Finalize the public site so it works right after install:
+						// grant write permission to the required folders, generate
+						// web/config.php from cms/config.php, and create the shared
+						// header/footer partials (part of the public view; the
+						// template still falls back if they're missing).
+						require_once __DIR__ . '/../../tools/web-config.php';
+						require_once __DIR__ . '/../../tools/web-partials.php';
+						wpb_ensureWritableDirs();
+						wpb_ensureWebConfig();
+						wpb_ensurePartials();
+
 						echo '<script>
 						fncMatPreloader("off");
 						fncFormatInputs();

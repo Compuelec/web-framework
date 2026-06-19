@@ -81,95 +81,13 @@
                 </div>
               </div>
 
-              <div class="col-12">
-                <div class="card border-0 bg-light">
-                  <div class="card-body">
-                    <h6 class="card-title text-muted mb-3">
-                      <i class="bi bi-info-circle"></i> Información General
-                    </h6>
-                    
-                    <div class="row g-3">
-                      <div class="col-md-12">
-                        <label for="title_admin" class="form-label small fw-semibold">Nombre del Dashboard<sup>*</sup></label>
-                        <input 
-                          type="text" 
-                          class="form-control form-control-sm rounded" 
-                          id="title_admin"
-                          name="title_admin"
-                          value="<?php echo h($_SESSION["admin"]->title_admin) ?>"
-                          placeholder="Nombre del dashboard"
-                          required
-                        >
-                        <div class="valid-feedback">Válido.</div>
-                        <div class="invalid-feedback">Campo inválido.</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <!-- Dashboard name, logo, symbol and color live in the Apariencia
+                   module. Kept as hidden inputs because the profile save reads
+                   these POST fields directly (no fallback). -->
+              <input type="hidden" id="title_admin"  name="title_admin"  value="<?php echo h($_SESSION["admin"]->title_admin) ?>">
+              <input type="hidden" id="symbol_admin" name="symbol_admin" value="<?php echo htmlspecialchars($_SESSION["admin"]->symbol_admin) ?>">
+              <input type="hidden" id="color_admin"  name="color_admin"  value="<?php echo h($_SESSION["admin"]->color_admin) ?>">
 
-              <!--=============================================
-              Appearance Section
-              ===============================================-->
-              
-              <div class="col-12">
-                <div class="card border-0 bg-light">
-                  <div class="card-body">
-                    <h6 class="card-title text-muted mb-3">
-                      <i class="bi bi-palette"></i> Apariencia
-                    </h6>
-                    
-                    <div class="row g-3">
-                      <div class="col-md-6">
-                        <label for="symbol_admin" class="form-label small fw-semibold">Símbolo<sup>*</sup></label>
-                        <div class="input-group input-group-sm">
-                          <span class="input-group-text bg-white">
-                            <i class="bi <?php echo h($_SESSION["admin"]->symbol_admin) ?>" id="iconPreviewPlaceholder"></i>
-                          </span>
-                          <input 
-                            type="text"
-                            class="form-control form-control-sm rounded"
-                            id="symbol_admin"
-                            name="symbol_admin"
-                            value="<?php echo htmlspecialchars($_SESSION["admin"]->symbol_admin) ?>"
-                            placeholder="Seleccionar icono"
-                            readonly
-                            required
-                          >
-                          <button type="button" class="btn btn-outline-secondary" id="btnSelectIcon" data-bs-toggle="modal" data-bs-target="#iconSelectorModal" title="Seleccionar icono">
-                            <i class="bi bi-grid-3x3-gap"></i>
-                          </button>
-                        </div>
-                        <div class="valid-feedback">Válido.</div>
-                        <div class="invalid-feedback">Campo inválido.</div>
-                      </div>
-
-                      <div class="col-md-6">
-                        <label for="color_admin" class="form-label small fw-semibold">Color del Dashboard</label>
-                        <div class="d-flex align-items-center gap-2">
-                          <input 
-                            type="color"
-                            class="form-control form-control-color"
-                            id="color_admin"
-                            name="color_admin"
-                            value="<?php echo h($_SESSION["admin"]->color_admin) ?>"
-                            title="Seleccionar color"
-                            style="width: 60px; height: 38px;"
-                          >
-                          <input 
-                            type="text"
-                            class="form-control form-control-sm rounded"
-                            id="color_admin_text"
-                            value="<?php echo h($_SESSION["admin"]->color_admin) ?>"
-                            readonly
-                            style="max-width: 120px;"
-                          >
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               <!--=============================================
               Typography Section

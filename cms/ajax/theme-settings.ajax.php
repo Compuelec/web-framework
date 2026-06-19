@@ -72,20 +72,26 @@ switch ($action) {
             exit;
         }
 
-        $allowed = ['theme_primary', 'theme_sidebar_bg', 'theme_active_bg', 'theme_active_color', 'theme_active_border'];
-        $stmt    = $link->prepare("
+        $colorKeys = ['theme_primary', 'theme_sidebar_bg', 'theme_active_bg', 'theme_active_color', 'theme_active_border'];
+        $textKeys  = ['theme_brand_title', 'theme_brand_logo', 'theme_brand_symbol']; // brand name, logo URL, icon class (not colors)
+        $allowed   = array_merge($colorKeys, $textKeys);
+        $stmt      = $link->prepare("
             INSERT INTO cms_settings (key_setting, value_setting)
             VALUES (?, ?)
             ON DUPLICATE KEY UPDATE value_setting = VALUES(value_setting)
         ");
 
         foreach ($allowed as $key) {
-            if (isset($_POST[$key])) {
-                $val = trim($_POST[$key]);
-                // Validate: must be a valid hex color
+            if (!isset($_POST[$key])) continue;
+            $val = trim($_POST[$key]);
+            if (in_array($key, $colorKeys, true)) {
+                // Color keys must be a valid hex color.
                 if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $val)) continue;
-                $stmt->execute([$key, $val]);
+            } else {
+                // Brand title/logo: plain text, tags stripped and length-capped.
+                $val = mb_substr(strip_tags($val), 0, 255);
             }
+            $stmt->execute([$key, $val]);
         }
 
         // Clear session cache so next page load picks up new values

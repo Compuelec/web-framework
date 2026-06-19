@@ -18,7 +18,7 @@ principales + sistema de plugins.
 
 ## Estructura del proyecto
 
-```
+```text
 web-framework/
 ├── api/                    # API RESTful
 │   ├── config.example.php  # plantilla (config.php no se versiona)

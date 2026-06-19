@@ -252,6 +252,17 @@ class FilesController{
 				if(move_uploaded_file($this->file["tmp_name"], $path)){
 
 					/*=============================================
+					Compress + convert raster images to WebP (smaller; keeps
+					transparency). Falls back to the original if WebP is unavailable.
+					=============================================*/
+
+					require_once dirname(__DIR__) . '/../tools/image-optimizer.php';
+					$path      = wpb_optimizeImage($path);
+					$finalExt  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+					$finalType = ($finalExt === 'webp') ? 'image/webp' : $this->file["type"];
+					$finalSize = @filesize($path) ?: $this->file["size"];
+
+					/*=============================================
 					Upload the file information to the database
 					=============================================*/
 
@@ -278,10 +289,10 @@ class FilesController{
 					$fields = array(
 
 						"id_folder_file" => $this->folder,
-						"extension_file" => end($extension),
-						"name_file" => str_replace(".".end($extension), "", $this->file["name"]),
-						"type_file" => $this->file["type"],
-						"size_file" => $this->file["size"],
+						"extension_file" => $finalExt,
+						"name_file" => pathinfo($this->file["name"], PATHINFO_FILENAME),
+						"type_file" => $finalType,
+						"size_file" => $finalSize,
 						"link_file" => $linkFile,
 						"date_created_file" => date("Y-m-d")
 					);

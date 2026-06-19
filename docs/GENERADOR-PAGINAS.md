@@ -27,7 +27,7 @@ su configuración) o **eliminarlas**.
 ## Etiquetas de la plantilla
 
 | Etiqueta | Qué hace |
-|---|---|
+| --- | --- |
 | `{{campo}}` | Muestra el valor de una columna (escapado). |
 | `{{#cada}} ... {{/cada}}` | Repite el HTML interior por **cada registro**. |
 | `{{#imagenes campo}}<img src="{{url}}">{{/imagenes}}` | Recorre un campo **multi-imagen** (arreglo JSON) y repite por cada imagen. |
@@ -43,6 +43,7 @@ Fuera de un bloque `{{#cada}}`, las etiquetas usan el **registro único**: el de
 ### Chips inteligentes
 
 Al elegir una tabla, cada columna aparece como un **chip**. Al hacer clic:
+
 - Campo de **imagen** → inserta `<img src="{{campo}}">`.
 - Campo **multi-imagen** → inserta el bucle `{{#imagenes campo}}...{{/imagenes}}`.
 - Otros campos → insertan `{{campo}}`.
@@ -76,6 +77,7 @@ El botón **"Insertar formulario"** arma un bloque `{{#form}}` con un campo por
 cada columna de la tabla (campos de archivo para las imágenes).
 
 Comportamiento de la página generada al enviar el formulario:
+
 - **Sin `?id`** → **crea** un registro nuevo (formulario vacío).
 - **Con `?id=5`** (solo en páginas privadas autorizadas) → **edita** ese registro
   (campos prellenados).
@@ -95,6 +97,7 @@ Cada página tiene un selector de acceso:
   existentes**: el visitante entra con el mismo email/contraseña del CMS.
 
 Al marcar **Privada** puedes restringir el acceso:
+
 - **Grupos / roles** — uno o varios roles (el `rol_admin` de tus usuarios, p. ej.
   `empleado`, `rrhh`).
 - **Usuarios específicos** — usuarios puntuales por email.
@@ -114,6 +117,18 @@ Tras el login, la página verifica el rol/usuario; si no está autorizado muestr
 
 ---
 
+## SEO y redes sociales
+
+Cada página tiene una sección **"SEO y redes sociales"** (acordeón) para:
+
+- **Meta Title** y **Meta Description** (lo que ve Google).
+- **Open Graph**: OG Title, OG Type, OG Description y OG Image (lo que se muestra
+  al compartir el enlace en redes).
+
+La página generada emite estos *meta tags* automáticamente. (Antes el SEO vivía
+en el modal de secciones del CMS; ahora es parte de cada página web, que es a
+quien le corresponde.)
+
 ## Editores de código
 
 Los campos **HTML / CSS / JavaScript** usan editores **CodeMirror** con
@@ -121,6 +136,13 @@ resaltado de sintaxis, números de línea, auto-cierre de etiquetas y
 **autocompletado** (mientras escribes o con `Ctrl-Espacio`).
 
 ---
+
+## Crear páginas por CLI / agentes de IA
+
+También puedes crear páginas **desde la línea de comandos** (útil para automatizar
+o para un agente de IA) con `php tools/make-page.php <config.json>`. Generan el mismo
+formato, así que **aparecen en esta lista** y se editan igual. Ver
+[AGENTE-CREAR-PAGINAS.md](AGENTE-CREAR-PAGINAS.md).
 
 ## Requisito: `web/config.php`
 

@@ -68,7 +68,7 @@ data-driven.
 ## 2. Conceptos clave (vocabulario)
 
 | Término | Qué es |
-|---------|--------|
+| --- | --- |
 | **Página** | Una entrada del menú del CMS. Puede ser de tipo `page` (contenido), `menu` (agrupa subpáginas) o `custom` (página a medida). |
 | **Módulo** | Un componente dentro de una página. El más común es el módulo *tabla*, que da un CRUD completo sobre una tabla de BD. |
 | **Columna** | Un campo de un módulo/tabla. Cada columna tiene un **tipo** (texto, fecha, imagen, relación…) que define cómo se ve y valida. |
@@ -118,14 +118,23 @@ cp web/config.example.php web/config.php
 
 Listo: ya puedes entrar al panel.
 
-### 3.4 Permisos de archivos (si hay errores de escritura)
+### 3.4 Setup automático (recomendado)
+
+Tras instalar o restaurar un respaldo, ejecuta el setup **una vez**. Crea los
+`config.php` faltantes (incluido un `web/config.php` funcional derivado de
+`cms/config.php`), crea los directorios escribibles y ajusta dueño y permisos:
 
 ```bash
-# El usuario de Apache (en XAMPP/macOS suele ser 'daemon') necesita escribir en uploads:
-sudo chown -R daemon:admin <ruta-del-proyecto>
-sudo find <ruta-del-proyecto> -type d -exec chmod 775 {} +
-sudo find <ruta-del-proyecto> -type f -exec chmod 664 {} +
+sudo ./setup.sh
+# En Linux indica el usuario del servidor si no es www-data:  sudo ./setup.sh apache
 ```
+
+Es idempotente (no pisa configs existentes). Esto evita el problema de "la página
+pública no carga datos" (cuando falta `web/config.php`) y los problemas de
+permisos. Detalle en [INSTALACION.md](INSTALACION.md).
+
+> El Generador de Páginas también **crea `web/config.php` solo** la primera vez,
+> así que normalmente no tendrás que tocar nada.
 
 ---
 
@@ -151,7 +160,7 @@ Dentro de la página *Productos*, **Nuevo módulo**:
 Agrega columnas al módulo (cada una genera una columna real en la tabla):
 
 | Título | Tipo | Alias | Visible |
-|--------|------|-------|---------|
+| --- | --- | --- | --- |
 | `name` | `text` | Nombre | Sí |
 | `price` | `money` | Precio | Sí |
 | `description` | `textarea` | Descripción | No |
@@ -172,44 +181,38 @@ GET /api/productos
 Authorization: <tu-api-key>
 ```
 
-### Paso 6 — Mostrarlos en el sitio público
-Crea `web/pages/productos.php` (puedes copiar `web/pages/example-list.php` como base):
+### Paso 6 — Mostrarlos en el sitio público (sin código)
+Usa el **Generador de Páginas Web** del CMS (menú **Páginas Web**), sin escribir PHP:
 
-```php
-<?php
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../controllers/api.controller.php';
+1. Elige la tabla **`productos`**.
+2. Haz clic en **"Repetir por cada registro"** y escribe/ajusta tu HTML usando los
+   **chips de campos** (al hacer clic en el campo `image` inserta un `<img>`):
 
-$pageTitle = 'Productos';
-$response  = ApiController::getAll('productos', '*', 'id_producto', 'ASC', 0, 50);
-$products  = $response->status == 200 ? $response->results : [];
+   ```html
+   <div class="row">
+     {{#cada}}
+       <div class="col-md-4 mb-4">
+         <div class="card h-100">
+           <img src="{{image_producto}}" class="card-img-top">
+           <div class="card-body">
+             <h5>{{name_producto}}</h5>
+             <p class="fw-bold">${{price_producto}}</p>
+           </div>
+         </div>
+       </div>
+     {{/cada}}
+   </div>
+   ```
 
-ob_start(); ?>
-<div class="container my-5">
-  <h1>Productos</h1>
-  <div class="row">
-    <?php foreach ($products as $p): ?>
-      <div class="col-md-4 mb-4">
-        <div class="card h-100">
-          <img src="<?= htmlspecialchars($p->image_producto, ENT_QUOTES) ?>" class="card-img-top">
-          <div class="card-body">
-            <h5 class="card-title"><?= htmlspecialchars($p->name_producto, ENT_QUOTES) ?></h5>
-            <p class="fw-bold">$<?= htmlspecialchars($p->price_producto, ENT_QUOTES) ?></p>
-          </div>
-        </div>
-      </div>
-    <?php endforeach; ?>
-  </div>
-</div>
-<?php
-$pageContent = ob_get_clean();
-include __DIR__ . '/../views/template.php';
-```
+3. Mira la **vista previa en vivo** a la derecha → **Crear página**.
 
-Abre `http://localhost/<tu-proyecto>/web/pages/productos.php` → **tu catálogo está online.**
+Abre la página (botón **"Ver página"**) → **tu catálogo está online.** Más adelante
+puedes editarla, agregar **formularios** (crear/editar) y **protegerla con login**:
+ver [Generador de Páginas](GENERADOR-PAGINAS.md).
 
 > 🎉 En 6 pasos creaste: tabla en BD + formulario de carga + panel de gestión + API REST + página
-> pública. Ese es el potencial del framework: **defines los datos una vez y lo demás es automático.**
+> pública **sin escribir código**. Ese es el potencial del framework: **defines los datos una vez y
+> lo demás es automático.**
 
 ---
 
@@ -263,17 +266,20 @@ Se usa con una columna de tipo `workflow`.
 Al crear una columna eliges su **tipo**, que determina el widget del formulario y la validación:
 
 | Categoría | Tipos |
-|-----------|-------|
+| --- | --- |
 | Texto | `text`, `textarea`, `email`, `password` |
 | Números | `int`, `double`, `money` |
 | Fecha/hora | `date`, `time`, `datetime`, `timestamp` |
 | Booleano | `boolean` |
 | Selección | `select` (opciones predefinidas en *matrix*), `color` |
 | Estructurados | `array`, `object`, `json` |
-| Multimedia | `image`, `video`, `file`, `link` |
+| Multimedia | `image`, `multiimage` (varias imágenes), `video`, `file`, `link` |
 | Avanzados | `relations` (vínculo a otra tabla), `code` (editor WYSIWYG Summernote / CodeMirror), `workflow` (estados), `chatgpt` (integración OpenAI), `order` (ordenamiento) |
 
 **Notas:**
+- `image` — una imagen: se **sube directo** con el botón "Agregar imagen" y se ve una miniatura.
+- `multiimage` — **varias imágenes** en un registro: seleccionas varias a la vez, se muestran como
+  miniaturas (con quitar) y se guardan como arreglo JSON. Puedes fijar un **máximo** por columna.
 - `select` y `relations` usan el campo *matrix* de la columna para definir opciones o la tabla relacionada.
 - `code` renderiza un editor enriquecido; el contenido se guarda como texto largo.
 - `password` se hashea con bcrypt al guardar.
@@ -368,6 +374,12 @@ El login devuelve un JWT. Las operaciones protegidas se invocan con `?token=<jwt
 
 Vive en `web/`. Renderiza el sitio que ven los visitantes y consume datos de la API.
 
+> 💡 **La forma recomendada de crear páginas públicas es el Generador de Páginas
+> Web** (CMS → "Páginas Web"): visual, sin código, con vista previa en vivo,
+> galerías de imágenes, formularios (crear/editar) y login por rol/usuario. Ver
+> **[Generador de Páginas](GENERADOR-PAGINAS.md)**. Lo que sigue describe cómo
+> funcionan las páginas por debajo, útil para casos avanzados o a medida.
+
 ### 9.1 Cómo se arma una página
 Patrón de toda página en `web/pages/*.php`:
 1. Carga `web/config.php` y `web/controllers/api.controller.php`.
@@ -419,7 +431,7 @@ disco con escritura atómica y se regenera tras cada guardado de SEO o con `?reg
 
 ### 11.1 Plugins incluidos
 | Plugin | Tipo | Qué aporta |
-|--------|------|-----------|
+| --- | --- | --- |
 | **payku** | payment | Pasarela de pagos Payku (checkout + webhook que valida el monto). |
 | **workflow-manager** | system | Editor visual de estados/transiciones para workflows. |
 | **dashboard-manager** | system | Widgets arrastrables para el dashboard. |
@@ -523,22 +535,24 @@ flujo; el webhook valida el pago contra la API de Payku antes de marcarlo como p
 ## 14. Solución de problemas
 
 | Síntoma | Causa probable | Solución |
-|---------|----------------|----------|
+| --- | --- | --- |
 | "No autorizado" en la API | API key distinta entre configs | Iguala `api.key` en `api/`, `cms/` y `web/` |
-| Subidas de archivo fallan | Permisos en `cms/views/assets/files/` | `chmod 775` + dueño = usuario de Apache (§3.4) |
+| Subidas de archivo fallan | Permisos en `cms/views/assets/files/` | Ejecuta `sudo ./setup.sh` (§3.4) o usa **CMS → Estado del Sistema** |
 | El CMS muestra el instalador otra vez | Faltan tablas o config de BD incorrecta | Revisa `cms/config.php` y la conexión MySQL |
+| Página generada **solo muestra el título** (sin datos) | Falta `web/config.php` o la API no responde | Ejecuta `sudo ./setup.sh`; vuelve a guardar la página en el Generador |
 | Páginas públicas en blanco | API no responde o key inválida | Verifica `web/config.php` y que `api/` esté accesible |
-| Update falla | Permisos de escritura | Ajusta permisos (§3.4) y reintenta |
+| Update falla | Permisos de escritura | Ejecuta `sudo ./setup.sh` (§3.4) y reintenta |
 | Sitemap vacío | No hay páginas con SEO activo | Crea SEO por página y/o `?regenerate=1` |
 
 ---
 
 ## Recursos relacionados
 
-- **`docs/ANALISIS-Y-AUDITORIA.md`** — bugs conocidos, hallazgos de seguridad y mejoras pendientes. **Léelo antes de exponer la app a internet.**
-- **`README.md`** — referencia rápida de la API e instalación.
-- **`.cursor/docs/`** — documentación técnica orientada a desarrollo (API, autenticación, módulos, plugins…).
-- **Skills del repo** (`/create-controller`, `/create-migration`, `/create-plugin`) — generadores de código que siguen las convenciones del proyecto.
+- **[../README.md](../README.md)** — índice general y referencia rápida.
+- **[GENERADOR-PAGINAS.md](GENERADOR-PAGINAS.md)** — el Generador de Páginas Web en detalle (tags, formularios, login/acceso).
+- **[INSTALACION.md](INSTALACION.md)** — instalación, `setup.sh`, permisos y troubleshooting.
+- **[API.md](API.md)**, **[CMS-Y-TABLAS.md](CMS-Y-TABLAS.md)**, **[ARQUITECTURA.md](ARQUITECTURA.md)**, **[SEGURIDAD.md](SEGURIDAD.md)**, **[DESARROLLO.md](DESARROLLO.md)**.
+- **Generadores CLI** (`tools/make-controller`, `make-migration`, `make-plugin`) — siguen las convenciones del proyecto.
 
 > **Recordatorio de seguridad:** en producción usa **siempre HTTPS**, no versiones los `config.php`, y
 > aplica primero las correcciones del *Bloque 1* del informe de auditoría (capa AJAX del CMS).
