@@ -113,20 +113,28 @@ for c in "${CASES[@]}"; do
   # Special-case tools/list and resources/list: just count entries.
   case "$id" in
     2)
-      n="$(printf '%s\n' "$raw" | grep -E '"id":2[,}]' | grep -o '"name":' | wc -l | tr -d ' ')"
       echo "──────────────────────────────────────────────────────────────"
       echo "▌ [2] $label"
       echo "──────────────────────────────────────────────────────────────"
-      echo "  tools advertised: $n"
-      printf '%s\n' "$raw" | grep -E '"id":2[,}]' | grep -oE '"name":"[a-z_]+"' | sed 's/^/    - /'
+      # Parse the JSON-RPC response with Node rather than counting with grep/wc,
+      # which would miscount if a tool description happened to contain "name":.
+      printf '%s\n' "$raw" | grep -E '"id":2[,}]' | head -n1 | node -e '
+        let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+          const tools=((JSON.parse(s||"{}").result)||{}).tools||[];
+          console.log("  tools advertised: "+tools.length);
+          tools.forEach((t)=>console.log("    - "+t.name));
+        });'
       echo
       ;;
     11)
       echo "──────────────────────────────────────────────────────────────"
       echo "▌ [11] $label"
       echo "──────────────────────────────────────────────────────────────"
-      cnt="$(printf '%s\n' "$raw" | grep -E '"id":11[,}]' | grep -o 'framework://docs/' | wc -l | tr -d ' ')"
-      echo "  resources advertised: $cnt"
+      printf '%s\n' "$raw" | grep -E '"id":11[,}]' | head -n1 | node -e '
+        let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+          const resources=((JSON.parse(s||"{}").result)||{}).resources||[];
+          console.log("  resources advertised: "+resources.length);
+        });'
       echo
       ;;
     *)
