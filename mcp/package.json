@@ -1,0 +1,33 @@
+{
+  "name": "@compuelec/web-framework-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Compuelec web-framework — exposes the REST API and CMS tables as MCP tools for LLM clients.",
+  "type": "module",
+  "bin": {
+    "web-framework-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
