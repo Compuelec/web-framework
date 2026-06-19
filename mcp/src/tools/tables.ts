@@ -33,6 +33,8 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
     async () => {
       const data = await api.get("modules", { orderBy: "title_module", orderMode: "asc" });
       const rows = unwrapResults(data) as unknown as ModuleRow[];
+      // Deny-list config holds SQL table names (e.g. `admins`); reject by both
+      // title and suffix so a denied module can't surface under either alias.
       const visible = rows.filter((r) => {
         const suffix = String(r.suffix_module ?? "").toLowerCase();
         const title = String(r.title_module ?? "").toLowerCase();
@@ -71,36 +73,73 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
       }
 
       let moduleId = id_module;
-      let resolvedSuffix = suffix;
+      let resolvedSuffix: string | undefined;
       let resolvedTitle: string | undefined;
 
-      if (!moduleId && suffix) {
+      // When id_module is provided, always resolve the real suffix from the DB
+      // and validate THAT against the deny-list — never the client-supplied
+      // `suffix`. Otherwise a caller passing both `id_module` (of a denied table)
+      // and a benign `suffix` would slip past `assertNotDenied`, since the
+      // columns query keys off `moduleId`. If `suffix` is also given it must
+      // match the resolved one.
+      if (moduleId) {
+        const modules = unwrapResults(
+          await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
+        ) as unknown as ModuleRow[];
+        const actualSuffix = modules.length > 0 ? String(modules[0].suffix_module ?? "") : "";
+        const actualTitle = modules.length > 0 ? String(modules[0].title_module ?? "") : "";
+        // Collapse "not found", "no suffix" and "denied" into one identical
+        // error so id_module can't be used as an oracle to enumerate which ids
+        // map to denied or hidden modules — the same invisibility `list_tables`
+        // and the suffix branch already uphold. Check both title and suffix
+        // because the deny-list stores SQL table names while suffix_module
+        // holds the column-naming convention (e.g. `admins` vs `admin`).
+        const denied =
+          !actualSuffix ||
+          cfg.denyTables.has(actualSuffix.toLowerCase()) ||
+          cfg.denyTables.has(actualTitle.toLowerCase());
+        if (denied) {
+          throw new Error(`No describable module for id_module ${moduleId}.`);
+        }
+        if (suffix && suffix.toLowerCase() !== actualSuffix.toLowerCase()) {
+          throw new Error(
+            `The provided suffix "${suffix}" does not match the module suffix "${actualSuffix}".`,
+          );
+        }
+        resolvedSuffix = actualSuffix;
+        resolvedTitle = actualTitle || undefined;
+      } else if (suffix) {
+        // Reject denied suffixes (and the matching title) before hitting the DB
+        // so the error can't be used as a side-channel to probe whether a denied
+        // module exists.
+        assertNotDenied(suffix, cfg.denyTables);
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "suffix_module", equalTo: suffix }),
         ) as unknown as ModuleRow[];
         if (modules.length === 0) {
           throw new Error(`No CMS module found with suffix "${suffix}".`);
         }
-        moduleId = Number(modules[0].id_module);
-        resolvedSuffix = String(modules[0].suffix_module ?? suffix);
-        resolvedTitle = modules[0].title_module ?? undefined;
-      } else if (moduleId) {
-        const modules = unwrapResults(
-          await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
-        ) as unknown as ModuleRow[];
-        if (modules.length === 0) {
-          throw new Error(`No CMS module found with id_module ${moduleId}.`);
+        const resolvedId = Number(modules[0].id_module);
+        if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+          throw new Error(`Module with suffix "${suffix}" returned an invalid id_module.`);
         }
-        resolvedSuffix = resolvedSuffix ?? String(modules[0].suffix_module ?? "");
-        resolvedTitle = modules[0].title_module ?? undefined;
+        // Fail-closed guard: an empty suffix_module (note `??` does not catch
+        // "") would otherwise leave resolvedSuffix="" and skip the deny check.
+        const actualSuffix = String(modules[0].suffix_module ?? "");
+        const actualTitle = String(modules[0].title_module ?? "");
+        if (!actualSuffix) {
+          throw new Error(
+            `Module with suffix "${suffix}" has no table suffix; it is not a describable table.`,
+          );
+        }
+        assertNotDenied(actualSuffix, cfg.denyTables);
+        if (actualTitle) assertNotDenied(actualTitle, cfg.denyTables);
+        moduleId = resolvedId;
+        resolvedSuffix = actualSuffix;
+        resolvedTitle = actualTitle || undefined;
       }
 
-      // Deny-list contains SQL table names (e.g. `admins`). A request like
-      // `{suffix: "admin"}` resolves to the `admins` module — we must reject
-      // by both the resolved SQL name and the suffix so the suffix path can't
-      // bypass the deny-list.
-      if (resolvedTitle) assertNotDenied(resolvedTitle, cfg.denyTables);
-      if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
+      // resolvedSuffix is now guaranteed non-empty and already deny-checked above.
 
       const columns = unwrapResults(
         await api.get("columns", {
