@@ -90,6 +90,9 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
             `Module with id_module ${moduleId} has no table suffix; it is not a describable table.`,
           );
         }
+        // Deny-list check first, so a mismatch error can never leak the real
+        // suffix of a denied module.
+        assertNotDenied(actualSuffix, cfg.denyTables);
         if (suffix && suffix.toLowerCase() !== actualSuffix.toLowerCase()) {
           throw new Error(
             `The provided suffix "${suffix}" does not match the module suffix "${actualSuffix}".`,
@@ -116,11 +119,12 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
             `Module with suffix "${suffix}" has no table suffix; it is not a describable table.`,
           );
         }
+        assertNotDenied(actualSuffix, cfg.denyTables);
         moduleId = resolvedId;
         resolvedSuffix = actualSuffix;
       }
 
-      if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
+      // resolvedSuffix is now guaranteed non-empty and already deny-checked above.
 
       const columns = unwrapResults(
         await api.get("columns", {
