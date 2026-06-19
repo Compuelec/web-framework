@@ -300,7 +300,10 @@ class PackageInstallController {
             null,
             $cmsConfigResult['password_salt'] ?? null
         );
-        
+        // Update the public site config (web/config.php) too — otherwise its
+        // base_url keeps the packaged domain and the public pages load cross-origin.
+        $webConfigResult = PathUpdaterController::updateWebConfigUrlsOnly($domainInfo);
+
         // Log warnings but don't block installation if config files can't be written
         // The database restoration is more critical
         if (!$cmsConfigResult['success']) {
@@ -308,6 +311,9 @@ class PackageInstallController {
         }
         if (!$apiConfigResult['success']) {
             error_log("Warning: Could not update API config: " . $apiConfigResult['message']);
+        }
+        if (!$webConfigResult['success']) {
+            error_log("Warning: Could not update public site (web) config: " . $webConfigResult['message']);
         }
         
         // Only fail if both failed and database was not restored
