@@ -17,7 +17,6 @@ type ColumnRow = {
   title_column?: string;
   alias_column?: string;
   type_column?: string;
-  order_column?: number;
 };
 
 export function registerTableTools(server: McpServer, api: FrameworkApiClient, cfg: Config): void {
@@ -52,10 +51,11 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
     {
       title: "Describe a CMS table's columns",
       description:
-        "Returns the column definitions registered in the CMS for a given table suffix " +
-        "(e.g. for table `productos` with suffix `product`, returns columns like `name_product`, " +
-        "`price_product`). Pass either the module id (preferred) or the table suffix. " +
-        "Use this before searching/creating records so the agent knows the real column names.",
+        "Returns the SQL table name (`title`) and column definitions registered in the CMS " +
+        "for a given module. Use the returned `title` as the `table` parameter for record tools " +
+        "(`search_records`, `create_record`, etc.) — the `suffix` is only the per-column naming " +
+        "convention (`<name>_<suffix>`), not the URL path. Pass either the module id (preferred) " +
+        "or the table suffix.",
       inputSchema: {
         id_module: z.number().int().positive().optional(),
         suffix: tableNameSchema.optional(),
@@ -68,6 +68,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
 
       let moduleId = id_module;
       let resolvedSuffix = suffix;
+      let resolvedTitle: string | undefined;
 
       if (!moduleId && suffix) {
         const modules = unwrapResults(
@@ -78,14 +79,16 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         }
         moduleId = Number(modules[0].id_module);
         resolvedSuffix = String(modules[0].suffix_module ?? suffix);
-      } else if (moduleId && !resolvedSuffix) {
+        resolvedTitle = modules[0].title_module ?? undefined;
+      } else if (moduleId) {
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
         ) as unknown as ModuleRow[];
         if (modules.length === 0) {
           throw new Error(`No CMS module found with id_module ${moduleId}.`);
         }
-        resolvedSuffix = String(modules[0].suffix_module ?? "");
+        resolvedSuffix = resolvedSuffix ?? String(modules[0].suffix_module ?? "");
+        resolvedTitle = modules[0].title_module ?? undefined;
       }
 
       if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
@@ -94,7 +97,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         await api.get("columns", {
           linkTo: "id_module_column",
           equalTo: moduleId,
-          orderBy: "order_column",
+          orderBy: "id_column",
           orderMode: "asc",
         }),
       ) as unknown as ColumnRow[];
@@ -104,7 +107,6 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         title: c.title_column,
         alias: c.alias_column,
         type: c.type_column,
-        order: c.order_column,
       }));
 
       return {
@@ -114,6 +116,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
             text: JSON.stringify(
               {
                 id_module: moduleId,
+                title: resolvedTitle,
                 suffix: resolvedSuffix,
                 column_count: compact.length,
                 columns: compact,
