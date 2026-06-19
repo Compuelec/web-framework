@@ -95,7 +95,11 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         if (modules.length === 0) {
           throw new Error(`No CMS module found with suffix "${suffix}".`);
         }
-        moduleId = Number(modules[0].id_module);
+        const resolvedId = Number(modules[0].id_module);
+        if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+          throw new Error(`Module with suffix "${suffix}" returned an invalid id_module.`);
+        }
+        moduleId = resolvedId;
         resolvedSuffix = String(modules[0].suffix_module ?? suffix);
       }
 
