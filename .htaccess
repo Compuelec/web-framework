@@ -33,19 +33,17 @@ Options All -Indexes
     RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-    # Redirect root to /cms (backup - index.php handles this primarily)
-    # Only redirect if accessing the exact root and index.php doesn't exist
-    RewriteCond %{REQUEST_URI} ^/chatcenter/?$ [OR]
-    RewriteCond %{REQUEST_URI} ^/?$
-    RewriteCond %{REQUEST_URI} !^/chatcenter/cms
-    RewriteCond %{REQUEST_URI} !^/cms
-    RewriteCond %{REQUEST_URI} !^/chatcenter/api
-    RewriteCond %{REQUEST_URI} !^/api
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    # Use relative path so it works in subdirectories too
-    RewriteRule ^(.*)$ cms/ [R=301,L]
-    
+    # Serve the PUBLIC site (web/) at the domain root. The admin is at /cms and
+    # the API at /api. Leave those folders, the web/ folder and any real file or
+    # directory untouched; route clean public URLs (/slug) to the public pages.
+    # The root "/" itself falls through to index.php (DirectoryIndex), which
+    # serves the public home page.
+    RewriteRule ^(cms|api|web)(/|$) - [L]
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    RewriteRule ^([a-zA-Z0-9_-]+)/?$ web/page.php?slug=$1 [L,QSA]
+
     # Block access to sensitive directories
     RewriteRule ^(backups|migrations|\.cursor|\.git|vendor|node_modules|\.vscode|\.idea)/ - [F,L]
     

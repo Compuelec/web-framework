@@ -1,24 +1,14 @@
 <?php
 /**
- * Root index file - redirects to /cms
- * This file ensures that accessing the root directory redirects to the CMS
+ * Root entry point.
+ *
+ * Serves the PUBLIC site (web/) at the domain root, so a deployed app lives at
+ * https://your-domain/ with the admin at /cms and the API at /api. The public
+ * home page is whatever you mark as "home" in the page builder; clean URLs
+ * (/slug) are routed to the public pages by the .htaccess.
+ *
+ * (Previously this redirected to /cms. To go back to an admin-first root, replace
+ * the require below with a redirect to /cms.)
  */
 
-// Get the base path
-$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-$basePath = dirname($scriptName);
-$basePath = str_replace('\\', '/', $basePath);
-$basePath = rtrim($basePath, '/');
-
-// Calculate CMS path
-$cmsPath = $basePath . '/cms';
-
-// If base path is root, use /cms
-if ($basePath === '' || $basePath === '/') {
-    $cmsPath = '/cms';
-}
-
-// Redirect to CMS
-header('Location: ' . $cmsPath . '/', true, 301);
-exit;
-
+require __DIR__ . '/web/index.php';
