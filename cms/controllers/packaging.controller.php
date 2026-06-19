@@ -712,7 +712,7 @@ class PackagingController {
         
         // Try to make directory writable if it's not
         if (!is_writable($outputDir)) {
-            @chmod($outputDir, 0777);
+            @chmod($outputDir, 0755);
         }
         
         // Try to make file writable if it's not (for deletion)

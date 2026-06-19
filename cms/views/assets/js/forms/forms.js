@@ -1,5 +1,5 @@
 /*=============================================
-Validación de formularios desde bootstrap
+Bootstrap form validation
 =============================================*/
 
 // Disable form submissions if there are invalid fields
@@ -22,7 +22,7 @@ Validación de formularios desde bootstrap
 })();
 
 /*=============================================
-Activar select 2
+Activate select 2
 =============================================*/
 
 if($('.select2').length > 0){
@@ -35,7 +35,7 @@ if($('.select2').length > 0){
 }
 
 /*=============================================
-Activar Tags Input
+Activate Tags Input
 =============================================*/
 
 if($('.tags-input').length > 0){
@@ -45,13 +45,13 @@ if($('.tags-input').length > 0){
 }
 
 /*=============================================
-Activar datetimepicker
+Activate datetimepicker
 =============================================*/
 
 if($('.datepicker').length > 0){
 
   /*=============================================
-  Activar datetimepicker para fechas
+  Activate datetimepicker for dates
   =============================================*/
 
   $('.datepicker').datetimepicker({
@@ -64,7 +64,7 @@ if($('.datepicker').length > 0){
 if($('.timepicker').length > 0){
 
   /*=============================================
-  Activar datetimepicker para tiempo
+  Activate datetimepicker for time
   =============================================*/
 
   $('.timepicker').datetimepicker({
@@ -77,7 +77,7 @@ if($('.timepicker').length > 0){
 if($('.datetimepicker').length > 0){
 
   /*=============================================
-  Activar datetimepicker para fecha y tiempo
+  Activate datetimepicker for date and time
   =============================================*/
 
   $('.datetimepicker').datetimepicker({
@@ -117,7 +117,7 @@ if($('.summernote').length > 0){
 }
 
 /*=============================================
-Adicionar iconos al toolbar de summernote
+Add icons to the summernote toolbar
 =============================================*/
 if($(".note-toolbar").length > 0){
 
@@ -130,7 +130,7 @@ if($(".note-toolbar").length > 0){
 }
 
 /*=============================================
-Ajustes al modal de Summernote
+Summernote modal adjustments
 =============================================*/
 
 if($(".note-modal[aria-label='Insert Image']").length > 0){
@@ -147,7 +147,7 @@ if($(".note-modal[aria-label='Insert Video']").length > 0){
 }
 
 /*=============================================
-Validar campos de formularios
+Validate form fields
 =============================================*/
 
 function validateJS(event, type){
@@ -177,7 +177,7 @@ function validateJS(event, type){
 }
 
 /*=============================================
-Función para recordar email en el login
+Function to remember email at login
 =============================================*/
 
 function rememberEmail(event){
@@ -197,7 +197,7 @@ function rememberEmail(event){
 }
 
 /*=============================================
-Capturar email login 
+Capture login email
 =============================================*/
 
 function rememberLogin(){
@@ -219,7 +219,7 @@ function rememberLogin(){
 rememberLogin();
 
 /*=============================================
-Función para ver contraseña
+Function to show password
 =============================================*/
 
 $(document).on("click", ".viewPass", function(){

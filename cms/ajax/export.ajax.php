@@ -50,7 +50,7 @@ try {
     }
     
     if (isset($_GET['between1']) && isset($_GET['between2'])) {
-        $url .= "&between1=" . $_GET['between1'] . "&between2=" . $_GET['between2'];
+        $url .= "&between1=" . urlencode($_GET['between1']) . "&between2=" . urlencode($_GET['between2']);
     }
     
     $data = CurlController::request($url, $method, $fields);
@@ -136,8 +136,9 @@ try {
     }
     
 } catch (Exception $e) {
+    Logger::error("Export AJAX error", ['exception' => $e->getMessage()]);
     header('HTTP/1.1 500 Internal Server Error');
-    echo "Error: " . $e->getMessage();
+    echo "Internal server error";
 }
 
 function exportCSV($data, $filename, $addBOM = true) {

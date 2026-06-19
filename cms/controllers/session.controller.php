@@ -16,8 +16,16 @@ class SessionController {
      * @return string Generated unique session ID
      */
     public static function startUniqueSession($userId = null, $userToken = null) {
-        
+
         if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path'     => '/',
+                'domain'   => '',
+                'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
             session_start();
         }
         
@@ -68,7 +76,10 @@ class SessionController {
     }
     
     private static function generateSessionId($domain, $userId = null, $userToken = null) {
-        return substr(md5($domain), 0, 16);
+        if ($userId !== null && $userToken !== null) {
+            return hash('sha256', $domain . $userId . $userToken . session_id());
+        }
+        return bin2hex(random_bytes(16));
     }
     
     /**
@@ -152,11 +163,57 @@ class SessionController {
     
     /**
      * Get current unique session info
-     * 
+     *
      * @return array|null Session info or null if not exists
      */
     public static function getSessionInfo() {
         return $_SESSION['_unique_session_info'] ?? null;
+    }
+
+    /**
+     * Return the CSRF token for the current session, generating one if absent.
+     */
+    public static function getCsrfToken() {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        if (empty($_SESSION['_csrf_token'])) {
+            $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['_csrf_token'];
+    }
+
+    /**
+     * Validate a CSRF token submitted with a form.
+     *
+     * @param string $token Token from $_POST['_csrf_token']
+     * @return bool
+     */
+    public static function validateCsrfToken($token) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        $stored = $_SESSION['_csrf_token'] ?? '';
+        return !empty($stored) && hash_equals($stored, (string)$token);
+    }
+
+    /**
+     * Validate the CSRF token for the current request.
+     *
+     * Safe HTTP methods (GET/HEAD/OPTIONS) do not mutate state and are
+     * exempt. For state-changing methods the token is read from the
+     * X-CSRF-Token header (sent by the global AJAX interceptor) or from
+     * the _csrf_token POST field (classic form submissions).
+     *
+     * @return bool
+     */
+    public static function validateCsrfRequest() {
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+            return true;
+        }
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_csrf_token'] ?? '');
+        return self::validateCsrfToken($token);
     }
 }
 

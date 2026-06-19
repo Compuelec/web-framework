@@ -49,14 +49,7 @@ try {
         case 'create':
             // Create new package
             $result = PackagingController::createPackage();
-            
-            // Log result for debugging (remove in production)
-            if (isset($result['success']) && $result['success']) {
-                error_log("Package created successfully: " . ($result['filename'] ?? 'unknown'));
-            } else {
-                error_log("Package creation failed: " . ($result['message'] ?? 'unknown error'));
-            }
-            
+
             if (json_encode($result) === false) {
                 echo json_encode([
                     'success' => false,
@@ -101,9 +94,10 @@ try {
             break;
     }
 } catch (Exception $e) {
+    Logger::error("Packaging AJAX error", ['exception' => $e->getMessage()]);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => 'Internal server error'
     ]);
 }
 

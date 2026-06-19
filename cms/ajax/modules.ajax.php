@@ -3,10 +3,29 @@
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/install.controller.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	header('Content-Type: application/json');
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	exit;
+}
+
 class ModulesAjax{
 
 	/*=============================================
-	Eliminar Módulo
+	Delete module
 	=============================================*/ 
 
 	public $idModuleDelete;
@@ -38,10 +57,10 @@ class ModulesAjax{
 	public function deleteModule(){
 
 		/*=============================================
-		Traer la info del módulo para saber si es tabla
+		Fetch the module info to know whether it is a table
 		=============================================*/
 
-		$url = "modules?linkTo=id_module&equalTo=".base64_decode($this->idModuleDelete)."&select=type_module,title_module";
+		$url = "modules?linkTo=id_module&equalTo=".(int)base64_decode($this->idModuleDelete, true)."&select=type_module,title_module";
 		$method = "GET";
 		$fields = array();
 
@@ -56,16 +75,26 @@ class ModulesAjax{
 		$moduleTitle = $module->results[0]->title_module;
 
 		/*=============================================
-		Si es módulo de tipo tabla, eliminar columnas primero
+		Validate the table name as a safe SQL identifier
+		before it is ever interpolated into a DROP TABLE
+		=============================================*/
+
+		if(!preg_match('/^[a-zA-Z0-9_]+$/', (string)$moduleTitle)){
+			echo "error";
+			return;
+		}
+
+		/*=============================================
+		If it is a table-type module, delete the columns first
 		=============================================*/
 
 		if($moduleType == "tables"){
 
 			/*=============================================
-			Obtener todas las columnas vinculadas al módulo
+			Get all the columns linked to the module
 			=============================================*/
 
-			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
 			$method = "GET";
 			$fields = array();
 
@@ -74,7 +103,7 @@ class ModulesAjax{
 			if($getColumns->status == 200 && isset($getColumns->results) && is_array($getColumns->results)){
 
 				/*=============================================
-				Eliminar todas las columnas asociadas
+				Delete all the associated columns
 				=============================================*/
 
 				foreach($getColumns->results as $column){
@@ -89,7 +118,7 @@ class ModulesAjax{
 				}
 
 				/*=============================================
-				Eliminar la tabla de la BD en MySQL
+				Delete the table from the MySQL database
 				=============================================*/
 
 				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
@@ -101,7 +130,7 @@ class ModulesAjax{
 			}else{
 
 				/*=============================================
-				Si no hay columnas, solo eliminar la tabla
+				If there are no columns, just delete the table
 				=============================================*/
 
 				$sqlDestroyTable = "DROP TABLE IF EXISTS ".$moduleTitle;
@@ -150,10 +179,10 @@ class ModulesAjax{
 		}else{
 
 			/*=============================================
-			Para otros tipos de módulos, validar columnas vinculadas
+			For other module types, validate the linked columns
 			=============================================*/
 
-			$url = "columns?linkTo=id_module_column&equalTo=".base64_decode($this->idModuleDelete);
+			$url = "columns?linkTo=id_module_column&equalTo=".(int)base64_decode($this->idModuleDelete, true);
 			$method = "GET";
 			$fields = array();
 
@@ -165,13 +194,21 @@ class ModulesAjax{
 				return;
 			}
 
+			// Only proceed when the API explicitly confirms there are no
+			// linked records (404). A transient/error status must NOT delete.
+			if($getColumn->status != 404){
+
+				echo "error";
+				return;
+			}
+
 		}
 
 		/*=============================================
-		Eliminar el módulo
+		Delete the module
 		=============================================*/
 
-		$url = "modules?id=".base64_decode($this->idModuleDelete)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
+		$url = "modules?id=".(int)base64_decode($this->idModuleDelete, true)."&nameId=id_module&token=".$this->token."&table=admins&suffix=admin";
 		$method = "DELETE";
 		$fields = array();
 
@@ -283,8 +320,9 @@ class ModulesAjax{
 		try{
 
 			$database = InstallController::infoDatabase()["database"];
-			$columns = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '".$this->tableName."' ORDER BY ORDINAL_POSITION")
-				->fetchAll(PDO::FETCH_OBJ);
+			$stmt = $link->prepare("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = :db AND table_name = :table ORDER BY ORDINAL_POSITION");
+			$stmt->execute([':db' => $database, ':table' => $this->tableName]);
+			$columns = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 			$columnNames = array_map(function($col) {
 				return $col->item;

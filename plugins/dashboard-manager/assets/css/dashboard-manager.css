@@ -1,0 +1,316 @@
+/* =========================================================
+   Dashboard Manager — Styles
+   ========================================================= */
+
+/* Widget item wrapper */
+.dm-widget-item {
+    transition: opacity 0.2s;
+}
+
+/* Widget card */
+.dm-widget-card {
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    background: #fff;
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.dm-widget-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,.1);
+}
+
+/* Widget header */
+.dm-widget-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #fafafa;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    min-height: 44px;
+}
+
+.dm-widget-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Drag handle — only visible in edit mode */
+.dm-drag-handle {
+    cursor: grab;
+    color: #bbb;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: none;
+    transition: color 0.15s;
+}
+
+.dm-drag-handle:hover { color: #888; }
+.dm-drag-handle:active { cursor: grabbing; }
+
+/* Edit mode: show drag handle and action buttons */
+body.dm-edit-mode .dm-drag-handle  { display: inline-flex; }
+body.dm-edit-mode .dm-widget-card  { border-color: #a0c4ff; }
+
+/* Widget action buttons */
+.dm-widget-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.dm-widget-card:hover .dm-widget-actions,
+body.dm-edit-mode .dm-widget-actions {
+    opacity: 1;
+}
+
+.dm-action-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    padding: 0;
+}
+
+.dm-action-btn:hover                 { background: #f0f0f0; color: #555; }
+.dm-action-btn.dm-btn-delete:hover   { background: #fee; color: #e44; }
+.dm-action-btn.dm-btn-config:hover   { background: #eef0ff; color: #5569ff; }
+.dm-action-btn.dm-btn-refresh:hover  { background: #efffef; color: #3a7c3a; }
+
+/* Widget body */
+.dm-widget-body {
+    padding: 16px 14px;
+    min-height: 60px;
+}
+
+.dm-widget-body.dm-no-pad { padding: 0; }
+
+/* Loading spinner inside widget */
+.dm-widget-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    color: #ccc;
+}
+
+/* ---- Metric widget ---- */
+.dm-metric-value {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.dm-metric-label {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.dm-metric-icon {
+    font-size: 2rem;
+    opacity: 0.15;
+}
+
+/* ---- KPI widget ---- */
+.dm-kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+}
+
+.dm-kpi-trend {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.dm-kpi-trend.up   { background: #eaffea; color: #2e8a2e; }
+.dm-kpi-trend.down { background: #fff0f0; color: #c0392b; }
+.dm-kpi-trend.flat { background: #f5f5f5; color: #888; }
+
+/* ---- Recent records ---- */
+.dm-recent-table {
+    font-size: 12px;
+    margin: 0;
+}
+
+.dm-recent-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #999;
+    font-weight: 600;
+    border-top: none;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+
+.dm-recent-table td {
+    padding: 5px 10px;
+    vertical-align: middle;
+    border-color: #f5f5f5;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 150px;
+    text-overflow: ellipsis;
+}
+
+/* ---- Activity widget ---- */
+.dm-activity-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.dm-activity-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.dm-activity-item:last-child { border-bottom: none; }
+
+.dm-activity-badge {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dm-badge-create  { background: #eaffea; color: #2e8a2e; }
+.dm-badge-update  { background: #fff8e1; color: #b07800; }
+.dm-badge-delete  { background: #fff0f0; color: #c0392b; }
+.dm-badge-login   { background: #e8f4fd; color: #1a73c4; }
+.dm-badge-logout  { background: #f5f5f5; color: #888; }
+.dm-badge-view    { background: #f0eaff; color: #6a3dc0; }
+.dm-badge-default { background: #f5f5f5; color: #666; }
+
+.dm-activity-meta {
+    color: #aaa;
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* ---- Quick links widget ---- */
+.dm-quicklinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px;
+}
+
+.dm-quicklink-btn {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: filter 0.15s;
+}
+
+.dm-quicklink-btn:hover { filter: brightness(0.9); text-decoration: none; }
+
+/* ---- System widget ---- */
+.dm-system-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.dm-system-row:last-child { border-bottom: none; }
+.dm-system-label { color: #888; font-size: 12px; }
+.dm-system-value { font-weight: 600; }
+
+/* ---- HTML widget ---- */
+.dm-html-body {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* ---- Sortable drag state ---- */
+.dm-widget-item.ui-sortable-helper {
+    opacity: 0.85;
+    transform: rotate(1deg) scale(1.02);
+    box-shadow: 0 12px 32px rgba(0,0,0,.18);
+    z-index: 9999;
+}
+
+.dm-widget-item.ui-sortable-placeholder {
+    visibility: visible !important;
+    border: 2px dashed #a0c4ff;
+    border-radius: 12px;
+    background: #f0f6ff;
+}
+
+/* ---- Type selector cards (modal) ---- */
+.dm-type-card {
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    border-color: #e5e5e5 !important;
+}
+
+.dm-type-card:hover {
+    border-color: #a0c4ff !important;
+    background: #f5f8ff;
+    transform: translateY(-2px);
+}
+
+.dm-type-card.selected {
+    border-color: #5569ff !important;
+    background: #eef0ff;
+}
+
+/* ---- Quicklinks form (dynamic add rows) ---- */
+.dm-link-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.dm-link-row input { flex: 1; }
+.dm-link-row select { width: 120px; flex-shrink: 0; }
+.dm-link-row .dm-remove-link { flex-shrink: 0; }
+
+/* ---- Edit mode toggle button ---- */
+#dm-toggle-edit.active {
+    background: #5569ff;
+    color: #fff;
+    border-color: #5569ff;
+}
+
+/* ---- Chart container ---- */
+.dm-chart-container {
+    position: relative;
+    height: 180px;
+}

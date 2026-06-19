@@ -264,7 +264,7 @@ Load table module
 			<input type="hidden" id="orderByTable" value="id_<?php echo $module->suffix_module ?>">
 			<input type="hidden" id="orderModeTable" value="DESC">
 		    <input type="hidden" id="limitTable" value="<?php echo $limit ?>">
-		    <input type="hidden" id="rolAdmin" value="<?php echo $_SESSION["admin"]->rol_admin ?>">
+		    <input type="hidden" id="rolAdmin" value="<?php echo h($_SESSION["admin"]->rol_admin) ?>">
 		    <input type="hidden" id="searchTable" value="">
 		    <input type="hidden" id="between1" value="<?php echo date("Y-m-d", 0) ?>">
 		    <input type="hidden" id="between2" value="<?php echo date("Y-m-d") ?>">
@@ -418,6 +418,23 @@ Load table module
 											}
 
 										/*=============================================
+										Multi-image type content
+										=============================================*/
+
+										}else if($item->type_column == "multiimage"){
+
+											$multiImgs = json_decode(urldecode($value[$item->title_column] ?? ''), true);
+											if(is_array($multiImgs) && count($multiImgs)){
+												foreach($multiImgs as $imgUrl){
+													echo '<a href="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" target="_blank">
+														<img src="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" class="rounded me-1 mb-1" style="width:45px; height:45px; object-fit: cover; object-position:center;">
+													</a>';
+												}
+											}else{
+												echo '<img src="'.$cmsBasePath.'/views/assets/img/file.png" class="rounded" style="width:45px; height:45px; object-fit: cover; object-position:center;">';
+											}
+
+										/*=============================================
 										Video type content
 										=============================================*/
 
@@ -559,7 +576,23 @@ Load table module
 										}else if($item->type_column == "code"){
 
 
-											echo TemplateController::reduceText(htmlentities(urldecode($value[$item->title_column])),25); 
+											echo TemplateController::reduceText(htmlentities(urldecode($value[$item->title_column])),25);
+
+
+										/*=============================================
+										Workflow type content
+										=============================================*/
+
+										}else if($item->type_column == "workflow"){
+
+											require_once __DIR__ . "/../../../../controllers/workflow.controller.php";
+											$workflow = WorkflowController::getWorkflow($module->id_module);
+											$currentState = urldecode($value[$item->title_column]);
+											$stateInfo = $workflow ? WorkflowController::getStateInfo($workflow, $currentState) : null;
+											$stateLabel = $stateInfo ? $stateInfo->label : ucfirst($currentState);
+											$stateColor = $stateInfo ? $stateInfo->color : '#6c757d';
+
+											echo '<span class="badge rounded-pill px-2 py-1" style="background-color:'.$stateColor.'">'.htmlspecialchars($stateLabel).'</span>';
 
 
 										}else{

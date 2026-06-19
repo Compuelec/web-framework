@@ -3,12 +3,51 @@ Global Authentication Interceptor
 Automatically handles expired tokens
 =============================================*/
 
+/*=============================================
+Attach the CSRF token to native fetch() requests.
+jQuery requests are covered by ajaxSend (see init);
+this covers same-origin, state-changing fetch() calls.
+=============================================*/
+(function(){
+    if (!window.fetch || window.__csrfFetchPatched) { return; }
+    window.__csrfFetchPatched = true;
+
+    var _origFetch = window.fetch;
+
+    window.fetch = function(input, init){
+        init = init || {};
+
+        var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+        var url = (typeof input === 'string') ? input : ((input && input.url) || '');
+        var sameOrigin = (url.indexOf('://') === -1) || (url.indexOf(window.location.origin) === 0);
+        var token = window.CMS_CSRF_TOKEN || '';
+
+        if (token && sameOrigin && method !== 'GET' && method !== 'HEAD') {
+            var headers = new Headers(init.headers || (input && input.headers) || {});
+            if (!headers.has('X-CSRF-Token')) {
+                headers.set('X-CSRF-Token', token);
+            }
+            init.headers = headers;
+        }
+
+        return _origFetch.call(this, input, init);
+    };
+})();
+
 var AuthInterceptor = {
     isLoggingOut: false,
     
     init: function() {
         var self = this;
-        
+
+        // Attach the CSRF token as a header on every AJAX request (FormData-safe)
+        $(document).ajaxSend(function(event, xhr, settings) {
+            var token = window.CMS_CSRF_TOKEN || '';
+            if (token) {
+                xhr.setRequestHeader('X-CSRF-Token', token);
+            }
+        });
+
         $(document).ajaxComplete(function(event, xhr, settings) {
             self.handleResponse(xhr, settings);
         });
@@ -127,8 +166,8 @@ var AuthInterceptor = {
     },
     
     logout: function() {
-        localStorage.removeItem('tokenAdmin');
-        
+        window.CMS_TOKEN = null;
+
         var cmsBasePath = window.CMS_BASE_PATH || '';
         
         if (cmsBasePath) {
@@ -141,7 +180,7 @@ var AuthInterceptor = {
 
 // Validate token on page load
 function validateTokenOnLoad() {
-    var token = window.CMS_TOKEN || localStorage.getItem("tokenAdmin");
+    var token = window.CMS_TOKEN || '';
     
     if (!token) {
         // No token available, redirect to login
@@ -174,12 +213,12 @@ function validateTokenOnLoad() {
     });
 }
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
     AuthInterceptor.init();
-    
+
     // Validate token on page load (only if we're not on login/logout pages)
     var currentPath = window.location.pathname;
-    if (currentPath.indexOf('/login') === -1 && 
+    if (currentPath.indexOf('/login') === -1 &&
         currentPath.indexOf('/logout') === -1 &&
         currentPath.indexOf('/install') === -1) {
         validateTokenOnLoad();

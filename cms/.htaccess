@@ -1,10 +1,23 @@
 Options All -Indexes
 Options -MultiViews
 
+# Serve uploaded WebP/AVIF images with the correct MIME type (some servers/XAMPP
+# don't know them, showing binary text instead of the image when opened directly).
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType image/avif .avif
+</IfModule>
+
 RewriteEngine On
 
 # Protect sensitive files
 <FilesMatch "^(config\.php|config\.example\.php|\.env|\.env\.local)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block development-only test scripts from HTTP access
+<FilesMatch "^(test-email\.php|test-email-simple\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>

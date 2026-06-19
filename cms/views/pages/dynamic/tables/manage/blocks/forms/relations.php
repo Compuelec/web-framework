@@ -3,7 +3,7 @@
 	<?php 
 
 	/*=============================================
-	Traemos todas las tablas
+	Fetch all the tables
 	=============================================*/
 
 	require_once "controllers/install.controller.php";

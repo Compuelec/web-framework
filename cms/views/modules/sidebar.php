@@ -40,9 +40,21 @@ if($pages->status == 200){
 
 <div class="bg-white shadow" id="sidebar-wrapper">
 
+	<?php
+	// Brand (logo / name / symbol) comes from the global Apariencia settings;
+	// falls back to the admin's symbol/title until a brand is configured.
+	$_brandLogo   = $_SESSION['cms_theme']['theme_brand_logo']   ?? '';
+	$_brandTitle  = $_SESSION['cms_theme']['theme_brand_title']  ?? '';
+	$_brandSymbol = $_SESSION['cms_theme']['theme_brand_symbol'] ?? '';
+	if ($_brandTitle === '')  { $_brandTitle  = $_SESSION["admin"]->title_admin ?? 'Dashboard'; }
+	if ($_brandSymbol === '') { $_brandSymbol = $_SESSION["admin"]->symbol_admin ?? 'bi-grid'; }
+	?>
 	<div class="sidebar-heading bg-white text-dark my-2">
-		<i class="<?php echo $_SESSION["admin"]->symbol_admin ?> textColor"></i>
-		<span class="menu-text"><?php echo $_SESSION["admin"]->title_admin ?></span>
+		<?php if ($_brandLogo): ?>
+			<div class="mb-1"><img src="<?php echo h($_brandLogo) ?>" alt="<?php echo h($_brandTitle) ?>" style="max-height:48px; max-width:170px; object-fit:contain;"></div>
+		<?php endif ?>
+		<i class="<?php echo h($_brandSymbol) ?> textColor"></i>
+		<span class="menu-text"><?php echo h($_brandTitle) ?></span>
 	</div>
 
 	<hr class="mt-0 borderDashboard">
@@ -188,7 +200,7 @@ if($pages->status == 200){
 
 		<hr class="borderDashboard">
 
-		<button class="btn btn-default border rounded btn-sm ms-3 menu-text mt-2 myPage">Agregar Página</button>
+		<button class="btn backColor rounded btn-sm ms-3 menu-text mt-2 myPage">Agregar Sección</button>
 		
 	<?php endif ?>
 

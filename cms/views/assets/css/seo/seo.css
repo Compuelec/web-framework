@@ -1,0 +1,33 @@
+.seo-panel .seo-char-counter {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-align: right;
+    margin-top: 2px;
+}
+
+.seo-panel .seo-char-counter.warn  { color: #ffc107; }
+.seo-panel .seo-char-counter.over  { color: #dc3545; }
+
+.seo-panel .seo-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: #e9ecef;
+    margin-top: 3px;
+    overflow: hidden;
+}
+
+.seo-panel .seo-bar-fill {
+    height: 100%;
+    background: #198754;
+    transition: width 0.2s, background 0.2s;
+}
+
+.seo-panel .seo-bar-fill.warn { background: #ffc107; }
+.seo-panel .seo-bar-fill.over { background: #dc3545; }
+
+.seo-panel .seo-slug-preview {
+    font-size: 0.75rem;
+    color: #0d6efd;
+    word-break: break-all;
+    margin-top: 3px;
+}

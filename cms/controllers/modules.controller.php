@@ -6,12 +6,15 @@ require_once "controllers/template.controller.php";
 class ModulesController{
 
 	/*=============================================
-	Gestionar un módulo
+	Manage a module
 	=============================================*/
 
 	public function manageModule(){
 
 		if(isset($_POST["title_module"])){
+
+			// Run auto-migrations to ensure all columns exist
+			InstallController::runAutoMigrations();
 
 			echo '<script>
 
@@ -21,12 +24,12 @@ class ModulesController{
 			</script>';
 
 			/*=============================================
-			Editando Módulo
+			Editing Module
 			=============================================*/
 
 			if(isset($_POST["id_module"])){
 
-				$url = "modules?id=".base64_decode($_POST["id_module"])."&nameId=id_module&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
+				$url = "modules?id=".(int)base64_decode($_POST["id_module"], true)."&nameId=id_module&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
 				$fields = "title_module=".strtolower(trim($_POST["title_module"]))."&suffix_module=".strtolower(trim($_POST["suffix_module"]))."&content_module=".$_POST["content_module"]."&width_module=".$_POST["width_module"]."&editable_module=".$_POST["editable_module"];
 
@@ -69,7 +72,9 @@ class ModulesController{
 
 										$url = "columns?id=".$_POST["id_column_".$value]."&nameId=id_column&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "PUT";
-										$data = "title_column=".str_replace(" ","_",$_POST["title_column_".$value])."&alias_column=".$_POST["alias_column_".$value]."&type_column=".$_POST["type_column_".$value]."&visible_column=".$_POST["visible_column_".$value];
+										$conditionsValue = isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '';
+										$matrixValue = $_POST["matrix_column_".$value] ?? '';
+										$data = "title_column=".str_replace(" ","_",$_POST["title_column_".$value])."&alias_column=".$_POST["alias_column_".$value]."&type_column=".$_POST["type_column_".$value]."&visible_column=".$_POST["visible_column_".$value]."&conditions_column=".urlencode($conditionsValue)."&matrix_column=".urlencode($matrixValue);
 
 										$updateColumn = CurlController::request($url,$method,$data);
 
@@ -100,11 +105,13 @@ class ModulesController{
 										$url = "columns?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 										$method = "POST";
 										$data = array(
-											"id_module_column" => base64_decode($_POST["id_module"]),
+											"id_module_column" => (int)base64_decode($_POST["id_module"], true),
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],
+											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
+											"matrix_column" => $_POST["matrix_column_".$value] ?? '',
 											"date_created_column" => date("Y-m-d")
 										);
 
@@ -113,7 +120,7 @@ class ModulesController{
 										if($createColumn->status == 200){
 
 											/*=============================================
-											Crear columnas en BD MySQL
+											Create columns in MySQL database
 											=============================================*/
 
 											if($key == 0){
@@ -314,7 +321,7 @@ class ModulesController{
 				$url = "modules?token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "POST";
 				$fields = array(
-					"id_page_module" => base64_decode($_POST["id_page_module"]),
+					"id_page_module" => (int)base64_decode($_POST["id_page_module"], true),
 					"type_module" => $_POST["type_module"],
 					"title_module" => strtolower(trim($_POST["title_module"])),
 					"suffix_module" => strtolower(trim($_POST["suffix_module"])),
@@ -420,7 +427,9 @@ class ModulesController{
 											"title_column" => str_replace(" ","_",$_POST["title_column_".$value]),
 											"alias_column" => $_POST["alias_column_".$value],
 											"type_column" => $_POST["type_column_".$value],
+											"conditions_column" => isset($_POST["conditions_column_".$value]) ? $_POST["conditions_column_".$value] : '',
 											"visible_column" => $_POST["visible_column_".$value],
+											"matrix_column" => $_POST["matrix_column_".$value] ?? '',
 											"date_created_column" => date("Y-m-d")
 										);
 
@@ -431,7 +440,7 @@ class ModulesController{
 											$type = TemplateController::typeColumn($_POST["type_column_".$value]);
 
 											/*=============================================
-											Crear columnas en BD MySQL
+											Create columns in MySQL database
 											=============================================*/
 
 											if($key == 0){
@@ -496,7 +505,7 @@ class ModulesController{
 
 					// Check if base directory exists and is writable
 					if(!file_exists($baseDir)){
-						if(!@mkdir($baseDir, 0777, true)){
+						if(!@mkdir($baseDir, 0755, true)){
 							echo '
 							<script>
 								fncMatPreloader("off");
@@ -506,12 +515,12 @@ class ModulesController{
 							exit;
 						}
 						// Try to make directory writable
-						@chmod($baseDir, 0777);
+						@chmod($baseDir, 0755);
 					}
 
 					// Verify base directory is writable
 					if(!is_writable($baseDir)){
-						@chmod($baseDir, 0777);
+						@chmod($baseDir, 0755);
 						if(!is_writable($baseDir)){
 							echo '
 							<script>
@@ -525,7 +534,7 @@ class ModulesController{
 
 					// Create module directory if it doesn't exist (with recursive permissions)
 					if(!file_exists($directory)){
-						if(!@mkdir($directory, 0777, true)){
+						if(!@mkdir($directory, 0755, true)){
 							// If it fails, try with chmod afterwards
 							if(!file_exists($directory)){
 								echo '
@@ -538,7 +547,7 @@ class ModulesController{
 							}
 						}
 						// Try to make directory writable
-						@chmod($directory, 0777);
+						@chmod($directory, 0755);
 					}
 
 					/*=============================================

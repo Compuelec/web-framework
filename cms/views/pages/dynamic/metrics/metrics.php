@@ -5,7 +5,7 @@ $metric = 0;
 $content = json_decode($module->content_module);
 
 /*=============================================
-Traer info de la métrica
+Fetch the metric info
 =============================================*/
 
 $url = $content->table."?select=".$content->column;
@@ -17,7 +17,7 @@ $response = CurlController::request($url,$method,$fields);
 if($response->status == 200){
 
 	/*=============================================
-	Total de valores
+	Total of values
 	=============================================*/
 
 	if($content->type == "total"){
@@ -27,7 +27,7 @@ if($response->status == 200){
 	}
 
 	/*=============================================
-	Sumar valores
+	Sum values
 	=============================================*/
 
 	if($content->type == "add"){
@@ -41,7 +41,7 @@ if($response->status == 200){
 	}
 
 	/*=============================================
-	Promedio de valores
+	Average of values
 	=============================================*/
 
 	if($content->type == "average"){

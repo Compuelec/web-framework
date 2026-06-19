@@ -106,11 +106,10 @@ try {
             break;
     }
 } catch (Exception $e) {
-    error_log("Activity logs AJAX error: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
+    Logger::error("Activity logs AJAX error", ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Error interno del servidor: ' . $e->getMessage()
+        'error' => 'Internal server error'
     ], JSON_UNESCAPED_UNICODE);
 }

@@ -70,8 +70,9 @@ try {
             break;
     }
 } catch (Exception $e) {
+    Logger::error("Updates AJAX error", ['exception' => $e->getMessage()]);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => 'Internal server error'
     ]);
 }

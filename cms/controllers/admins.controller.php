@@ -67,17 +67,20 @@ class AdminsController{
 					logActivity('login', 'admin', $login->results[0]->id_admin, 'Successful login');
 				}
 
+				// Redirect to the CMS root (dashboard). Don't location.reload():
+				// login is often shown at <base>/login (session expiry / logout),
+				// and reloading /login would route to a non-existent "login" page
+				// ("Página no disponible") instead of the dashboard.
 				echo '<script>
 
-					localStorage.setItem("tokenAdmin","'.$login->results[0]->token_admin.'");
 					fncMatPreloader("off");
 					fncFormatInputs();
-					location.reload();
+					window.location.href = "'.TemplateController::cmsBasePath().'/";
 
 				</script>';
 
 				/*=============================================
-				Generar y enviar código de seguridad al correo
+				Generate and send security code to email
 				=============================================*/
 				/*
 				$securityCode = TemplateController::genPassword(6);
@@ -132,13 +135,16 @@ class AdminsController{
 
 			}else{
 
-				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: '.$login->results.'</div>
+				$loginError = htmlspecialchars((string)($login->results ?? 'Unknown error'), ENT_QUOTES, 'UTF-8');
+				error_log("Failed CMS login attempt for email=" . ($_POST['email_admin'] ?? '') . " ip=" . ($_SERVER['REMOTE_ADDR'] ?? ''));
+
+				echo '<div class="alert alert-danger mt-3 rounded">Error al ingresar: ' . $loginError . '</div>
 
 				<script>
 
 					fncMatPreloader("off");
 					fncFormatInputs();
-					fncToastr("error", "Error al ingresar: '.$login->results.'");
+					fncToastr("error", "Error al ingresar");
 
 				</script>';
 			}
@@ -201,12 +207,15 @@ class AdminsController{
 					logActivity('login', 'admin', $admin->results[0]->id_admin, 'Login with security code');
 				}
 
+				// Redirect to the CMS root (dashboard). Don't location.reload():
+				// login is often shown at <base>/login (session expiry / logout),
+				// and reloading /login would route to a non-existent "login" page
+				// ("Página no disponible") instead of the dashboard.
 				echo '<script>
 
-					localStorage.setItem("tokenAdmin","'.$admin->results[0]->token_admin.'");
 					fncMatPreloader("off");
 					fncFormatInputs();
-					location.reload();
+					window.location.href = "'.TemplateController::cmsBasePath().'/";
 
 				</script>';
 
@@ -250,7 +259,7 @@ class AdminsController{
 			Validate admin
 			=============================================*/
 
-			$url = "admins?linkTo=id_admin&equalTo=".base64_decode($_POST["id_admin"])."&select=id_admin,password_admin,rol_admin";
+			$url = "admins?linkTo=id_admin&equalTo=".(int)base64_decode($_POST["id_admin"], true)."&select=id_admin,password_admin,rol_admin";
 			$method = "GET";
 			$fields = array();
 
@@ -259,22 +268,21 @@ class AdminsController{
 			if($admin->status == 200){
 
 				/*=============================================
-				Si hay cambio de contraseña
+				If there is a password change
 				=============================================*/
 
 				if(!empty($_POST["password_admin"])){
 
-					$passwordSalt = TemplateController::getPasswordSalt();
-					$crypt = crypt($_POST["password_admin"], $passwordSalt);
+					$crypt = password_hash($_POST["password_admin"], PASSWORD_BCRYPT);
 
 				}else{
 
 					$crypt = $admin->results[0]->password_admin;
-					
+
 				}
 
 				/*=============================================
-				Subir cambios a base de datos
+				Upload changes to database
 				=============================================*/
 
 				$url = "admins?id=".$admin->results[0]->id_admin."&nameId=id_admin&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";	
@@ -340,7 +348,7 @@ class AdminsController{
 	}
 
 	/*=============================================
-	Recuperar contraseña
+	Reset Password
 	=============================================*/
 
 	public function resetPassword(){
@@ -355,8 +363,8 @@ class AdminsController{
 			</script>';
 
 			/*=============================================
-			Preguntamos primero si el usuario está registrado
-			=============================================*/	
+			First check if the user is registered
+			=============================================*/
 
 			$url = "admins?linkTo=email_admin&equalTo=".$_POST["resetPassword"]."&select=id_admin";
 			$method = "GET";
@@ -367,8 +375,7 @@ class AdminsController{
 			if($admin->status == 200){
 
 				$newPassword = TemplateController::genPassword(11);
-				$passwordSalt = TemplateController::getPasswordSalt();
-				$crypt = crypt($newPassword, $passwordSalt);
+				$crypt = password_hash($newPassword, PASSWORD_BCRYPT);
 
 				/*=============================================
 				Update password in database

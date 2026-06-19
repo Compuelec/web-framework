@@ -19,7 +19,6 @@
     function fetchDataFromAPI(tableName, callback) {
         // This is a placeholder - implement based on your needs
         // You can use fetch() or jQuery.ajax() here
-        console.log('Fetch data from API:', tableName);
         if (callback) {
             callback(null, []);
         }

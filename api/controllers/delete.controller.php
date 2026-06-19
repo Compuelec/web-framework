@@ -5,7 +5,7 @@ require_once "models/delete.model.php";
 class DeleteController{
 
 	/*=============================================
-	Peticion Delete para eliminar datos
+	DELETE request to delete data
 	=============================================*/
 
 	static public function deleteData($table, $id, $nameId){
@@ -18,7 +18,7 @@ class DeleteController{
 	}
 
 	/*=============================================
-	Respuestas del controlador
+	Controller responses
 	=============================================*/
 
 	public function fncResponse($response){

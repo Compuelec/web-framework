@@ -1,5 +1,5 @@
 /*=============================================
-Abrir ventana modal de páginas
+Open pages modal window
 =============================================*/
 
 var CMS_AJAX_PATH = window.CMS_AJAX_PATH || "/ajax";
@@ -114,7 +114,7 @@ $(document).on("click",".myModule",function(){
 	$("#myModule").modal("show");
 
 	/*=============================================
-	Cuando se abre la ventana modal
+	When the modal window is opened
 	=============================================*/
 
 	$("#myModule").on('shown.bs.modal', function () {
@@ -123,7 +123,7 @@ $(document).on("click",".myModule",function(){
 		$("input[name='id_module']").remove();
 
 		/*=============================================
-		Capturar el Id de la página
+		Capture the page ID
 		=============================================*/
 
 		$("#type_module").before(`
@@ -137,7 +137,7 @@ $(document).on("click",".myModule",function(){
 		$("#columnsBlock").hide();
 
 		/*=============================================
-		tipo de módulo seleccionado
+		Selected module type
 		=============================================*/
 
 		$(document).on("change","#type_module",function(){
@@ -149,7 +149,7 @@ $(document).on("click",".myModule",function(){
 			$("#columnsBlock").hide();
 
 			/*=============================================
-			Aparecer campos de métricas
+			Show metrics fields
 			=============================================*/
 
 			if($(this).val() == "metrics"){
@@ -165,7 +165,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			Aparecer campos de gráficos
+			Show chart fields
 			=============================================*/
 
 			if($(this).val() == "graphics"){
@@ -180,7 +180,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			Aparecer campos de tablas
+			Show table fields
 			=============================================*/
 
 			if($(this).val() == "tables"){
@@ -195,7 +195,7 @@ $(document).on("click",".myModule",function(){
 		
 
 		/*=============================================
-		Estamos editando módulo
+		We are editing a module
 		=============================================*/
 
 		if(item != undefined){
@@ -205,7 +205,7 @@ $(document).on("click",".myModule",function(){
 			`)
 
 			/*=============================================
-			tipo breadcrumbs
+			Breadcrumbs type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "breadcrumbs"){
@@ -218,7 +218,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo metrics
+			Metrics type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "metrics"){
@@ -284,7 +284,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo gráfico
+			Chart type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "graphics"){
@@ -340,7 +340,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo tables
+			Tables type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "tables"){
@@ -366,16 +366,16 @@ $(document).on("click",".myModule",function(){
 				$(".listColumns").html('');
 
 				/*=============================================
-				Visualizar las columnas a editar
+				Display the columns to edit
 				=============================================*/
 
 				JSON.parse(item).columns.forEach((e,i)=>{
 
 					/*=============================================
-					Marcar tipo de columna seleccionado
+					Mark selected column type
 					=============================================*/
 
-					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt"];
+					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow","multiimage"];
 					var selectColumn = [];
 
 					typeColumn.forEach((v,f)=>{
@@ -393,7 +393,7 @@ $(document).on("click",".myModule",function(){
 					// Labels are always visible in the new design
 
 					/*=============================================
-					Marcar la selección de visibilidad
+					Mark the visibility selection
 					=============================================*/
 
 					var selectOn = "";
@@ -466,6 +466,7 @@ $(document).on("click",".myModule",function(){
 												<option value="int" ${selectColumn[2]}>Número Entero</option>
 												<option value="double" ${selectColumn[3]}>Número Decimal</option>
 												<option value="image" ${selectColumn[4]}>Imagen</option>
+												<option value="multiimage" ${selectColumn[26]}>Múltiples Imágenes</option>
 												<option value="video" ${selectColumn[5]}>Video</option>
 												<option value="file" ${selectColumn[6]}>Archivo</option>
 												<option value="boolean" ${selectColumn[7]}>Boleano</option>
@@ -486,6 +487,7 @@ $(document).on("click",".myModule",function(){
 												<option value="relations" ${selectColumn[22]}>Relaciones</option>
 												<option value="order" ${selectColumn[23]}>Ordenar</option>
 												<option value="chatgpt" ${selectColumn[24]}>ChatGPT</option>
+												<option value="workflow" ${selectColumn[25]}>Workflow</option>
 											</select>
 											<div class="valid-feedback">Válido</div>
 											<div class="invalid-feedback">Campo Inválido</div>
@@ -493,16 +495,62 @@ $(document).on("click",".myModule",function(){
 
 										<div class="col-md-2">
 											<label for="visible_column_${i}" class="form-label small fw-semibold">Visibilidad</label>
-											<select 
-												class="form-select form-select-sm rounded" 
-												name="visible_column_${i}" 
-												id="visible_column_${i}" 
+											<select
+												class="form-select form-select-sm rounded"
+												name="visible_column_${i}"
+												id="visible_column_${i}"
 												required>
 												<option value="1" ${selectOn}>ON</option>
-												<option value="0" ${selectOff}>OFF</option>							
+												<option value="0" ${selectOff}>OFF</option>
 											</select>
 											<div class="valid-feedback">Válido</div>
 											<div class="invalid-feedback">Campo Inválido</div>
+										</div>
+
+										<div class="col-12 matrixMaxWrap" style="${e.type_column == 'multiimage' ? '' : 'display:none;'}">
+											<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
+											<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${i}" value="${e.matrix_column || ''}" placeholder="Sin límite">
+										</div>
+
+										<div class="col-12 mt-3">
+											<div class="card bg-light border-0">
+												<div class="card-body py-2">
+													<div class="d-flex align-items-center justify-content-between">
+														<small class="text-muted fw-semibold">
+															<i class="bi bi-eye"></i> Condiciones de Visibilidad
+														</small>
+														<button type="button" class="btn btn-sm btn-outline-primary toggleConditions" data-index="${i}">
+															<i class="bi bi-plus-circle"></i> Configurar
+														</button>
+													</div>
+													<div class="conditions-config mt-2" id="conditions_config_${i}" style="display:none;">
+														<div class="row g-2">
+															<div class="col-md-4">
+																<select class="form-select form-select-sm condition-field" data-index="${i}">
+																	<option value="">Seleccionar campo...</option>
+																</select>
+															</div>
+															<div class="col-md-3">
+																<select class="form-select form-select-sm condition-operator" data-index="${i}">
+																	<option value="equals">Es igual a</option>
+																	<option value="not_equals">No es igual a</option>
+																	<option value="empty">Está vacío</option>
+																	<option value="not_empty">No está vacío</option>
+																</select>
+															</div>
+															<div class="col-md-4">
+																<input type="text" class="form-control form-control-sm condition-value" data-index="${i}" placeholder="Valor">
+															</div>
+															<div class="col-md-1">
+																<button type="button" class="btn btn-sm btn-success applyCondition" data-index="${i}" title="Aplicar">
+																	<i class="bi bi-check"></i>
+																</button>
+															</div>
+														</div>
+													</div>
+													<input type="hidden" name="conditions_column_${i}" id="conditions_column_${i}" value="${e.conditions_column || ''}">
+												</div>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -520,7 +568,7 @@ $(document).on("click",".myModule",function(){
 			}
 
 			/*=============================================
-			tipo personalizable
+			Custom type
 			=============================================*/
 
 			if(JSON.parse(item).type_module == "custom"){
@@ -533,7 +581,7 @@ $(document).on("click",".myModule",function(){
 
 
 		/*=============================================
-		Estamos creando módulo
+		We are creating a module
 		=============================================*/
 		
 		}else{
@@ -545,7 +593,7 @@ $(document).on("click",".myModule",function(){
 	})
 
 	/*=============================================
-	Cuando se cierra la ventana modal
+	When the modal window is closed
 	=============================================*/
 
 	$("#myModule").on('hidden.bs.modal', function (){
@@ -558,7 +606,7 @@ $(document).on("click",".myModule",function(){
 })
 
 /*=============================================
-Eliminar un módulo
+Delete a module
 =============================================*/
 
 $(document).on("click",".deleteModule",function(){
@@ -577,7 +625,7 @@ $(document).on("click",".deleteModule",function(){
 			
 			var data = new FormData();
 			data.append("idModuleDelete",idModule);
-			data.append("token", localStorage.getItem("tokenAdmin"));
+			data.append("token", window.CMS_TOKEN || '');
 
 			$.ajax({
 
@@ -607,7 +655,7 @@ $(document).on("click",".deleteModule",function(){
 })
 
 /*=============================================
-Cambio en datos de métricas
+Change in metrics data
 =============================================*/
 
 $(document).on("change",".changeMetric",function(e){
@@ -675,7 +723,7 @@ $(document).on("change",".changeMetric",function(e){
 })
 
 /*=============================================
-Cambio en datos de gráficos
+Change in chart data
 =============================================*/
 
 $(document).on("change",".changeGraphic",function(){
@@ -694,7 +742,7 @@ $(document).on("change",".changeGraphic",function(){
 })
 
 /*=============================================
-Agregar columnas
+Add columns
 =============================================*/
 
 $(document).on("click",".addColumn",function(){
@@ -708,7 +756,7 @@ $(document).on("click",".addColumn",function(){
 				<div class="card-body">
 					<div class="d-flex justify-content-between align-items-center mb-3">
 						<h6 class="card-title mb-0 text-muted">
-							<i class="bi bi-columns"></i> Columna ${$(".listColumns .col-12").length + 1}
+							<i class="bi bi-columns"></i> Columna ${$(".listColumns > .col-12").length + 1}
 						</h6>
 						<button type="button" class="btn btn-sm btn-outline-danger deleteColumn" index="${indexRandom}" idItem="0" title="Eliminar columna">
 							<i class="bi bi-trash"></i>
@@ -756,6 +804,7 @@ $(document).on("click",".addColumn",function(){
 								<option value="int">Número Entero</option>
 								<option value="double">Número Decimal</option>
 								<option value="image">Imagen</option>
+								<option value="multiimage">Múltiples Imágenes</option>
 								<option value="video">Video</option>
 								<option value="file">Archivo</option>
 								<option value="boolean">Boleano</option>
@@ -776,6 +825,7 @@ $(document).on("click",".addColumn",function(){
 								<option value="relations">Relaciones</option>
 								<option value="order">Ordenar</option>
 								<option value="chatgpt">ChatGPT</option>
+								<option value="workflow">Workflow</option>
 							</select>
 							<div class="valid-feedback">Válido</div>
 							<div class="invalid-feedback">Campo Inválido</div>
@@ -783,16 +833,62 @@ $(document).on("click",".addColumn",function(){
 
 						<div class="col-md-2">
 							<label for="visible_column_${indexRandom}" class="form-label small fw-semibold">Visibilidad</label>
-							<select 
-								class="form-select form-select-sm rounded" 
-								name="visible_column_${indexRandom}" 
-								id="visible_column_${indexRandom}" 
+							<select
+								class="form-select form-select-sm rounded"
+								name="visible_column_${indexRandom}"
+								id="visible_column_${indexRandom}"
 								required>
 								<option value="1">ON</option>
-								<option value="0">OFF</option>							
+								<option value="0">OFF</option>
 							</select>
 							<div class="valid-feedback">Válido</div>
 							<div class="invalid-feedback">Campo Inválido</div>
+						</div>
+
+						<div class="col-12 matrixMaxWrap" style="display:none;">
+							<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
+							<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${indexRandom}" value="" placeholder="Sin límite">
+						</div>
+
+						<div class="col-12 mt-3">
+							<div class="card bg-light border-0">
+								<div class="card-body py-2">
+									<div class="d-flex align-items-center justify-content-between">
+										<small class="text-muted fw-semibold">
+											<i class="bi bi-eye"></i> Condiciones de Visibilidad
+										</small>
+										<button type="button" class="btn btn-sm btn-outline-primary toggleConditions" data-index="${indexRandom}">
+											<i class="bi bi-plus-circle"></i> Configurar
+										</button>
+									</div>
+									<div class="conditions-config mt-2" id="conditions_config_${indexRandom}" style="display:none;">
+										<div class="row g-2">
+											<div class="col-md-4">
+												<select class="form-select form-select-sm condition-field" data-index="${indexRandom}">
+													<option value="">Seleccionar campo...</option>
+												</select>
+											</div>
+											<div class="col-md-3">
+												<select class="form-select form-select-sm condition-operator" data-index="${indexRandom}">
+													<option value="equals">Es igual a</option>
+													<option value="not_equals">No es igual a</option>
+													<option value="empty">Está vacío</option>
+													<option value="not_empty">No está vacío</option>
+												</select>
+											</div>
+											<div class="col-md-4">
+												<input type="text" class="form-control form-control-sm condition-value" data-index="${indexRandom}" placeholder="Valor">
+											</div>
+											<div class="col-md-1">
+												<button type="button" class="btn btn-sm btn-success applyCondition" data-index="${indexRandom}" title="Aplicar">
+													<i class="bi bi-check"></i>
+												</button>
+											</div>
+										</div>
+									</div>
+									<input type="hidden" name="conditions_column_${indexRandom}" id="conditions_column_${indexRandom}" value="">
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -810,7 +906,19 @@ $(document).on("click",".addColumn",function(){
 })
 
 /*=============================================
-Eliminar columnas
+Show the "max images" input only for the multi-image type
+=============================================*/
+
+$(document).on("change", "[name^='type_column_']", function(){
+
+	const wrap = $(this).closest(".row.g-3").find(".matrixMaxWrap");
+
+	wrap.toggle($(this).val() === "multiimage");
+
+})
+
+/*=============================================
+Delete columns
 =============================================*/
 
 $(document).on("click",".deleteColumn",function(){
@@ -824,7 +932,7 @@ $(document).on("click",".deleteColumn",function(){
 			$(elem).parent().parent().remove();
 
 			/*=============================================
-			 ID de columnas a borrar
+			ID of columns to delete
 			=============================================*/
 			
 			if($(elem).attr("idItem") > 0){
@@ -837,7 +945,7 @@ $(document).on("click",".deleteColumn",function(){
 			}
 
 			/*=============================================
-			Actualizar el Índice de columnas
+			Update the column index
 			=============================================*/
 
 			var indexColumns = JSON.parse($("#indexColumns").val());
@@ -997,3 +1105,113 @@ function loadTableColumnsForEditGraphic(tableName, savedXAxis, savedYAxis) {
 			}
 	});
 }
+
+/*=============================================
+Toggle conditions configuration
+=============================================*/
+
+$(document).on("click", ".toggleConditions", function() {
+	var index = $(this).data("index");
+	var configDiv = $("#conditions_config_" + index);
+
+	if (configDiv.is(":visible")) {
+		configDiv.slideUp();
+		$(this).html('<i class="bi bi-plus-circle"></i> Configurar');
+	} else {
+		configDiv.slideDown();
+		$(this).html('<i class="bi bi-dash-circle"></i> Ocultar');
+
+		// Populate field selector with available columns
+		populateConditionFields(index);
+	}
+});
+
+/*=============================================
+Populate condition field selector with columns
+=============================================*/
+
+function populateConditionFields(currentIndex) {
+	var $fieldSelect = $(".condition-field[data-index='" + currentIndex + "']");
+	var indexColumns = JSON.parse($("#indexColumns").val() || "[]");
+
+	var options = '<option value="">Seleccionar campo...</option>';
+
+	indexColumns.forEach(function(colIndex) {
+		if (colIndex != currentIndex) {
+			var titleColumn = $("#title_column_" + colIndex).val();
+			var aliasColumn = $("#alias_column_" + colIndex).val();
+			if (titleColumn) {
+				options += '<option value="' + titleColumn + '">' + (aliasColumn || titleColumn) + '</option>';
+			}
+		}
+	});
+
+	$fieldSelect.html(options);
+
+	// If there's an existing condition, parse and display it
+	var existingCondition = $("#conditions_column_" + currentIndex).val();
+	if (existingCondition) {
+		try {
+			var condition = JSON.parse(decodeURIComponent(existingCondition));
+			if (condition.rules && condition.rules.length > 0) {
+				var rule = condition.rules[0];
+				$fieldSelect.val(rule.field);
+				$(".condition-operator[data-index='" + currentIndex + "']").val(rule.operator);
+				$(".condition-value[data-index='" + currentIndex + "']").val(rule.value || '');
+			}
+		} catch (e) {
+			// Ignore parse errors
+		}
+	}
+}
+
+/*=============================================
+Apply condition to field
+=============================================*/
+
+$(document).on("click", ".applyCondition", function() {
+	var index = $(this).data("index");
+	var field = $(".condition-field[data-index='" + index + "']").val();
+	var operator = $(".condition-operator[data-index='" + index + "']").val();
+	var value = $(".condition-value[data-index='" + index + "']").val();
+
+	if (!field) {
+		fncToastr("warning", "Seleccione un campo para la condición");
+		return;
+	}
+
+	// Build condition JSON
+	var condition = {
+		operator: "and",
+		rules: [{
+			field: field,
+			operator: operator,
+			value: value
+		}]
+	};
+
+	// Save to hidden input
+	$("#conditions_column_" + index).val(encodeURIComponent(JSON.stringify(condition)));
+
+	// Visual feedback
+	fncToastr("success", "Condición aplicada");
+
+	// Update button text
+	$(".toggleConditions[data-index='" + index + "']").html('<i class="bi bi-check-circle"></i> Configurado');
+});
+
+/*=============================================
+Clear condition from field
+=============================================*/
+
+$(document).on("change", ".condition-operator", function() {
+	var index = $(this).data("index");
+	var operator = $(this).val();
+
+	// Hide value input for empty/not_empty operators
+	if (operator === "empty" || operator === "not_empty") {
+		$(".condition-value[data-index='" + index + "']").val("").prop("disabled", true);
+	} else {
+		$(".condition-value[data-index='" + index + "']").prop("disabled", false);
+	}
+});

@@ -3,8 +3,22 @@
 # Disable directory listing
 Options All -Indexes
 
+# Serve modern image formats with the correct MIME type. Some servers (and XAMPP)
+# don't know .webp/.avif, so opening one directly shows binary text instead of the
+# image. This applies to subdirectories too (e.g. the uploads folder).
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType image/avif .avif
+</IfModule>
+
 # Protect sensitive files
 <FilesMatch "^(config\.php|config\.example\.php|\.env|\.env\.local|VERSION|composer\.json|composer\.lock|package\.json|package-lock\.json|\.gitignore|\.gitattributes)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block CLI-only utility scripts from HTTP access
+<FilesMatch "^(run_migration\.php|package\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
@@ -12,7 +26,13 @@ Options All -Indexes
 # Protect sensitive directories
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
+
+    # Force HTTPS — skip on localhost to avoid breaking local development
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} !^localhost$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Redirect root to /cms (backup - index.php handles this primarily)
     # Only redirect if accessing the exact root and index.php doesn't exist
     RewriteCond %{REQUEST_URI} ^/chatcenter/?$ [OR]
@@ -46,19 +66,28 @@ Options All -Indexes
     RewriteRule .*package(-lock)?\.json$ - [F,L]
 </IfModule>
 
-# Additional security headers (optional but recommended)
+# Security headers
 <IfModule mod_headers.c>
     # Prevent MIME type sniffing
     Header set X-Content-Type-Options "nosniff"
-    
+
     # Enable XSS protection
     Header set X-XSS-Protection "1; mode=block"
-    
+
     # Prevent clickjacking
     Header set X-Frame-Options "SAMEORIGIN"
-    
+
     # Referrer policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Content Security Policy
+    # unsafe-inline/unsafe-eval required for inline PHP-generated script blocks
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://app.payku.cl https://des.payku.cl; frame-ancestors 'self'; object-src 'none'"
+
+    # HSTS — skip on localhost to avoid breaking local dev
+    <If "%{HTTP_HOST} != 'localhost' && %{HTTP_HOST} != '127.0.0.1'">
+        Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    </If>
 </IfModule>
 
 # Disable server signature

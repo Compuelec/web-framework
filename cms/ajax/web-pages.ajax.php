@@ -1,0 +1,404 @@
+<?php
+/**
+ * Web Pages builder — AJAX endpoint (visual, configurable).
+ *
+ * Generates and edits public frontend pages from the browser, reusing the
+ * configurable engine in tools/page-builder.php. Generated pages embed their
+ * own config so they can be re-opened and edited.
+ *
+ * Actions (POST):
+ *   columns   list the columns of a table (for the form)
+ *   generate  build/overwrite the page(s) from the submitted config
+ *   list      list existing builder-generated pages
+ *   load      return the embedded config of an existing page (for editing)
+ */
+
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['admin'])) {
+    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+    exit;
+}
+if (!SessionController::validateCsrfRequest()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+$role = $_SESSION['admin']->rol_admin ?? '';
+if (!in_array($role, ['superadmin', 'admin'], true)) {
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
+require_once __DIR__ . '/../../tools/page-builder.php';
+require_once __DIR__ . '/../../api/models/connection.php';
+
+$pagesDir = realpath(__DIR__ . '/../../web/pages');
+$action   = $_POST['action'] ?? '';
+
+// Ensure web/config.php exists so generated public pages can reach the API
+// (shared with the installer + setup.php). The CMS runs as the user that owns
+// web/, so it can create it from cms/config.php — no manual sudo/setup needed.
+require_once __DIR__ . '/../../tools/web-config.php';
+
+/* ===================== shared header / footer ===================== */
+// One header + footer for the whole public site, edited in the page builder
+// (HTML + CSS + JS, like a page). Saved to web/partials/header.php and footer.php,
+// which web/views/template.php includes. They are part of the public view, so the
+// builder lists them as pinned items and never deletes them. The helpers are
+// shared with the installer (tools/setup.php) so a fresh install auto-creates them.
+require_once __DIR__ . '/../../tools/web-partials.php';
+
+/* ===================== partial: get one (header|footer) ===================== */
+if ($action === 'getPartial') {
+    $which = (($_POST['which'] ?? '') === 'footer') ? 'footer' : 'header';
+    wpb_ensurePartials();
+    $p = wpb_partialPath($which);
+    $data = ($p && is_file($p)) ? wpb_parsePartialFile((string)@file_get_contents($p)) : wpb_defaultPartial($which);
+    echo json_encode(['success' => true, 'which' => $which] + $data);
+    exit;
+}
+
+/* ===================== partial: save one ===================== */
+if ($action === 'savePartial') {
+    $which = (($_POST['which'] ?? '') === 'footer') ? 'footer' : 'header';
+    $dir = wpb_partialsDir();
+    if ($dir !== false && !is_dir($dir)) { @mkdir($dir, 0775, true); }
+    $p = wpb_partialPath($which);
+    if ($p === false) {
+        echo json_encode(['success' => false, 'error' => 'No se encontró el directorio web/.']);
+        exit;
+    }
+    $content = wpb_buildPartialFile(
+        (string)($_POST['html'] ?? ''),
+        (string)($_POST['css'] ?? ''),
+        (string)($_POST['js'] ?? '')
+    );
+    if (@file_put_contents($p, $content) !== false) {
+        echo json_encode(['success' => true, 'which' => $which]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'No se pudo escribir en web/partials/ (revisa permisos).']);
+    }
+    exit;
+}
+
+/* ============================ meta ============================ */
+// Roles (groups) and users available to restrict a page's access.
+if ($action === 'meta') {
+    $roles = [];
+    $users = [];
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            $roles = $link->query("SELECT DISTINCT rol_admin FROM admins WHERE rol_admin IS NOT NULL AND rol_admin <> '' ORDER BY rol_admin")->fetchAll(PDO::FETCH_COLUMN);
+            $users = $link->query("SELECT id_admin AS id, email_admin AS email FROM admins ORDER BY email_admin")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            Logger::warning('web-pages meta failed', ['error' => $e->getMessage()]);
+        }
+    }
+    echo json_encode(['success' => true, 'roles' => $roles, 'users' => $users]);
+    exit;
+}
+
+/* ============================ tables ============================ */
+// List user/custom data tables only (framework + plugin tables are hidden).
+if ($action === 'tables') {
+    $link = Connection::connect();
+    if ($link === null) {
+        echo json_encode(['success' => false, 'error' => 'DB connection failed']);
+        exit;
+    }
+    try {
+        $db = $link->query('SELECT DATABASE()')->fetchColumn();
+        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type = 'BASE TABLE' ORDER BY TABLE_NAME");
+        $stmt->execute([':db' => $db]);
+        $all    = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $custom = array_values(array_filter($all, function ($t) { return !pb_isSystemTable($t); }));
+        echo json_encode(['success' => true, 'tables' => $custom]);
+    } catch (Throwable $e) {
+        Logger::error('web-pages tables failed', ['error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'No se pudieron leer las tablas']);
+    }
+    exit;
+}
+
+/* ============================ columns ============================ */
+if ($action === 'columns') {
+    $table = (string)($_POST['table'] ?? '');
+    if (!pb_isIdentifier($table)) {
+        echo json_encode(['success' => false, 'error' => 'Tabla inválida']);
+        exit;
+    }
+    $link = Connection::connect();
+    if ($link === null) {
+        echo json_encode(['success' => false, 'error' => 'DB connection failed']);
+        exit;
+    }
+    try {
+        $db = $link->query('SELECT DATABASE()')->fetchColumn();
+        $stmt = $link->prepare("SELECT COLUMN_NAME AS c FROM information_schema.columns WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION");
+        $stmt->execute([':db' => $db, ':t' => $table]);
+        $names = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Framework column types (image / multiimage / etc.) from the module metadata.
+        $types = [];
+        try {
+            $tStmt = $link->prepare(
+                "SELECT c.title_column AS name, c.type_column AS type
+                 FROM columns c JOIN modules m ON c.id_module_column = m.id_module
+                 WHERE m.title_module = :t"
+            );
+            $tStmt->execute([':t' => $table]);
+            foreach ($tStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $types[$r['name']] = $r['type'];
+            }
+        } catch (Throwable $e) {
+            // Metadata is optional; chips just fall back to a plain tag.
+        }
+
+        echo json_encode(['success' => true, 'columns' => $names, 'types' => $types]);
+    } catch (Throwable $e) {
+        Logger::error('web-pages columns failed', ['error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'No se pudieron leer las columnas']);
+    }
+    exit;
+}
+
+/* ============================ list ============================ */
+if ($action === 'list') {
+    $pages = [];
+    if ($pagesDir !== false) {
+        foreach (glob($pagesDir . '/*.php') as $file) {
+            $base = basename($file, '.php');
+            if (substr($base, -7) === '-detail') {
+                continue;
+            }
+            $cfg = pb_extractConfig(@file_get_contents($file));
+            if ($cfg) {
+                $pages[] = [
+                    'file'    => $base,
+                    'table'   => $cfg['table'] ?? '',
+                    'heading' => $cfg['heading'] ?? $base,
+                ];
+            }
+        }
+    }
+    echo json_encode(['success' => true, 'pages' => $pages]);
+    exit;
+}
+
+/* ============================ load ============================ */
+if ($action === 'load') {
+    $file = (string)($_POST['file'] ?? '');
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $file) || $pagesDir === false) {
+        echo json_encode(['success' => false, 'error' => 'Archivo inválido']);
+        exit;
+    }
+    $path = $pagesDir . DIRECTORY_SEPARATOR . $file . '.php';
+    $cfg  = file_exists($path) ? pb_extractConfig(@file_get_contents($path)) : null;
+    if (!$cfg) {
+        echo json_encode(['success' => false, 'error' => 'No se pudo leer la configuración de la página']);
+        exit;
+    }
+    echo json_encode(['success' => true, 'config' => $cfg]);
+    exit;
+}
+
+/* ============================ delete ============================ */
+if ($action === 'delete') {
+    $file = (string)($_POST['file'] ?? '');
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $file) || $pagesDir === false) {
+        echo json_encode(['success' => false, 'error' => 'Archivo inválido']);
+        exit;
+    }
+    $path = $pagesDir . DIRECTORY_SEPARATOR . $file . '.php';
+    // Safety: only delete builder-generated pages (those that embed a config),
+    // never framework examples or unrelated files.
+    $cfg = file_exists($path) ? pb_extractConfig(@file_get_contents($path)) : null;
+    if (!$cfg) {
+        echo json_encode(['success' => false, 'error' => 'Esta página no se puede eliminar desde aquí']);
+        exit;
+    }
+
+    $deleted = [];
+    if (@unlink($path)) {
+        $deleted[] = $file . '.php';
+
+        // Remove the companion detail page only after the main page is gone,
+        // so a failed main delete never reports partial success.
+        $detailFile = $cfg['detailFile'] ?? ($file . '-detail');
+        if (preg_match('/^[a-zA-Z0-9_-]+$/', (string)$detailFile)) {
+            $detailPath = $pagesDir . DIRECTORY_SEPARATOR . $detailFile . '.php';
+            if (is_file($detailPath) && @unlink($detailPath)) {
+                $deleted[] = $detailFile . '.php';
+            }
+        }
+    }
+
+    if (!$deleted) {
+        Logger::error('web-pages delete failed', ['file' => $file]);
+        echo json_encode(['success' => false, 'error' => 'No se pudo eliminar el archivo.']);
+        exit;
+    }
+    echo json_encode(['success' => true, 'deleted' => $deleted]);
+    exit;
+}
+
+/* ============================ preview ============================ */
+// Render the template against real data so the builder can show a live preview.
+if ($action === 'preview') {
+    $table    = (string)($_POST['table'] ?? '');
+    $template = (string)($_POST['template'] ?? '');
+    if (!pb_isIdentifier($table)) {
+        echo json_encode(['success' => false, 'error' => 'Tabla inválida']);
+        exit;
+    }
+    $rows = [];
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            // $table is validated as a bare identifier, so it is safe to quote.
+            $stmt = $link->query('SELECT * FROM `' . $table . '` LIMIT 24');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            Logger::warning('web-pages preview query failed', ['error' => $e->getMessage()]);
+        }
+    }
+    $single = isset($rows[0]) ? $rows[0] : [];
+    echo json_encode([
+        'success' => true,
+        'html'    => pb_renderTemplate($template, $rows, $single),
+        'css'     => (string)($_POST['customCss'] ?? ''),
+        'count'   => count($rows),
+    ]);
+    exit;
+}
+
+/* ============================ generate ============================ */
+if ($action !== 'generate') {
+    echo json_encode(['success' => false, 'error' => 'Unknown action']);
+    exit;
+}
+
+$config = [
+    'table'     => $_POST['table']     ?? '',
+    'fileName'  => $_POST['name']      ?? '',
+    'heading'   => $_POST['heading']   ?? '',
+    'template'  => $_POST['template']  ?? '',
+    'customCss' => $_POST['customCss'] ?? '',
+    'customJs'  => $_POST['customJs']  ?? '',
+    'private'     => !empty($_POST['private']),
+    'columns'     => [],
+    'accessRoles' => (array)($_POST['accessRoles'] ?? []),
+    'accessUsers' => (array)($_POST['accessUsers'] ?? []),
+    'metaTitle'   => $_POST['metaTitle'] ?? '',
+    'metaDesc'    => $_POST['metaDesc']  ?? '',
+    'ogTitle'     => $_POST['ogTitle']   ?? '',
+    'ogType'      => $_POST['ogType']    ?? 'website',
+    'ogDesc'      => $_POST['ogDesc']    ?? '',
+    'ogImage'     => $_POST['ogImage']   ?? '',
+];
+
+// Look up the table's REAL primary-key column (so ordering/lookups work for
+// plural/irregular names) and its full column list (so forms only write real
+// columns).
+if (pb_isIdentifier($config['table'])) {
+    $link = Connection::connect();
+    if ($link !== null) {
+        try {
+            $db = Connection::infoDatabase()['database'];
+            $colStmt = $link->prepare(
+                "SELECT COLUMN_NAME AS name, COLUMN_KEY AS k FROM information_schema.columns
+                 WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION"
+            );
+            $colStmt->execute([':db' => $db, ':t' => $config['table']]);
+            foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
+                $config['columns'][] = $c['name'];
+                if ($c['k'] === 'PRI') {
+                    $config['idColumn'] = $c['name'];
+                }
+            }
+        } catch (Throwable $e) {
+            Logger::warning('web-pages column lookup failed', ['error' => $e->getMessage()]);
+        }
+    }
+}
+
+try {
+    $cfg = pb_normalizeConfig($config);
+} catch (Throwable $e) {
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    exit;
+}
+
+// Make sure the public site can reach the API (creates web/config.php if missing).
+wpb_ensureWebConfig();
+
+$targets = [['file' => $cfg['fileName'], 'source' => buildConfigurablePage($cfg)]];
+
+if ($pagesDir === false) {
+    echo json_encode(['success' => false, 'error' => 'web/pages directory not found']);
+    exit;
+}
+
+$sources = [];
+foreach ($targets as $tgt) {
+    $sources[$tgt['file'] . '.php'] = $tgt['source'];
+}
+
+if (is_writable($pagesDir)) {
+    $createdPaths = [];
+    $ok = true;
+    foreach ($targets as $tgt) {
+        $path = $pagesDir . DIRECTORY_SEPARATOR . $tgt['file'] . '.php';
+        // Write to a temp file then rename over the target. Because the web server
+        // owns web/pages, this replaces the page even when the existing file was
+        // created by another user (e.g. via tools/make-page.php on the CLI), where
+        // a direct overwrite would fail. chmod 0664 so CLI tools can edit it too.
+        $tmp = $path . '.tmp' . uniqid('', true);
+        if (@file_put_contents($tmp, $tgt['source']) === false || !@rename($tmp, $path)) {
+            @unlink($tmp);
+            $ok = false;
+            break;
+        }
+        @chmod($path, 0664);
+        $createdPaths[] = $path;
+    }
+    if ($ok) {
+        // If marked as the home page, record it in web/partials/home.txt (a
+        // gitignored marker). web/index.php reads it and serves that page at the
+        // site root (e.g. www.midominio.cl/), so no tracked file is overwritten.
+        $homeWritten = false;
+        if (!empty($_POST['isHome'])) {
+            $dir = wpb_partialsDir();
+            if ($dir !== false) {
+                if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+                $homeWritten = @file_put_contents($dir . DIRECTORY_SEPARATOR . 'home.txt', $cfg['fileName']) !== false;
+            }
+        }
+        echo json_encode([
+            'success'     => true,
+            'written'     => true,
+            'files'       => array_map('basename', $createdPaths),
+            'urlPath'     => 'web/pages/' . $cfg['fileName'] . '.php',
+            'homeWritten' => $homeWritten,
+        ]);
+        exit;
+    }
+    foreach ($createdPaths as $p) {
+        @unlink($p);
+    }
+    Logger::error('Web page generation failed mid-write; rolled back', ['dir' => $pagesDir]);
+    echo json_encode(['success' => false, 'error' => 'No se pudieron escribir todos los archivos.']);
+    exit;
+}
+
+Logger::warning('web/pages not writable; returning generated source', ['dir' => $pagesDir]);
+echo json_encode([
+    'success' => true,
+    'written' => false,
+    'reason'  => 'El directorio web/pages no es escribible por el servidor web. Usa "Estado del Sistema" para repararlo, o descarga los archivos.',
+    'sources' => $sources,
+]);

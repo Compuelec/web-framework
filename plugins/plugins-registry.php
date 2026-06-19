@@ -100,3 +100,36 @@ PluginsRegistry::register('payku', [
     'author' => 'Payku Integration'
 ]);
 
+// Register Workflow Manager plugin
+PluginsRegistry::register('workflow-manager', [
+    'url' => 'workflow-manager',
+    'name' => 'Workflow Manager',
+    'description' => 'Administrador visual de workflows para personalizar estados y transiciones de cada modulo',
+    'icon' => 'bi-diagram-3',
+    'type' => 'system',
+    'version' => '1.0.0',
+    'author' => 'Web Framework'
+]);
+
+// Register Dashboard Manager plugin
+PluginsRegistry::register('dashboard-manager', [
+    'url'         => 'dashboard',
+    'name'        => 'Dashboard Manager',
+    'description' => 'Dashboard configurable con widgets arrastrables: métricas, gráficos, KPIs, registros recientes y más',
+    'icon'        => 'bi-speedometer2',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Web Framework'
+]);
+
+// Register RBAC Manager plugin
+PluginsRegistry::register('rbac-manager', [
+    'url'         => 'rbac-manager',
+    'name'        => 'RBAC Manager',
+    'description' => 'Sistema de roles y permisos granulares por página y acción para administradores de tipo editor',
+    'icon'        => 'bi-shield-lock',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Web Framework'
+]);
+

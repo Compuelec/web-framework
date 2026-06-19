@@ -1,12 +1,18 @@
 <?php
 /**
  * Packaging Script
- * 
+ *
  * This script creates a ZIP package of the project excluding sensitive files
  * to deploy it on a production server.
- * 
+ *
  * Usage: php package.php
  */
+
+// Block HTTP access — CLI only
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden: this script must be run from the command line.');
+}
 
 // Configuration
 $projectName = 'chatcenter';

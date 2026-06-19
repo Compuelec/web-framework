@@ -1,5 +1,16 @@
-<div class="card rounded border-0 shadow mb-3 pb-3">
-	
+<?php
+// Prepare condition attributes for conditional fields
+$conditionsAttr = '';
+$conditionsData = '';
+if (!empty($module->columns[$i]->conditions_column)) {
+	$conditionsData = htmlspecialchars($module->columns[$i]->conditions_column, ENT_QUOTES);
+	$conditionsAttr = 'data-conditions="' . $conditionsData . '"';
+}
+?>
+<div class="card rounded border-0 shadow mb-3 pb-3 conditional-field-container"
+	 data-field="<?php echo $module->columns[$i]->title_column ?>"
+	 <?php echo $conditionsAttr ?>>
+
 	<div class="card-body">
 
 		<label for="<?php echo $module->columns[$i]->title_column ?>" class="form-label float-start text-capitalize">
@@ -13,125 +24,137 @@
 		<?php 
 		
 		/*=============================================
-		Formulario de tipo Texto		
+		Text type form
 		=============================================*/
 		
 		include "forms/text.php"; 
 
 		/*=============================================
-		Formulario de tipo TextoArea			
+		TextArea type form
 		=============================================*/
 		
 		include "forms/textarea.php"; 
 
 		/*=============================================
-		Formulario de tipo Número Entero		
+		Integer number type form
 		=============================================*/
 		
 		include "forms/int.php"; 
 
 		/*=============================================
-		Formulario de tipo Número con decimal			
+		Decimal number type form
 		=============================================*/
 		
 		include "forms/double.php"; 
 
 		/*=============================================
-		Formulario de tipo Selección	
+		Select type form
 		=============================================*/
 		
 		include "forms/select.php"; 
 
 		/*=============================================
-		Formulario de tipo Boleano		
+		Boolean type form
 		=============================================*/
 		
 		include "forms/boolean.php"; 
 
 		/*=============================================
-		Formulario de tipo Arreglo	
+		Array type form
 		=============================================*/
 		
 		include "forms/array.php"; 
 
 		/*=============================================
-		Formulario de tipo Objeto		
+		Object type form
 		=============================================*/
 		
 		include "forms/object.php"; 
 
 		/*=============================================
-		Formulario de tipo JSON		
+		JSON type form
 		=============================================*/
 		
 		include "forms/_json.php"; 
 
 		/*=============================================
-		Formulario de tipo Archivo, Imagen, Video
+		File, Image, Video type form
 		=============================================*/
 		
-		include "forms/file.php"; 
+		include "forms/file.php";
+		include "forms/image.php";
+
+			/*=============================================
+			Multi-image type form
+			=============================================*/
+
+			include "forms/multiimage.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha	
+		Date type form
 		=============================================*/
 		
 		include "forms/date.php"; 
 
 		/*=============================================
-		Formulario de tipo tiempo	
+		Time type form
 		=============================================*/
 		
 		include "forms/time.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha y Tiempo
+		Date and Time type form
 		=============================================*/
 		
 		include "forms/datetime.php"; 
 
 		/*=============================================
-		Formulario de tipo Fecha y Tiempo Automático
+		Automatic Date and Time type form
 		=============================================*/
 
 		include "forms/timestamp.php"; 
 
 		/*=============================================
-		Formulario de tipo Código
+		Code type form
 		=============================================*/
 
 		include "forms/code.php"; 
 
 		/*=============================================
-		Formulario de tipo Color
+		Color type form
 		=============================================*/
 
 		include "forms/color.php"; 
 
 		/*=============================================
-		Formulario de tipo Contraseña
+		Password type form
 		=============================================*/
 
 		include "forms/password.php"; 
 
 		/*=============================================
-		Formulario de tipo Email
+		Email type form
 		=============================================*/
 
 		include "forms/email.php"; 
 
 		/*=============================================
-		Formulario de tipo Relaciones
+		Relations type form
 		=============================================*/
 
 		include "forms/relations.php";
 
 		/*=============================================
-		Formulario de tipo Relaciones
+		ChatGPT type form
 		=============================================*/
 
 		include "forms/chatgpt.php";
 
+		/*=============================================
+		Workflow type form
+		=============================================*/
+
+		include "forms/workflow.php";
 
 		?>
 

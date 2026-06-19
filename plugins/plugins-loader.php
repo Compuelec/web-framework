@@ -55,9 +55,22 @@ class PluginsLoader {
      * Later this can be stored in database or config
      */
     private static function isPluginActive($pluginName) {
-        // TODO: Check database or config for plugin status
-        // For now, all plugins in directory are considered active
-        return true;
+        // A plugin is active only if explicitly registered in PluginsRegistry.
+        // Plugins that exist on disk but are not registered will not be loaded.
+        if (!class_exists('PluginsRegistry')) {
+            $registryPath = __DIR__ . '/plugins-registry.php';
+            if (file_exists($registryPath)) {
+                require_once $registryPath;
+            }
+        }
+
+        if (class_exists('PluginsRegistry')) {
+            $registered = PluginsRegistry::getAllPlugins();
+            return isset($registered[$pluginName]);
+        }
+
+        // If registry is unavailable, deny loading as a safe default
+        return false;
     }
     
     /**

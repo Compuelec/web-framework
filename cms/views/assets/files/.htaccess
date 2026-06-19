@@ -1,0 +1,23 @@
+# Hardening for the uploads directory.
+# This folder stores user-uploaded files and must NEVER execute server-side code.
+
+# Disable the PHP engine (mod_php)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
+
+# Strip any handler that would execute scripts, and serve them as plain text
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .pht .cgi .pl .py
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .phps .pht
+AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .phps .pht .cgi .pl .py
+
+# Hard deny direct requests to executable script files (Apache 2.4)
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|pht|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>

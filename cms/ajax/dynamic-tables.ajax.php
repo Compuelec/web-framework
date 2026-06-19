@@ -4,10 +4,29 @@ require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";
 require_once __DIR__ . "/../../core/activity_log.php";
 
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	header('Content-Type: application/json');
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	exit;
+}
+
 class DynamicTablesController{
 
 	/*=============================================
-    Eliminar Items
+    Delete items
     =============================================*/
 
 	public $idItemDelete;
@@ -22,7 +41,7 @@ class DynamicTablesController{
 
     	foreach ($idItems as $key => $value) {
     		
-    		$url = $this->tableDelete."?id=".base64_decode($value)."&nameId=id_".$this->suffixDelete."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableDelete."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixDelete."&token=".$this->token."&table=admins&suffix=admin";
 			$method = "DELETE";
 			$fields = array();
 
@@ -35,26 +54,24 @@ class DynamicTablesController{
 				=============================================*/
 				
 				if (function_exists('logActivity')) {
-					$entityId = base64_decode($value);
+					$entityId = (int)base64_decode($value, true);
 					logActivity('delete', $this->tableDelete, $entityId, 'Record deletion in table ' . $this->tableDelete);
 				}
 
 				$countDelete++;
 
-				if($countDelete == count($idItems)){
-
-					echo 200;
-
-				}
-
 			}
 
-    	}		
+    	}
+
+    	// Always respond so the client never receives an empty body on a
+    	// partial failure: 200 only when every item was deleted, 500 otherwise.
+    	echo $countDelete == count($idItems) ? 200 : 500;
 
 	}
 
 	/*=============================================
-    Devolver tabla filtrada
+    Return filtered table
     =============================================*/
 
     public $contentModule;
@@ -74,7 +91,9 @@ class DynamicTablesController{
 		$module = (json_decode($this->contentModule));
 		// Ensure page and limit are integers
 		$page = (int)($this->page ?? 1);
+		if($page < 1){ $page = 1; }
 		$limit = (int)($this->limit ?? 10);
+		if($limit < 1){ $limit = 10; }
 		$startAt = ($page - 1) * $limit;
 		$table = array(); 
 		$totalPages = 0;
@@ -82,13 +101,13 @@ class DynamicTablesController{
 
 
     	/*=============================================
-		Filtro por búsqueda
+		Filter by search
 		=============================================*/
 
 		if($this->search != ""){
 
 			/*=============================================
-			Columnas de búsqueda
+			Search columns
 			=============================================*/
 
 			$linkTo = array();
@@ -116,7 +135,7 @@ class DynamicTablesController{
 			}
 
 			/*=============================================
-			Itineración de búsqueda
+			Search iteration
 			=============================================*/
 			foreach ($linkTo as $key => $value) {
 
@@ -131,7 +150,7 @@ class DynamicTablesController{
 					$table = $table->results;
 
 					/*=============================================
-					Traemos contenido total de la tabla
+					Fetch the total content of the table
 					=============================================*/
 					
 					$url = $module->title_module."?linkTo=".$value."&search=".str_replace(" ", "_", $this->search)."&select=id_".$module->suffix_module;
@@ -161,12 +180,12 @@ class DynamicTablesController{
 				$table = $table->results;
 
 				/*=============================================
-				Traemos contenido total de la tabla
+				Fetch the total content of the table
 				=============================================*/
 				
 				$url = $module->title_module."?linkTo=date_created_".$module->suffix_module."&between1=".$this->between1."&between2=".$this->between2."&select=id_".$module->suffix_module;
 				$totalData = CurlController::request($url,$method,$fields)->total;
-				$totalPages = ceil($totalData/$this->limit);
+				$totalPages = $limit > 0 ? ceil($totalData/$limit) : 0;
 				
 			}else{
 
@@ -176,7 +195,7 @@ class DynamicTablesController{
 		}
 	
 		/*=============================================
-    	Devolver la tabla en formato HTML
+    	Return the table in HTML format
     	=============================================*/
 
     	$HTMLTable = "";
@@ -206,7 +225,7 @@ class DynamicTablesController{
     							$HTMLTable .= '<td>';
 
 								/*=============================================
-								Contenido tipo Imagen
+								Image-type content
 								=============================================*/
 
 								if($item->type_column == "image"){
@@ -223,7 +242,24 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Video
+								Multi-image type content
+								=============================================*/
+
+								}else if($item->type_column == "multiimage"){
+
+									$multiImgs = json_decode(urldecode($value[$item->title_column] ?? ''), true);
+									if(is_array($multiImgs) && count($multiImgs)){
+										foreach($multiImgs as $imgUrl){
+											$HTMLTable .= '<a href="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" target="_blank">
+											<img src="'.htmlspecialchars($imgUrl, ENT_QUOTES).'" class="rounded me-1 mb-1" style="width:45px; height:45px; object-fit: cover; object-position:center;">
+											</a>';
+										}
+									}else{
+										$HTMLTable.= '<img src="'.$cmsBasePath.'/views/assets/img/file.png" class="rounded" style="width:45px; height:45px; object-fit: cover; object-position:center;">';
+									}
+
+								/*=============================================
+								Video-type content
 								=============================================*/
 
 								}else if($item->type_column == "video"){
@@ -233,7 +269,7 @@ class DynamicTablesController{
 									</a>';
 
 								/*=============================================
-								Contenido tipo otros Archivos
+								Other files content type
 								=============================================*/
 
 								}else if($item->type_column == "file"){
@@ -244,7 +280,7 @@ class DynamicTablesController{
 
 
 								/*=============================================
-								Contenido tipo Boleano
+								Boolean-type content
 								=============================================*/
 
 								}else if($item->type_column == "boolean"){
@@ -274,7 +310,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Array
+								Array-type content
 								=============================================*/
 							    }else if($item->type_column == "array" && !empty($value[$item->title_column])){
 
@@ -287,7 +323,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Objetos
+								Object-type content
 								=============================================*/
 
 								}else if($item->type_column == "object" && !empty($value[$item->title_column])){
@@ -301,7 +337,7 @@ class DynamicTablesController{
 							    	}
 
 							    /*=============================================
-								Contenido tipo Enlace
+								Link-type content
 								=============================================*/
 
 								}else if($item->type_column == "link"){
@@ -309,7 +345,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '<a href="'.$value[$item->title_column].'" target="_blank" class="badge badge-default border rounded bg-indigo">'.TemplateController::reduceText(urldecode($value[$item->title_column]), 20).'</a>';
 
 								/*=============================================
-								Contenido tipo Color
+								Color-type content
 								=============================================*/
 
 								}else if($item->type_column == "color"){
@@ -317,7 +353,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '<div class="rounded border" style="width:25px; height:25px; background:'.urldecode($value[$item->title_column]).'"></div>';
 
 							    /*=============================================
-								Contenido tipo Double
+								Double-type content
 								=============================================*/
 
 								}else if($item->type_column == "money"){
@@ -325,7 +361,7 @@ class DynamicTablesController{
 							    	$HTMLTable .= '$'.number_format(urldecode($value[$item->title_column]),2);
 
 								/*=============================================
-								Contenido tipo Relaciones
+								Relations-type content
 								=============================================*/
 
 								}else if($item->type_column == "relations"){
@@ -352,7 +388,7 @@ class DynamicTablesController{
 									}
 
 								/*=============================================
-								Contenido tipo Órden
+								Order-type content
 								=============================================*/
 
 								}else if($item->type_column == "order"){
@@ -409,7 +445,7 @@ class DynamicTablesController{
 	}
 
 	/*=============================================
-    Cambiar estado Boleano
+    Toggle boolean state
     =============================================*/
     public $boolChange;
     public $idItemChange;
@@ -433,7 +469,7 @@ class DynamicTablesController{
     			$this->boolChange = 1;
     		}
 
-    		$url = $this->tableChange."?id=".base64_decode($value)."&nameId=id_".$this->suffixChange."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableChange."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixChange."&token=".$this->token."&table=admins&suffix=admin";
     		$method = "PUT";
     		$fields = $this->columnChange."=".$this->boolChange;
 
@@ -442,18 +478,15 @@ class DynamicTablesController{
     		if($updateItem->status == 200){
 
     			$countChange++;
-
-    			if($countChange == count($idItems)){
-
-    				echo 200;
-    			}
-    		}  		
+    		}
 
 		}
+
+		echo $countChange == count($idItems) ? 200 : 500;
 	}
 
 	/*=============================================
-    Cambiar selección
+    Change selection
     =============================================*/
     public $itemSelect;
     public $idItemSelect;
@@ -468,7 +501,7 @@ class DynamicTablesController{
 
 		foreach ($idItems as $key => $value) {
 
-    		$url = $this->tableSelect."?id=".base64_decode($value)."&nameId=id_".$this->suffixSelect."&token=".$this->token."&table=admins&suffix=admin";
+    		$url = $this->tableSelect."?id=".(int)base64_decode($value, true)."&nameId=id_".$this->suffixSelect."&token=".$this->token."&table=admins&suffix=admin";
     		$method = "PUT";
     		$fields = $this->columnSelect."=".$this->itemSelect;
 
@@ -477,18 +510,15 @@ class DynamicTablesController{
     		if($updateItem->status == 200){
 
     			$countSelect++;
-
-    			if($countSelect == count($idItems)){
-
-    				echo 200;
-    			}
-    		}  		
+    		}
 
 		}
+
+		echo $countSelect == count($idItems) ? 200 : 500;
 	}
 
 	/*=============================================
-    Cambiar orden
+    Change order
     =============================================*/
 
     public $numOrder;
@@ -499,7 +529,7 @@ class DynamicTablesController{
 
 	public function changeOrderItems(){
 
-		$url = $this->tableOrder."?id=".base64_decode($this->idItemOrder)."&nameId=id_".$this->suffixOrder."&token=".$this->token."&table=admins&suffix=admin";
+		$url = $this->tableOrder."?id=".(int)base64_decode($this->idItemOrder, true)."&nameId=id_".$this->suffixOrder."&token=".$this->token."&table=admins&suffix=admin";
 		$method = "PUT";
 		$fields = $this->columnOrder."=".$this->numOrder;
 
@@ -508,15 +538,18 @@ class DynamicTablesController{
 		if($updateItem->status == 200){
 
 			echo 200;
-			
-		}  		
-	
+
+		}else{
+
+			echo 500;
+		}
+
 	}
 
 }
 
 /*=============================================
-Variables POST
+POST variables
 =============================================*/ 
 
 if(isset($_POST["idItemDelete"])){
@@ -531,7 +564,7 @@ if(isset($_POST["idItemDelete"])){
 }
 
 /*=============================================
-Devolver tabla filtrada
+Return filtered table
 =============================================*/
 
 if(isset($_POST["contentModule"])){
@@ -552,7 +585,7 @@ if(isset($_POST["contentModule"])){
 
 
 /*=============================================
-Cambiar estado Boleano
+Toggle boolean state
 =============================================*/
 
 if(isset($_POST["tableChange"])){
@@ -569,7 +602,7 @@ if(isset($_POST["tableChange"])){
 }
 
 /*=============================================
-Cambiar selección
+Change selection
 =============================================*/
 
 if(isset($_POST["tableSelect"])){
@@ -586,7 +619,7 @@ if(isset($_POST["tableSelect"])){
 }
 
 /*=============================================
-Cambiar orden
+Change order
 =============================================*/
 
 if(isset($_POST["tableOrder"])){

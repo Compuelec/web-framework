@@ -1,5 +1,5 @@
 /*=============================================
-Interfaz Dashboard
+Dashboard Interface
 =============================================*/
 
 var menuToggle = document.getElementById("menu-toggle");
@@ -9,7 +9,7 @@ var btnPages = $(".btnPages");
 var toogle = 0;
 
 /*=============================================
-Agrega un listener al botón para abrir/cerrar el menú
+Add a listener to the button to open/close the menu
 =============================================*/
 
 menuToggle.addEventListener("click", function() {
@@ -58,7 +58,7 @@ menuToggle.addEventListener("click", function() {
 });
 
 /*=============================================
-Cierra el menú flotante si haces clic en cualquier parte fuera del menú
+Close the floating menu if you click anywhere outside it
 =============================================*/
 
 document.addEventListener("click", function(event) {
@@ -75,7 +75,7 @@ document.addEventListener("click", function(event) {
 
 
 /*=============================================
-Hacer la tabla responsiva al cambio de ancho del navegador
+Make the table responsive to browser width changes
 =============================================*/
 
 $(window).resize(function() {
@@ -104,7 +104,7 @@ updateWidth();
 
 
 /*=============================================
-Limpiar el campo de icono
+Clear the icon field
 =============================================*/
 
 $(document).on("change",".cleanIcon",function(){

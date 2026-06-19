@@ -209,7 +209,11 @@ class Paykulib {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        // Verify the TLS certificate by default; only disable via PAYKU_VERIFY_SSL
+        // (e.g. for a local environment without a CA bundle).
+        $verifySsl = defined('PAYKU_VERIFY_SSL') ? PAYKU_VERIFY_SSL : true;
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verifySsl);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verifySsl ? 2 : 0);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $result = curl_exec($ch);
@@ -265,8 +269,11 @@ class Paykulib {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        // Verify the TLS certificate by default; only disable via PAYKU_VERIFY_SSL
+        // (e.g. for a local environment without a CA bundle).
+        $verifySsl = defined('PAYKU_VERIFY_SSL') ? PAYKU_VERIFY_SSL : true;
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verifySsl ? 2 : 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verifySsl);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $result = curl_exec($ch);

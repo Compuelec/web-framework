@@ -1,42 +1,41 @@
 <?php
-
 /**
- * Payku Plugin Configuration Example
- * 
- * Copy this file to config.php and fill in your actual values.
- * The config.php file is ignored by git for security.
+ * Payku Plugin Configuration — TEMPLATE
+ *
+ * Copy this file to `config.php` and fill in your real Payku credentials.
+ * The real `config.php` is git-ignored and MUST NOT be committed.
+ *
+ * Security: prevents direct HTTP access while allowing PHP includes.
  */
 
-// Prevent direct access
-if (basename($_SERVER['PHP_SELF']) === 'config.example.php') {
-    http_response_code(403);
-    die('Direct access to this file is not allowed.');
+// Prevent direct HTTP access
+// Allow access only when included/required from PHP code
+if (php_sapi_name() !== 'cli') {
+    // Check if it's a direct HTTP request (not included)
+    $isDirectAccess = (
+        // Direct access from browser
+        (isset($_SERVER['REQUEST_METHOD']) &&
+         basename($_SERVER['PHP_SELF']) === 'config.php') ||
+        // Access via URL
+        (isset($_SERVER['HTTP_HOST']) &&
+         isset($_SERVER['REQUEST_URI']) &&
+         strpos($_SERVER['REQUEST_URI'], 'config.php') !== false)
+    );
+
+    if ($isDirectAccess) {
+        http_response_code(403);
+        header('Content-Type: text/plain');
+        die('403 Forbidden: Direct access to this file is not allowed.');
+    }
 }
 
-return [
-    // Enable/disable plugin
-    'enabled' => false,
-    
-    // Platform: 'TEST' or 'PROD'
-    'platform_id' => 'TEST',
-    
-    // Payment mode: '1' = Direct to Webpay, '99' = Show payment gateway
-    'pagoDirecto' => '1',
-    
-    // Public token from Payku
-    'token_publico' => 'your-public-token-here',
-    
-    // Marketplace token (optional, only for marketplace users)
-    'marketplace' => '',
-    
-    // Increment percentage (0 = no increment)
-    'incremento' => '0',
-    
-    // Order status after successful payment
-    'estadoPago' => 'completed',
-    
-    // Enable/disable debug logging to debug.log file
-    // Recommended: false in production, true for development/debugging
-    'debug_enabled' => false
-];
-
+return array (
+  'enabled' => true,
+  'platform_id' => 'TEST',                 // 'TEST' for sandbox, your platform id for production
+  'pagoDirecto' => '1',
+  'token_publico' => 'your-payku-token-here',
+  'marketplace' => '',
+  'incremento' => '0',
+  'estadoPago' => 'completed',
+  'debug_enabled' => false
+);

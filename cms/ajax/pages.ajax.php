@@ -1,12 +1,31 @@
-<?php 
+<?php
 
 require_once "../controllers/curl.controller.php";
+
+// Authentication guard — require a valid admin session for every action
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	header('Content-Type: application/json');
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	header('Content-Type: application/json');
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	exit;
+}
 
 
 class PagesAjax{
 
 	/*=============================================
-	Cambiar el orden de página
+	Change the page order
 	=============================================*/ 
 
 	public $idPage;
@@ -15,7 +34,7 @@ class PagesAjax{
 
 	public function updatePageOrder(){
 
-		$url = "pages?id=".base64_decode($this->idPage)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
+		$url = "pages?id=".(int)base64_decode($this->idPage, true)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
 		$method = "PUT";
 		$fields = "order_page=".$this->index;
 
@@ -30,7 +49,7 @@ class PagesAjax{
 	}
 
 	/*=============================================
-	Eliminar Página
+	Delete page
 	=============================================*/ 
 
 	public $idPageDelete;
@@ -38,22 +57,20 @@ class PagesAjax{
 	public function deletePage(){
 
 		/*=============================================
-		Validar módulos vinculados a la página
+		Validate the modules linked to the page
 		=============================================*/
 
-		$url = "modules?linkTo=id_page_module&equalTo=".base64_decode($this->idPageDelete);
+		$url = "modules?linkTo=id_page_module&equalTo=".(int)base64_decode($this->idPageDelete, true);
 		$method = "GET";
 		$fields = array();
 
 		$getModule = CurlController::request($url,$method,$fields);
 
-		if($getModule->status == 200){
+		// Only delete when the API explicitly confirms there are no linked
+		// modules (404). A transient/error status must NOT delete the page.
+		if($getModule->status == 404){
 
-			echo "error";
-		
-		}else{
-
-			$url = "pages?id=".base64_decode($this->idPageDelete)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
+			$url = "pages?id=".(int)base64_decode($this->idPageDelete, true)."&nameId=id_page&token=".$this->token."&table=admins&suffix=admin";
 			$method = "DELETE";
 			$fields = array();
 
@@ -63,6 +80,10 @@ class PagesAjax{
 
 				echo $deletePage->status;
 			}
+
+		}else{
+
+			echo "error";
 
 		}
 

@@ -16,6 +16,27 @@ header('Content-Type: application/json');
 require_once "../controllers/template.controller.php";
 require_once "../controllers/curl.controller.php";
 
+// Authentication guard — every action in this endpoint requires a valid admin session
+define('SESSION_INIT_INCLUDED', true);
+require_once __DIR__ . '/session-init.php';
+
+if(!isset($_SESSION["admin"])){
+	ob_clean();
+	http_response_code(401);
+	echo json_encode(["status" => 401, "results" => "Unauthorized"]);
+	ob_end_flush();
+	exit;
+}
+
+// CSRF protection for state-changing requests
+if(!SessionController::validateCsrfRequest()){
+	ob_clean();
+	http_response_code(403);
+	echo json_encode(["status" => 403, "results" => "Invalid CSRF token"]);
+	ob_end_flush();
+	exit;
+}
+
 // Function to get base URL (protocol + host + base path)
 function getBaseUrl(){
 	$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -34,7 +55,7 @@ function getBaseUrl(){
 class FilesController{
 
 	/*=============================================
-	Subir Archivos a los Servidores
+	Upload files to the servers
 	=============================================*/
 
 	public $file;
@@ -50,7 +71,7 @@ class FilesController{
 		ob_clean();
 
 		/*=============================================
-		Traer info del folder
+		Fetch the folder info
 		=============================================*/
 
 		$url = "folders?linkTo=id_folder&equalTo=".$this->folder;
@@ -88,7 +109,7 @@ class FilesController{
 			$folder = $folder->results[0];
 
 			/*=============================================
-			Validar el peso máximo del archivo de acuerdo al servidor
+			Validate the maximum file size according to the server
 			=============================================*/
 
 			if($this->file["size"] > $folder->max_upload_folder){
@@ -107,25 +128,74 @@ class FilesController{
 			}
 
 			/*=============================================
-			Capturamos la extensión del archivo
+			Capture the file extension
 			=============================================*/
 
 			$extension = explode(".",$this->file["name"]);
+			$ext = strtolower(end($extension));
 
 			/*=============================================
-			Creamos el nombre del archivo
+			Validate the extension against a strict whitelist
+			to block executable/script uploads (RCE prevention)
 			=============================================*/
 
-			$fileName = uniqid().getdate()["seconds"].".".end($extension);
+			// NOTE: 'svg' is intentionally excluded — SVG files can carry
+			// embedded JavaScript and would lead to stored XSS when opened
+			// directly. Convert to a raster format before uploading instead.
+			$allowedExtensions = array(
+				"jpg","jpeg","png","gif","webp","bmp","ico",
+				"pdf","doc","docx","xls","xlsx","ppt","pptx","txt","csv","rtf","odt",
+				"mp4","webm","ogg","mp3","wav","mov","avi",
+				"zip","rar"
+			);
+
+			if(!in_array($ext, $allowedExtensions, true)){
+				$response = array(
+					"status" => 415,
+					"error" => "File type not allowed: .".$ext
+				);
+				ob_clean();
+				echo json_encode($response);
+				ob_end_flush();
+				return;
+			}
+
+			/*=============================================
+			Validate the real MIME type to reject files that
+			disguise executable content under a safe extension
+			=============================================*/
+
+			if(function_exists("finfo_open")){
+				$finfo = finfo_open(FILEINFO_MIME_TYPE);
+				$realMime = finfo_file($finfo, $this->file["tmp_name"]);
+				finfo_close($finfo);
+
+				if($realMime !== false && stripos($realMime, "php") !== false){
+					$response = array(
+						"status" => 415,
+						"error" => "File content not allowed"
+					);
+					ob_clean();
+					echo json_encode($response);
+					ob_end_flush();
+					return;
+				}
+			}
+
+			/*=============================================
+			Create the file name
+			=============================================*/
+
+			$fileName = uniqid().getdate()["seconds"].".".$ext;
 	
 			/*=============================================
-			Subiendo archivos al servidor propio
+			Uploading files to our own server
 			=============================================*/
 
 			if($this->folder == 1){
 
 				/*=============================================
-				Capturar ruta donde guardaremos el archivo
+				Capture the path where the file will be stored
 				=============================================*/
 
 				// Use absolute path to avoid path resolution issues
@@ -134,7 +204,7 @@ class FilesController{
 				
 				// Ensure directory exists
 				if(!file_exists($filesDir)){
-					if(!@mkdir($filesDir, 0777, true)){
+					if(!@mkdir($filesDir, 0755, true)){
 						$response = array(
 							"status" => 500,
 							"error" => "Error creating files directory. Check write permissions."
@@ -145,18 +215,18 @@ class FilesController{
 						return;
 					}
 					// Set permissions after creation
-					@chmod($filesDir, 0777);
+					@chmod($filesDir, 0755);
 				}
 				
 				// Check if directory is writable
 				if(!is_writable($filesDir)){
 					// Try to change permissions
-					@chmod($filesDir, 0777);
+					@chmod($filesDir, 0755);
 					
 					// Also try to change permissions of parent directories if needed
 					$parentDir = dirname($filesDir);
 					if(!is_writable($parentDir)){
-						@chmod($parentDir, 0777);
+						@chmod($parentDir, 0755);
 					}
 					
 					if(!is_writable($filesDir)){
@@ -176,13 +246,24 @@ class FilesController{
 				$path = $filesDir . $fileName;
 
 				/*=============================================
-				Movemos archivo temporal a esa ruta
+				Move the temporary file to that path
 				=============================================*/
 
 				if(move_uploaded_file($this->file["tmp_name"], $path)){
 
 					/*=============================================
-					Subimos información de archivos a la base de datos
+					Compress + convert raster images to WebP (smaller; keeps
+					transparency). Falls back to the original if WebP is unavailable.
+					=============================================*/
+
+					require_once dirname(__DIR__) . '/../tools/image-optimizer.php';
+					$path      = wpb_optimizeImage($path);
+					$finalExt  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+					$finalType = ($finalExt === 'webp') ? 'image/webp' : $this->file["type"];
+					$finalSize = @filesize($path) ?: $this->file["size"];
+
+					/*=============================================
+					Upload the file information to the database
 					=============================================*/
 
 					$url = "files?token=".$this->token."&table=admins&suffix=admin";
@@ -208,10 +289,10 @@ class FilesController{
 					$fields = array(
 
 						"id_folder_file" => $this->folder,
-						"extension_file" => end($extension),
-						"name_file" => str_replace(".".end($extension), "", $this->file["name"]),
-						"type_file" => $this->file["type"],
-						"size_file" => $this->file["size"],
+						"extension_file" => $finalExt,
+						"name_file" => pathinfo($this->file["name"], PATHINFO_FILENAME),
+						"type_file" => $finalType,
+						"size_file" => $finalSize,
 						"link_file" => $linkFile,
 						"date_created_file" => date("Y-m-d")
 					);
@@ -233,7 +314,7 @@ class FilesController{
 					if($uploadData->status == 200){
 
 						/*=============================================
-						Devolvemos la información a javascript
+						Return the information to javascript
 						=============================================*/
 
 						// Handle different response structures from API
@@ -287,7 +368,7 @@ class FilesController{
 						// If we still don't have an ID, log and return error
 						if($idFile === null){
 							// Log the actual structure for debugging
-							error_log("Files API Response Structure: " . json_encode($uploadData, JSON_PRETTY_PRINT));
+							Logger::debug("Files API unexpected response structure", ['response' => $uploadData]);
 							$response = array(
 								"status" => 500,
 								"error" => "Error uploading file information: Could not extract file ID from API response. Check server logs for details."
@@ -382,7 +463,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Calcular el peso total de archivos de un folder
+	Calculate the total size of a folder's files
 	=============================================*/
 
 	public $idFolder;
@@ -390,7 +471,7 @@ class FilesController{
 	public function updateServer(){
 
 		/*=============================================
-		Traer todos los archivos vinculados al folder
+		Fetch all the files linked to the folder
 		=============================================*/
 
 		$url = "files?linkTo=id_folder_file&equalTo=".$this->idFolder."&select=size_file";
@@ -399,42 +480,46 @@ class FilesController{
 
 		$files = CurlController::request($url,$method,$fields);
 
-		if($files->status == 200){
+		/*=============================================
+		Sum the size of every file in the folder. Only update the
+		total when the fetch succeeded (200, sum the files) or the
+		folder is genuinely empty (404 -> 0). On any other status
+		(network/DB error) do NOT overwrite the stored total.
+		=============================================*/
 
-			$files = $files->results;
-			$totalSize = 0;
-			$countFiles = 0;
+		$totalSize = 0;
 
-			foreach ($files as $key => $value) {
-				
+		if($files->status == 200 && isset($files->results) && is_array($files->results)){
+
+			foreach ($files->results as $value) {
 				$totalSize += $value->size_file;
-				$countFiles++;
-
-				if($countFiles == count($files)){
-
-					/*=============================================
-					Actualizar Folders
-					=============================================*/
-
-					$url = 	"folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
-					$method = "PUT";
-					$fields = "total_folder=".$totalSize;
-
-					$folders = CurlController::request($url,$method,$fields);
-
-					if($folders->status == 200){
-
-						echo $folders->status;
-					}
-				}
 			}
+
+		}else if($files->status != 404){
+
+			echo 500;
+			return;
 		}
 
+		/*=============================================
+		Update the folder total once (0 when the folder is empty)
+		=============================================*/
+
+		$url = "folders?id=".$this->idFolder."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
+		$method = "PUT";
+		$fields = "total_folder=".$totalSize;
+
+		$folders = CurlController::request($url,$method,$fields);
+
+		if($folders->status == 200){
+
+			echo $folders->status;
+		}
 
 	}
 
 	/*=============================================
-	Eliminar archivo del servidor y de la BD
+	Delete the file from the server and the database
 	=============================================*/
 
 	public $idFileDelete;
@@ -443,7 +528,7 @@ class FilesController{
 	public function deleteFile(){
 
 		/*=============================================
-		Traer la data del archivo
+		Fetch the file data
 		=============================================*/
 
 		$url = "files?linkTo=id_file&equalTo=".$this->idFileDelete;
@@ -459,7 +544,7 @@ class FilesController{
 		}
 
 		/*=============================================
-		Traer la data del folder
+		Fetch the folder data
 		=============================================*/
 
 		$url = "folders?linkTo=id_folder&equalTo=".$this->idFolderDelete;
@@ -473,20 +558,38 @@ class FilesController{
 		}
 
 		/*=============================================
-		Eliminando archivo del servidor local
+		Deleting file from the local server
 		=============================================*/
 
 		if($this->idFolderDelete == 1){
 
 			/*=============================================
-			Borrar archivo del servidor
+			Delete the physical file, confining the resolved
+			path to the uploads directory (path-traversal safe).
+			link_file is stored as a relative path, so we rebuild
+			the absolute path the same way the upload does.
 			=============================================*/
-			unlink(str_replace($_SERVER["HTTP_ORIGIN"],"..",$getFile->link_file));
-			
+			$filesBaseDir = realpath(dirname(__DIR__)."/views/assets/files");
+
+			if($filesBaseDir !== false && isset($getFile->link_file)){
+
+				$relative = ltrim(str_replace("\\", "/", $getFile->link_file), "/");
+				$targetPath = realpath($filesBaseDir."/".basename($relative));
+
+				// Append a trailing separator to the base dir so a sibling
+				// directory sharing the prefix (e.g. ".../files_backup")
+				// cannot satisfy the containment check.
+				$baseWithSep = rtrim($filesBaseDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+
+				if($targetPath !== false && strpos($targetPath, $baseWithSep) === 0 && is_file($targetPath)){
+					@unlink($targetPath);
+				}
+			}
+
 		}
 
 		/*=============================================
-		Actualizar capacidad total del servidor
+		Update the total server capacity
 		=============================================*/
 
 		$url = "folders?id=".$this->idFolderDelete."&nameId=id_folder&token=".$this->token."&table=admins&suffix=admin";
@@ -496,7 +599,7 @@ class FilesController{
 		$updateFolder = CurlController::request($url,$method,$fields);
 
 		/*=============================================
-		Eliminar registro de la base de datos
+		Delete the record from the database
 		=============================================*/
 
 		$url = "files?id=".$this->idFileDelete."&nameId=id_file&token=".$this->token."&table=admins&suffix=admin";
@@ -513,7 +616,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Actualizar el nombre del Archivo
+	Update the file name
 	=============================================*/
 
 	public $name;
@@ -535,7 +638,7 @@ class FilesController{
 	}
 
 	/*=============================================
-	Función para cargar archivos
+	Function to load files
 	=============================================*/
 
 	public $search;
@@ -647,7 +750,7 @@ class FilesController{
 				$countFiles++;
 
 				/*=============================================
-				Organizar la vista de la lista
+				Arrange the list view
 				=============================================*/
 
 				$pathList = TemplateController::returnThumbnailList($value);
@@ -690,7 +793,7 @@ class FilesController{
 					</tr>';
 
 				/*=============================================
-				Organizar la vista de la cuadrícula
+				Arrange the grid view
 				=============================================*/
 
 				$pathGrid = TemplateController::returnThumbnailGrid($value);
@@ -754,7 +857,7 @@ class FilesController{
 				 		</div>';
 
 				/*=============================================
-				Finaliza el recorrido Foreach
+				End of the foreach loop
 				=============================================*/
 
 				if($countFiles == count($load)){
@@ -794,7 +897,7 @@ class FilesController{
 }
 
 /*=============================================
-Subir Archivos a los Servidores
+Upload files to the servers
 =============================================*/
 
 if(isset($_FILES["file"])){
@@ -807,9 +910,10 @@ if(isset($_FILES["file"])){
 		$ajax -> ajaxUploadFiles();
 	} catch(Exception $e) {
 		// Catch any unexpected errors and return JSON
+		Logger::error("Files upload AJAX error", ['exception' => $e->getMessage()]);
 		$response = array(
 			"status" => 500,
-			"error" => "Error uploading file: " . $e->getMessage()
+			"error" => "Internal server error"
 		);
 		ob_clean();
 		echo json_encode($response);
@@ -819,7 +923,7 @@ if(isset($_FILES["file"])){
 }
 
 /*=============================================
-Calcular el peso total de archivos de un folder
+Calculate the total size of a folder's files
 =============================================*/
 
 if(isset($_POST["idFolder"])){
@@ -832,7 +936,7 @@ if(isset($_POST["idFolder"])){
 }
 
 /*=============================================
-Eliminar archivo del servidor y de la BD
+Delete the file from the server and the database
 =============================================*/
 
 if(isset($_POST["idFolderDelete"])){
@@ -846,7 +950,7 @@ if(isset($_POST["idFolderDelete"])){
 }
 
 /*=============================================
-Actualizar el nombre del Archivo
+Update the file name
 =============================================*/
 
 if(isset($_POST["name"])){
@@ -860,7 +964,7 @@ if(isset($_POST["name"])){
 }
 
 /*=============================================
-Función para cargar archivos
+Function to load files
 =============================================*/
 
 if(isset($_POST["search"])){

@@ -1,6 +1,10 @@
 <?php
 
 require_once __DIR__ . "/get.model.php";
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\ExpiredException;
 
 class Connection{
 
@@ -70,6 +74,18 @@ class Connection{
 		return $config['api']['public_access_tables'];
 	}
 
+	// Tables allowed to be written without a user token (token=no mode).
+	// Used by internal CMS flows (login, install, 2FA) that run before a
+	// JWT exists. Defaults to the known CMS-internal tables when not set.
+	static public function internalWriteTables(){
+		$config = self::getConfig();
+		$tables = $config['api']['internal_write_tables'] ?? null;
+		if(!is_array($tables)){
+			$tables = ['admins', 'pages', 'modules', 'folders', 'columns'];
+		}
+		return $tables;
+	}
+
 	// Database connection
 	static public function connect(){
 		$config = self::getConfig();
@@ -101,8 +117,65 @@ class Connection{
 
 	}
 
+	/**
+	 * Validate that a string is a safe SQL identifier (table/column name).
+	 * Only allows alphanumeric characters and underscores.
+	 */
+	static public function sanitizeIdentifier($name) {
+		if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+			return null;
+		}
+		return $name;
+	}
+
+	/**
+	 * Validate a single (optionally table-qualified) SQL identifier used in
+	 * relational queries. Allows only: *, col, table.col, table.*
+	 * Returns the name when safe, or null otherwise.
+	 */
+	static public function sanitizeQualifiedIdentifier($name) {
+		$name = trim((string)$name);
+		if ($name === '*') {
+			return $name;
+		}
+		if (preg_match('/^[a-zA-Z0-9_]+(\.([a-zA-Z0-9_]+|\*))?$/', $name)) {
+			return $name;
+		}
+		return null;
+	}
+
+	/**
+	 * Validate a comma-separated list of identifiers (select/linkTo/type/
+	 * filterTo) used in relational queries. Returns false if any item is
+	 * not a safe SQL identifier, so the caller can reject the request.
+	 */
+	static public function validIdentifierList($list) {
+		if ($list === null || $list === '') {
+			return false;
+		}
+		foreach (explode(",", $list) as $item) {
+			if (self::sanitizeQualifiedIdentifier($item) === null) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Validate orderMode value — only ASC or DESC allowed.
+	 */
+	static public function sanitizeOrderMode($mode) {
+		$mode = strtoupper((string)$mode);
+		return in_array($mode, ['ASC', 'DESC'], true) ? $mode : null;
+	}
+
 	// Validate table and columns existence
 	static public function getColumnsData($table, $columns){
+
+		// Validate table name before using in query
+		if (Connection::sanitizeIdentifier($table) === null) {
+			return null;
+		}
 
 		$database = Connection::infoDatabase()["database"];
 
@@ -110,8 +183,9 @@ class Connection{
 		if ($link === null) {
 			return null;
 		}
-		$validate = $link->query("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = '$database' AND table_name = '$table'")
-		->fetchAll(PDO::FETCH_OBJ);
+		$stmt = $link->prepare("SELECT COLUMN_NAME AS item FROM information_schema.columns WHERE table_schema = :db AND table_name = :table");
+		$stmt->execute([':db' => $database, ':table' => $table]);
+		$validate = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 		if(empty($validate)){
 
@@ -166,27 +240,39 @@ class Connection{
 	// Validate security token
 	static public function tokenValidate($token,$table,$suffix){
 
-		$user = GetModel::getDataFilter($table, "token_exp_".$suffix, "token_".$suffix, $token, null,null,null,null);
-		
-		if(!empty($user)){
+		$config = self::getConfig();
+		$jwtSecret = $config['jwt']['secret'] ?? '';
 
-			// Check if token has expired
-			$time = time();
-
-			if($time < $user[0]->{"token_exp_".$suffix}){
-
-				return "ok";
-
-			}else{
-
-				return "expired";
-			}
-
-		}else{
-
+		if(empty($token) || empty($jwtSecret)){
 			return "no-auth";
-
 		}
+
+		// 1. Cryptographically verify the token: a valid HS256 signature
+		//    and a non-expired "exp" claim. A forged or tampered token
+		//    throws here and never reaches the database lookup.
+		try{
+
+			JWT::decode($token, $jwtSecret, array('HS256'));
+
+		}catch(ExpiredException $e){
+
+			return "expired";
+
+		}catch(\Exception $e){
+
+			// Invalid signature, malformed token, wrong algorithm, etc.
+			return "no-auth";
+		}
+
+		// 2. Confirm the token still matches the one stored for the user,
+		//    so tokens can be revoked/rotated server-side (logout, reissue).
+		$user = GetModel::getDataFilter($table, "token_exp_".$suffix, "token_".$suffix, $token, null,null,null,null);
+
+		if(empty($user)){
+			return "no-auth";
+		}
+
+		return "ok";
 
 	}
 

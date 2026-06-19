@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Controlador de Pagos Payku
- * Maneja el procesamiento de pagos y callbacks
+ * Payku Payment Controller
+ * Handles payment processing and callbacks
  */
 
 // Get project root directory

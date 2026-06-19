@@ -7,7 +7,7 @@
 
         <!-- Modal Header -->
         <div class="modal-header">
-          <h4 class="modal-title text-capitalize">Páginas</h4>
+          <h4 class="modal-title text-capitalize">Secciones</h4>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
@@ -120,7 +120,9 @@
                         id="type_page"
                       >
                         <option value="modules">Modular</option>
-                        <option value="custom">Personalizable</option>
+                        <!-- 'custom' kept hidden: not offered for new sections (needs a manual PHP
+                             file), but preserved so editing existing custom system sections works. -->
+                        <option value="custom" hidden>Personalizable</option>
                         <option value="plugins">Plugin</option>
                         <option value="menu">Menú</option>
                         <option value="external_link">Enlace Externo</option>
@@ -188,9 +190,12 @@
 
         </div>
 
+        <!-- SEO/Open Graph moved to the Web Page Builder (CMS → "Páginas Web").
+             Sections are CMS navigation items and don't need page-level SEO. -->
+
         <!-- Modal footer -->
         <div class="modal-footer d-flex justify-content-between">
-          
+
           <div><button type="button" class="btn btn-dark rounded" data-bs-dismiss="modal">Cerrar</button></div>
           <div><button type="submit" class="btn btn-default backColor rounded">Guardar</button></div>
           

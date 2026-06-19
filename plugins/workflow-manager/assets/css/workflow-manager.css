@@ -1,0 +1,110 @@
+/**
+ * Workflow Manager Plugin Styles
+ */
+
+/* Module list */
+#modules-list .list-group-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+#modules-list .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+#modules-list .list-group-item.active {
+    background-color: #e7f1ff;
+    border-left-color: #0d6efd;
+    color: inherit;
+}
+
+#modules-list .list-group-item.active .text-muted {
+    color: #6c757d !important;
+}
+
+/* State items */
+.state-item {
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.state-item:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.state-color {
+    width: 40px;
+    height: 32px;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+/* Transition items */
+.transition-item {
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.transition-item:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.transition-from,
+.transition-roles {
+    min-height: 32px;
+    max-height: 60px;
+}
+
+/* Empty state */
+#states-container:empty::after,
+#transitions-container:empty::after {
+    content: 'No hay elementos. Haz clic en "Agregar" para crear uno.';
+    display: block;
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+/* Save button animation */
+#btn-save-workflow.saving {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Color preview in select */
+.state-color-preview {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .transition-item .row {
+        flex-direction: column;
+    }
+
+    .transition-item .col-md-2,
+    .transition-item .col-md-1 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Drag handle for future drag-and-drop */
+.drag-handle {
+    cursor: move;
+    color: #6c757d;
+    padding: 0 8px;
+}
+
+.drag-handle:hover {
+    color: #0d6efd;
+}
