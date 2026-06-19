@@ -33,6 +33,10 @@ fi
 # purpose so it can be inspected after a failing run.
 STDERR_LOG="$(mktemp "${TMPDIR:-/tmp}/mcp-smoke.XXXXXX")"
 
+# Tracks whether any case failed, so the script can exit non-zero instead of
+# silently "passing" on empty/missing responses.
+FAILED=0
+
 # JSON-RPC request helpers ---------------------------------------------------
 # initialize + initialized handshake is required before any tools/call.
 req_init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
@@ -104,7 +108,8 @@ print_case() {
   local line
   line="$(pick_resp "$id" || true)"
   if [[ -z "$line" ]]; then
-    echo "  (no response — server may have errored; see $STDERR_LOG)"
+    echo "  ✗ FAIL: no response (server may have errored; see $STDERR_LOG)"
+    FAILED=1
     return
   fi
   # tools/call results carry text content; unwrap it for readability, else raw.
@@ -140,23 +145,27 @@ for c in "${CASES[@]}"; do
       echo "──────────────────────────────────────────────────────────────"
       # Parse the JSON-RPC response with Node rather than counting with grep/wc,
       # which would miscount if a tool description happened to contain "name":.
-      pick_resp 2 | node -e '
+      # Exit non-zero on an empty/missing response so a crashed server fails the
+      # test loudly instead of printing "0" and passing.
+      if pick_resp 2 | node -e '
         let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
           const tools=((JSON.parse(s||"{}").result)||{}).tools||[];
+          if(tools.length===0){console.log("  ✗ FAIL: no tools advertised (empty/missing response)");process.exit(1);}
           console.log("  tools advertised: "+tools.length);
           tools.forEach((t)=>console.log("    - "+t.name));
-        });'
+        });'; then :; else FAILED=1; fi
       echo
       ;;
     11)
       echo "──────────────────────────────────────────────────────────────"
       echo "▌ [11] $label"
       echo "──────────────────────────────────────────────────────────────"
-      pick_resp 11 | node -e '
+      if pick_resp 11 | node -e '
         let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
           const resources=((JSON.parse(s||"{}").result)||{}).resources||[];
+          if(resources.length===0){console.log("  ✗ FAIL: no resources advertised (empty/missing response)");process.exit(1);}
           console.log("  resources advertised: "+resources.length);
-        });'
+        });'; then :; else FAILED=1; fi
       echo
       ;;
     *)
@@ -164,5 +173,10 @@ for c in "${CASES[@]}"; do
       ;;
   esac
 done
+
+if [[ "$FAILED" -ne 0 ]]; then
+  echo "✗ Smoke test FAILED — see messages above and $STDERR_LOG"
+  exit 1
+fi
 
 echo "✔ Done. Server stderr (if any) in $STDERR_LOG"
