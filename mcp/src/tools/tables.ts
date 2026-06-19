@@ -69,7 +69,26 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
       let moduleId = id_module;
       let resolvedSuffix = suffix;
 
-      if (!moduleId && suffix) {
+      // When id_module is provided, always resolve the real suffix from the DB and
+      // validate THAT against the deny-list — never the client-supplied `suffix`.
+      // Otherwise a caller passing both `id_module` (of a denied table) and a benign
+      // `suffix` would slip past `assertNotDenied`, since the columns query keys off
+      // `moduleId`. If `suffix` is also given it must match the resolved one.
+      if (moduleId) {
+        const modules = unwrapResults(
+          await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
+        ) as unknown as ModuleRow[];
+        if (modules.length === 0) {
+          throw new Error(`No CMS module found with id_module ${moduleId}.`);
+        }
+        const actualSuffix = String(modules[0].suffix_module ?? "");
+        if (suffix && suffix.toLowerCase() !== actualSuffix.toLowerCase()) {
+          throw new Error(
+            `The provided suffix "${suffix}" does not match the module suffix "${actualSuffix}".`,
+          );
+        }
+        resolvedSuffix = actualSuffix;
+      } else if (suffix) {
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "suffix_module", equalTo: suffix }),
         ) as unknown as ModuleRow[];
@@ -78,14 +97,6 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         }
         moduleId = Number(modules[0].id_module);
         resolvedSuffix = String(modules[0].suffix_module ?? suffix);
-      } else if (moduleId && !resolvedSuffix) {
-        const modules = unwrapResults(
-          await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
-        ) as unknown as ModuleRow[];
-        if (modules.length === 0) {
-          throw new Error(`No CMS module found with id_module ${moduleId}.`);
-        }
-        resolvedSuffix = String(modules[0].suffix_module ?? "");
       }
 
       if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
