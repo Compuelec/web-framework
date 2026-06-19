@@ -401,15 +401,12 @@ class PackagingController {
         foreach ($files as $file) {
             $filePath = $file->getRealPath();
             
-            // Check if this is a directory - if it should be excluded, skip it and all its contents
+            // Directories are never added to the ZIP themselves; files inside an
+            // excluded directory are filtered out by the parent-path check below.
+            // (Do not manually advance the iterator here — the foreach already
+            // advances it, and a second next() would skip the following entry.)
             if ($file->isDir()) {
-                if (self::shouldExclude($filePath, $rootDir, $excludePatterns)) {
-                    // Skip this directory and all its contents by calling next() multiple times
-                    // This prevents processing any files within excluded directories
-                    $files->next();
-                    continue;
-                }
-                continue; // Skip directories, we only add files
+                continue;
             }
             
             // For files, check if they should be excluded
