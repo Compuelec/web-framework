@@ -394,10 +394,17 @@ class PackagingController {
         // Prune excluded directories at the source: when the callback returns
         // false for a directory, RecursiveCallbackFilterIterator does not descend
         // into it, so huge ignored trees (e.g. node_modules, .git) are never even
-        // scanned. An explicit include pattern can still rescue a single file.
+        // scanned. Trade-off: a file inside a pruned directory can no longer be
+        // rescued by an include pattern (we never descend to evaluate it); include
+        // patterns only apply to files whose ancestors are all kept.
         $directory = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
         $filter = new RecursiveCallbackFilterIterator($directory, function ($current) use ($rootDir, $excludePatterns, $includePatterns) {
             $path = $current->getRealPath();
+            // Broken symlink (or otherwise unresolvable) — drop it rather than
+            // passing false down to the matchers.
+            if ($path === false) {
+                return false;
+            }
             if (self::shouldExclude($path, $rootDir, $excludePatterns)) {
                 return self::shouldInclude($path, $rootDir, $includePatterns);
             }
