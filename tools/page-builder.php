@@ -79,6 +79,15 @@ function pb_replaceFields($html, array $row, array $formRow = []) {
         return $out;
     }, $html);
 
+    // Single-image tags: {{img campo}} → the column's image URL. Single-image
+    // columns are stored URL-encoded (like everywhere else in the CMS), so the
+    // value is urldecoded before use; a plain {{campo}} would emit the raw
+    // percent-encoded string and the browser could not load it.
+    $html = preg_replace_callback('/\{\{\s*img\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
+        $val = array_key_exists($m[1], $row) && is_scalar($row[$m[1]]) ? (string) $row[$m[1]] : '';
+        return htmlspecialchars(urldecode($val), ENT_QUOTES);
+    }, $html);
+
     // Then simple {{field}} tags.
     return preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
         $val = array_key_exists($m[1], $row) ? $row[$m[1]] : '';
@@ -445,6 +454,12 @@ if (!function_exists('wpb_fields')) {
                 \$out .= preg_replace_callback('/\\{\\{\\s*url\\s*\\}\\}/', function () use (\$escUrl) { return \$escUrl; }, \$m[2]);
             }
             return \$out;
+        }, \$html);
+        // Single-image tags: {{img campo}} → the column's URL-encoded image URL,
+        // decoded so the browser can load it (multi-image uses {{#imagenes}}).
+        \$html = preg_replace_callback('/\\{\\{\\s*img\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
+            \$val = array_key_exists(\$m[1], \$row) && is_scalar(\$row[\$m[1]]) ? (string) \$row[\$m[1]] : '';
+            return htmlspecialchars(urldecode(\$val), ENT_QUOTES);
         }, \$html);
         return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
             \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '';
