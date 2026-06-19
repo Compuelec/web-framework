@@ -79,8 +79,10 @@ raw="$( { build_stream; sleep 2; } | node dist/index.js 2>"$STDERR_LOG" || true 
 # textual grep, so a payload that happens to contain `"id":N` — e.g. JSON
 # embedded in a tool result — can never be picked by mistake.
 pick_resp() {
-  printf '%s\n' "$raw" | node -e '
-    const want = Number(process.argv[1]);
+  # Pass the wanted id via env var, not argv: `node -e` argv indexing varies
+  # across Node versions, while process.env is unambiguous everywhere.
+  printf '%s\n' "$raw" | PICK_ID="$1" node -e '
+    const want = Number(process.env.PICK_ID);
     let s = "";
     process.stdin.on("data", (d) => (s += d)).on("end", () => {
       for (const line of s.split("\n")) {
@@ -90,7 +92,7 @@ pick_resp() {
           if (m && m.id === want) { process.stdout.write(line); return; }
         } catch { /* not a JSON-RPC line */ }
       }
-    });' "$1"
+    });'
 }
 
 # Pretty-print each labelled case by matching its response id.
