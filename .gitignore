@@ -104,3 +104,4 @@ web/pages/*
 # installation by the builder
 web/partials/
 packages/
+.qodo/
