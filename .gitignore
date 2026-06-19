@@ -103,3 +103,4 @@ web/pages/*
 # Shared header/footer partials + home-page marker — auto-created per
 # installation by the builder
 web/partials/
+packages/
