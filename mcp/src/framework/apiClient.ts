@@ -18,6 +18,15 @@ export class FrameworkApiClient {
       });
       const text = await res.text();
       const body = parseJsonSafe(text);
+
+      // The framework returns HTTP 404 with body { status:404, results:"Not Found" } when
+      // a query matches no rows. That is the normal "empty result set" case for a dynamic
+      // CRUD API, not a transport error — treat it as an empty result so tools can return
+      // `found:false` / `[]` instead of bubbling an exception up to the LLM.
+      if (res.status === 404 && isFrameworkNotFoundBody(body)) {
+        return { results: [] };
+      }
+
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} on GET ${url}: ${truncate(text, 200)}`);
       }
@@ -40,6 +49,12 @@ export class FrameworkApiClient {
     const qs = usp.toString();
     return `${this.cfg.apiBaseUrl}/${encodeURIComponent(table)}${qs ? `?${qs}` : ""}`;
   }
+}
+
+function isFrameworkNotFoundBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const obj = body as Record<string, unknown>;
+  return obj.status === 404 || obj.results === "Not Found";
 }
 
 function parseJsonSafe(text: string): unknown {

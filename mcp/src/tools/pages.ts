@@ -1,8 +1,9 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FrameworkApiClient } from "../framework/apiClient.js";
+import { unwrapResults } from "../utils/api.js";
 
-type PageRow = Record<string, unknown> & {
+type PageRow = {
   id_page?: number;
   title_page?: string;
   url_page?: string;
@@ -11,22 +12,13 @@ type PageRow = Record<string, unknown> & {
   order_page?: number;
 };
 
-type ModuleRow = Record<string, unknown> & {
+type ModuleRow = {
   id_module?: number;
   type_module?: string;
   title_module?: string;
   suffix_module?: string;
   width_module?: number;
 };
-
-function unwrapResults(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
-  if (payload && typeof payload === "object" && "results" in (payload as object)) {
-    const r = (payload as { results: unknown }).results;
-    return Array.isArray(r) ? r : [];
-  }
-  return [];
-}
 
 export function registerPageTools(server: McpServer, api: FrameworkApiClient): void {
   server.registerTool(
@@ -53,7 +45,7 @@ export function registerPageTools(server: McpServer, api: FrameworkApiClient): v
         query.equalTo = type;
       }
       const data = await api.get("pages", query);
-      const rows = unwrapResults(data) as PageRow[];
+      const rows = unwrapResults(data) as unknown as PageRow[];
       const compact = rows.map((p) => ({
         id_page: p.id_page,
         title: p.title_page,
@@ -88,7 +80,7 @@ export function registerPageTools(server: McpServer, api: FrameworkApiClient): v
       if (!page) {
         throw new Error(`Page with id_page=${id_page} not found.`);
       }
-      const modules = (unwrapResults(modulesPayload) as ModuleRow[]).map((m) => ({
+      const modules = (unwrapResults(modulesPayload) as unknown as ModuleRow[]).map((m) => ({
         id_module: m.id_module,
         title: m.title_module,
         type: m.type_module,

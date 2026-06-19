@@ -3,30 +3,22 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FrameworkApiClient } from "../framework/apiClient.js";
 import type { Config } from "../config.js";
 import { tableNameSchema, assertNotDenied } from "../validators/identifiers.js";
+import { unwrapResults } from "../utils/api.js";
 
-type ModuleRow = Record<string, unknown> & {
+type ModuleRow = {
   id_module?: number;
   title_module?: string;
   suffix_module?: string;
   type_module?: string;
 };
 
-type ColumnRow = Record<string, unknown> & {
+type ColumnRow = {
   id_column?: number;
   title_column?: string;
   alias_column?: string;
   type_column?: string;
   order_column?: number;
 };
-
-function unwrapResults(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
-  if (payload && typeof payload === "object" && "results" in (payload as object)) {
-    const r = (payload as { results: unknown }).results;
-    return Array.isArray(r) ? r : [];
-  }
-  return [];
-}
 
 export function registerTableTools(server: McpServer, api: FrameworkApiClient, cfg: Config): void {
   server.registerTool(
@@ -41,7 +33,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
     },
     async () => {
       const data = await api.get("modules", { orderBy: "title_module", orderMode: "asc" });
-      const rows = unwrapResults(data) as ModuleRow[];
+      const rows = unwrapResults(data) as unknown as ModuleRow[];
       const visible = rows.filter((r) => !cfg.denyTables.has(String(r.suffix_module ?? "").toLowerCase()));
       const compact = visible.map((r) => ({
         id_module: r.id_module,
@@ -80,7 +72,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
       if (!moduleId && suffix) {
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "suffix_module", equalTo: suffix }),
-        ) as ModuleRow[];
+        ) as unknown as ModuleRow[];
         if (modules.length === 0) {
           throw new Error(`No CMS module found with suffix "${suffix}".`);
         }
@@ -89,8 +81,11 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
       } else if (moduleId && !resolvedSuffix) {
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "id_module", equalTo: moduleId }),
-        ) as ModuleRow[];
-        resolvedSuffix = String(modules[0]?.suffix_module ?? "");
+        ) as unknown as ModuleRow[];
+        if (modules.length === 0) {
+          throw new Error(`No CMS module found with id_module ${moduleId}.`);
+        }
+        resolvedSuffix = String(modules[0].suffix_module ?? "");
       }
 
       if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
@@ -102,7 +97,7 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
           orderBy: "order_column",
           orderMode: "asc",
         }),
-      ) as ColumnRow[];
+      ) as unknown as ColumnRow[];
 
       const compact = columns.map((c) => ({
         id_column: c.id_column,

@@ -25,7 +25,8 @@ export function loadConfig(): Config {
       .filter(Boolean),
   );
 
-  const httpTimeoutMs = Number(process.env.FW_HTTP_TIMEOUT_MS ?? 15000);
+  const parsedTimeout = Number(process.env.FW_HTTP_TIMEOUT_MS ?? 15000);
+  const httpTimeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 15000;
 
   return { apiBaseUrl, apiKey, denyTables, httpTimeoutMs };
 }

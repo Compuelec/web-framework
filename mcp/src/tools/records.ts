@@ -3,15 +3,18 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FrameworkApiClient } from "../framework/apiClient.js";
 import type { Config } from "../config.js";
 import { tableNameSchema, columnNameSchema, assertNotDenied } from "../validators/identifiers.js";
+import { unwrapResults } from "../utils/api.js";
 
-function unwrapResults(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
-  if (payload && typeof payload === "object" && "results" in (payload as object)) {
-    const r = (payload as { results: unknown }).results;
-    return Array.isArray(r) ? r : [];
-  }
-  return [];
-}
+const selectProjectionSchema = z
+  .string()
+  .refine(
+    (val) =>
+      val.split(",").every((part) => {
+        const t = part.trim();
+        return t === "*" || /^[a-z][a-z0-9_]*$/.test(t);
+      }),
+    { message: "select must be '*' or comma-separated column identifiers (^[a-z][a-z0-9_]*$)." },
+  );
 
 export function registerRecordTools(server: McpServer, api: FrameworkApiClient, cfg: Config): void {
   server.registerTool(
@@ -32,7 +35,7 @@ export function registerRecordTools(server: McpServer, api: FrameworkApiClient, 
         orderMode: z.enum(["asc", "desc"]).optional(),
         startAt: z.number().int().nonnegative().optional().describe("Offset for pagination"),
         endAt: z.number().int().positive().optional().describe("Limit for pagination"),
-        select: z.string().optional().describe('Comma-separated columns to project (default "*")'),
+        select: selectProjectionSchema.optional().describe('Comma-separated column names or "*" (default "*")'),
       },
     },
     async ({ table, linkTo, equalTo, search, orderBy, orderMode, startAt, endAt, select }) => {
