@@ -100,6 +100,9 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         }
         resolvedSuffix = actualSuffix;
       } else if (suffix) {
+        // Reject denied suffixes before hitting the DB, so the error can't be
+        // used as a side-channel to probe whether a denied module exists.
+        assertNotDenied(suffix, cfg.denyTables);
         const modules = unwrapResults(
           await api.get("modules", { linkTo: "suffix_module", equalTo: suffix }),
         ) as unknown as ModuleRow[];
