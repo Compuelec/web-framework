@@ -3,17 +3,19 @@
  ================================-->
 
 <?php
-// Get home page URL (page with order_page=1)
-$urlHome = "pages?linkTo=order_page&equalTo=1";
+// Home link → the Dashboard. Targeting the dashboard page by its url (not
+// order_page=1, which several pages share — e.g. Administradores also has
+// order_page=1, which made "Inicio" wrongly point there).
+$urlHome = "pages?linkTo=url_page&equalTo=dashboard";
 $methodHome = "GET";
 $fieldsHome = array();
 
 $homePage = CurlController::request($urlHome, $methodHome, $fieldsHome);
 
-// Default to CMS base path if home page not found
+// Default to the CMS root if the dashboard page isn't found.
 $homeUrl = $cmsBasePath . "/";
 
-if($homePage->status == 200 && isset($homePage->results[0]) && isset($homePage->results[0]->url_page)){
+if(is_object($homePage) && isset($homePage->status) && $homePage->status == 200 && isset($homePage->results[0]->url_page)){
 	$homeUrl = $cmsBasePath . "/" . $homePage->results[0]->url_page;
 }
 ?>
