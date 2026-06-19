@@ -1,5 +1,8 @@
 <?php
-$projectBasePath = dirname($cmsBasePath);
+// Strip only the trailing "/cms". dirname() would turn "/cms" (CMS at the domain
+// root) into "/", making asset URLs "//plugins/..." — a protocol-relative URL the
+// browser reads as host "plugins" (https://plugins/...). This yields "" at the root.
+$projectBasePath = preg_replace('#/cms$#', '', $cmsBasePath ?? '');
 $adminId = $_SESSION['admin']->id_admin ?? 0;
 ?>
 

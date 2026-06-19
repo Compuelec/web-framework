@@ -201,7 +201,7 @@
 </template>
 
 <!-- Load Plugin CSS -->
-<?php $projectBasePath = dirname($cmsBasePath); ?>
+<?php $projectBasePath = preg_replace('#/cms$#', '', $cmsBasePath ?? ''); // "" at root, not "/" (avoids //plugins/... protocol-relative URLs) ?>
 <link rel="stylesheet" href="<?php echo $projectBasePath ?>/plugins/workflow-manager/assets/css/workflow-manager.css">
 
 <!-- Load Plugin JS -->
