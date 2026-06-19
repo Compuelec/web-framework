@@ -33,15 +33,23 @@ if(isset($_GET["scode"])){
 			
 			<form method="POST" class="needs-validation" novalidate>
 				
-				<?php $loginLogo = $_SESSION['cms_theme']['theme_brand_logo'] ?? ''; ?>
+				<?php
+				// Use the same brand (logo / symbol / name) as the sidebar — from
+				// Apariencia (cms_settings), falling back to the admin's values.
+				$loginLogo   = $_SESSION['cms_theme']['theme_brand_logo']   ?? '';
+				$loginTitle  = $_SESSION['cms_theme']['theme_brand_title']  ?? '';
+				$loginSymbol = $_SESSION['cms_theme']['theme_brand_symbol'] ?? '';
+				if ($loginTitle === '')  { $loginTitle  = $admin->title_admin ?? ''; }
+				if ($loginSymbol === '') { $loginSymbol = $admin->symbol_admin ?? 'bi-grid'; }
+				?>
 				<?php if ($loginLogo): ?>
 					<div class="text-center pt-3">
-						<img src="<?php echo htmlspecialchars($loginLogo, ENT_QUOTES) ?>" alt="<?php echo htmlspecialchars($admin->title_admin ?? '', ENT_QUOTES) ?>" style="max-height:64px; max-width:220px; object-fit:contain;">
+						<img src="<?php echo htmlspecialchars($loginLogo, ENT_QUOTES) ?>" alt="<?php echo htmlspecialchars($loginTitle, ENT_QUOTES) ?>" style="max-height:64px; max-width:220px; object-fit:contain;">
 					</div>
 				<?php endif ?>
 
 				<h3 class="<?php echo $loginLogo ? 'pt-2' : 'pt-3' ?> text-center">
-					<i class="<?php echo $admin->symbol_admin ?> textColor"></i> <?php echo $admin->title_admin ?>
+					<i class="<?php echo htmlspecialchars($loginSymbol, ENT_QUOTES) ?> textColor"></i> <?php echo htmlspecialchars($loginTitle, ENT_QUOTES) ?>
 				</h3>
 
 				<hr>
