@@ -1,0 +1,48 @@
+services:
+  db:
+    image: mariadb:10.11
+    container_name: wf_db
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: webframework
+      MARIADB_USER: web
+      MARIADB_PASSWORD: web
+    ports:
+      - "3307:3306"
+    volumes:
+      - wf_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wf_web
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    command: >
+      bash -c "
+        if [ ! -d /var/www/html/api/vendor ]; then
+          echo '>>> Installing api/ composer deps' &&
+          cd /var/www/html/api && composer install --no-interaction --no-dev;
+        fi &&
+        if [ ! -d /var/www/html/cms/extensions/vendor ]; then
+          echo '>>> Installing cms/extensions composer deps' &&
+          cd /var/www/html/cms/extensions && composer install --no-interaction --no-dev;
+        fi &&
+        chown -R www-data:www-data /var/www/html/cms/views/assets/uploads 2>/dev/null || true &&
+        echo '>>> Apache up at http://localhost:8080' &&
+        apache2-foreground
+      "
+
+volumes:
+  wf_db_data:
