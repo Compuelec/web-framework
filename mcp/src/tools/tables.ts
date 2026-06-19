@@ -33,7 +33,11 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
     async () => {
       const data = await api.get("modules", { orderBy: "title_module", orderMode: "asc" });
       const rows = unwrapResults(data) as unknown as ModuleRow[];
-      const visible = rows.filter((r) => !cfg.denyTables.has(String(r.suffix_module ?? "").toLowerCase()));
+      const visible = rows.filter((r) => {
+        const suffix = String(r.suffix_module ?? "").toLowerCase();
+        const title = String(r.title_module ?? "").toLowerCase();
+        return !cfg.denyTables.has(suffix) && !cfg.denyTables.has(title);
+      });
       const compact = visible.map((r) => ({
         id_module: r.id_module,
         title: r.title_module,
@@ -91,6 +95,11 @@ export function registerTableTools(server: McpServer, api: FrameworkApiClient, c
         resolvedTitle = modules[0].title_module ?? undefined;
       }
 
+      // Deny-list contains SQL table names (e.g. `admins`). A request like
+      // `{suffix: "admin"}` resolves to the `admins` module — we must reject
+      // by both the resolved SQL name and the suffix so the suffix path can't
+      // bypass the deny-list.
+      if (resolvedTitle) assertNotDenied(resolvedTitle, cfg.denyTables);
       if (resolvedSuffix) assertNotDenied(resolvedSuffix, cfg.denyTables);
 
       const columns = unwrapResults(

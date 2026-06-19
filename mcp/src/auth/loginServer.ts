@@ -4,6 +4,8 @@ import type { TokenStore } from "./tokenStore.js";
 
 const CALLBACK_PATH = "/mcp/callback";
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
+const MAX_CALLBACK_BODY_BYTES = 10 * 1024; // 10 KiB — a JWT envelope is well under 4 KiB.
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
 export type LoginHandle = {
   port: number;
@@ -32,8 +34,14 @@ export async function startLoginListener(
     rejectDone = rej;
   });
 
+  // When the framework runs inside Docker Desktop and the user picks
+  // `host.docker.internal` as callback host, the connection that reaches us
+  // does not arrive on the loopback interface — it lands on the host's bridge
+  // address. Bind to 0.0.0.0 in that case so the container can reach us;
+  // keep the bind on loopback otherwise to avoid exposing the listener.
+  const listenHost = LOOPBACK_HOSTS.has(callbackHost) ? "127.0.0.1" : "0.0.0.0";
   const server: Server = createServer((req, res) => handle(req, res));
-  await new Promise<void>((res) => server.listen(0, "127.0.0.1", () => res()));
+  await new Promise<void>((res) => server.listen(0, listenHost, () => res()));
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
 
@@ -56,9 +64,23 @@ export async function startLoginListener(
     if (req.method !== "POST" || req.url !== CALLBACK_PATH) {
       return send(res, 404, "not found");
     }
+    // Cap the body — anything larger than a JWT envelope is either malformed
+    // or a DoS attempt against the Node process. The listener is loopback only
+    // (or Docker bridge) but it's cheap to defend in depth.
     let raw = "";
     req.setEncoding("utf8");
-    for await (const chunk of req) raw += chunk;
+    try {
+      for await (const chunk of req) {
+        raw += chunk;
+        if (raw.length > MAX_CALLBACK_BODY_BYTES) {
+          send(res, 413, "payload too large");
+          req.destroy();
+          return;
+        }
+      }
+    } catch {
+      return send(res, 400, "request error");
+    }
 
     let body: Record<string, unknown>;
     try {

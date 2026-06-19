@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FrameworkApiClient } from "../framework/apiClient.js";
@@ -5,6 +6,51 @@ import type { Config } from "../config.js";
 import type { TokenStore } from "../auth/tokenStore.js";
 import { tableNameSchema, columnNameSchema, assertNotDenied } from "../validators/identifiers.js";
 import { unwrapResults } from "../utils/api.js";
+
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+
+type ChallengeKey = string;
+type DeleteChallengeStore = {
+  issue: (table: string, id: string | number) => string;
+  consume: (table: string, id: string | number, provided: string) => boolean;
+};
+
+function createChallengeStore(): DeleteChallengeStore {
+  const map = new Map<ChallengeKey, { nonce: string; expiresAt: number }>();
+  const keyFor = (table: string, id: string | number): ChallengeKey =>
+    `${table}:${String(id)}`;
+
+  function gc(now: number): void {
+    for (const [k, v] of map) if (v.expiresAt <= now) map.delete(k);
+  }
+
+  return {
+    issue(table, id) {
+      const now = Date.now();
+      gc(now);
+      const key = keyFor(table, id);
+      const existing = map.get(key);
+      if (existing && existing.expiresAt > now) return existing.nonce;
+      // 8 random hex chars on top of the human-readable prefix so the LLM
+      // cannot guess or compute it from the table+id alone. The first call
+      // returns the nonce; only the call that echoes it back exactly may
+      // proceed to actually delete.
+      const nonce = `delete-${table}-${id}-${randomBytes(4).toString("hex")}`;
+      map.set(key, { nonce, expiresAt: now + CHALLENGE_TTL_MS });
+      return nonce;
+    },
+    consume(table, id, provided) {
+      const now = Date.now();
+      gc(now);
+      const key = keyFor(table, id);
+      const existing = map.get(key);
+      if (!existing) return false;
+      if (existing.nonce !== provided) return false;
+      map.delete(key); // one-shot — a fresh delete needs a fresh challenge
+      return true;
+    },
+  };
+}
 
 const selectProjectionSchema = z
   .string()
@@ -26,16 +72,14 @@ const recordDataSchema = z
   )
   .refine((d) => Object.keys(d).length > 0, { message: "data must include at least one field" });
 
-function deleteChallenge(table: string, id: string | number): string {
-  return `delete-${table}-${id}`;
-}
-
 export function registerRecordTools(
   server: McpServer,
   api: FrameworkApiClient,
   cfg: Config,
   tokenStore: TokenStore,
 ): void {
+  const challengeStore = createChallengeStore();
+
   server.registerTool(
     "search_records",
     {
@@ -179,12 +223,15 @@ export function registerRecordTools(
     {
       title: "Delete a record (requires explicit confirm phrase)",
       description:
-        "Deletes a row from a table. **Destructive.** This tool has a two-step contract: " +
-        "first call it WITHOUT `confirm_phrase`; the server returns a one-time challenge string " +
-        "of the form `delete-<table>-<id>`. To actually delete, call again passing that exact " +
-        "string as `confirm_phrase`. Any mismatch (including extra whitespace) aborts without " +
-        "touching the database. The `table` parameter is the SQL table name (the `title` from " +
-        "`list_tables`/`describe_table`), not the suffix. Requires an authenticated MCP session.",
+        "Deletes a row from a table. **Destructive.** Two-step contract: " +
+        "first call WITHOUT `confirm_phrase` and the server returns a one-time challenge " +
+        "containing a server-generated random suffix (e.g. `delete-pages-42-a3f9c2d1`). " +
+        "To actually delete, call again passing that exact string as `confirm_phrase`. " +
+        "The challenge cannot be precomputed from the table+id alone, and each successful " +
+        "delete consumes its challenge — a follow-up delete needs a fresh request. " +
+        "Any mismatch (including whitespace) aborts without touching the database. " +
+        "The `table` parameter is the SQL table name (the `title` from `list_tables`/`describe_table`), " +
+        "not the suffix. Requires an authenticated MCP session.",
       inputSchema: {
         table: tableNameSchema,
         id_column: columnNameSchema.describe("Primary key column name, e.g. `id_page`"),
@@ -192,14 +239,16 @@ export function registerRecordTools(
         confirm_phrase: z
           .string()
           .optional()
-          .describe('Must equal exactly "delete-<table>-<id>". Omit on the first call to receive the challenge.'),
+          .describe(
+            "Server-issued challenge from a prior call. Omit on the first call to receive one.",
+          ),
       },
     },
     async ({ table, id_column, id, confirm_phrase }) => {
       assertNotDenied(table, cfg.denyTables);
-      const challenge = deleteChallenge(table, id);
 
-      if (confirm_phrase !== challenge) {
+      if (confirm_phrase === undefined) {
+        const challenge = challengeStore.issue(table, id);
         return {
           content: [
             {
@@ -210,10 +259,32 @@ export function registerRecordTools(
                   challenge,
                   instructions:
                     `To execute the delete, call delete_record again with confirm_phrase exactly equal to "${challenge}". ` +
-                    "If you typed it wrong or the user has not approved the deletion, do not retry.",
+                    "This challenge expires in 5 minutes and is single-use.",
                   table,
                   id_column,
                   id,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      if (!challengeStore.consume(table, id, confirm_phrase)) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error: "invalid_or_expired_challenge",
+                  hint:
+                    "The confirm_phrase did not match a pending challenge for this table+id, " +
+                    "or the previous challenge expired / was already used. Call delete_record " +
+                    "without confirm_phrase to get a fresh one.",
                 },
                 null,
                 2,

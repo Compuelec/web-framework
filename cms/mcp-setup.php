@@ -1,23 +1,34 @@
 <?php
 /**
- * mcp-setup.php — single-screen MCP authorization window.
+ * mcp-setup.php — MCP authorization window with explicit user consent.
+ *
+ * Security model:
+ *   - Every JWT delivery is gated behind a POST + CSRF token. A logged-in
+ *     admin who merely *loads* this URL (e.g. via a crafted link) does NOT
+ *     exfiltrate their JWT — they have to read the callback and click
+ *     "Autorizar MCP".
+ *   - Inline login form (when no session) also carries a CSRF token so a
+ *     third-party site cannot auto-submit a phishing form against this page.
+ *   - All input parameters (`session`, `callback`) are format-validated;
+ *     `callback` must be loopback or Docker-Desktop loopback-equivalent.
+ *   - The CSRF token is single-use: it rotates after a successful delivery
+ *     and after a successful inline login, so the same URL can't be replayed.
  *
  * Flow:
- *   - Local MCP server triggers `mcp_login` → user is sent here with `session`
- *     and `callback` URL params.
- *   - If the admin already has a CMS session, we deliver the existing JWT to
- *     the loopback callback immediately and show "done".
- *   - Otherwise we render an inline login form. A successful submit creates
- *     the CMS session AND delivers the freshly-issued JWT in the same request.
- *   - In every error path the page stays on the same URL so the user can retry
- *     without breaking the session/callback contract.
+ *   - GET (no session)      → render login form
+ *   - POST email/password   → authenticate + render the confirm form (one extra click)
+ *   - GET (with session)    → render confirm form
+ *   - POST confirm_auth=1   → deliver the JWT to the callback, show "done"
  */
 
 define('DIR', __DIR__);
 
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/php_error_log');
+// Never write the log under the web root: the CMS .htaccess does not deny
+// arbitrary file names and the framework's router serves existing files.
+// Use /tmp so a leaked file path can't be served over HTTP.
+ini_set('error_log', sys_get_temp_dir() . '/web-framework-mcp-setup.log');
 
 require_once __DIR__ . '/controllers/session.controller.php';
 
@@ -43,12 +54,24 @@ function mcp_load_config(): array {
     return is_array($cfg) ? $cfg : [];
 }
 
-/**
- * POST credentials to the framework's login endpoint. Returns the populated
- * admin record on success (same shape the CMS would store in $_SESSION) or
- * null on failure. The framework enforces rate limits and bcrypt verification
- * internally.
- */
+function mcp_csrf_token(): string {
+    if (empty($_SESSION['mcp_csrf'])) {
+        $_SESSION['mcp_csrf'] = bin2hex(random_bytes(16));
+    }
+    return $_SESSION['mcp_csrf'];
+}
+
+function mcp_check_csrf(): bool {
+    $token = (string) ($_POST['_csrf'] ?? '');
+    return $token !== ''
+        && !empty($_SESSION['mcp_csrf'])
+        && hash_equals($_SESSION['mcp_csrf'], $token);
+}
+
+function mcp_rotate_csrf(): void {
+    unset($_SESSION['mcp_csrf']);
+}
+
 function mcp_perform_login(string $email, string $password): ?object {
     $cfg = mcp_load_config();
     $apiBase = rtrim((string) ($cfg['api']['base_url'] ?? ''), '/');
@@ -79,10 +102,6 @@ function mcp_perform_login(string $email, string $password): ?object {
     return $admin;
 }
 
-/**
- * POST the JWT envelope to the local MCP server's loopback callback.
- * Returns [ok=>bool, msg=>string].
- */
 function mcp_deliver_jwt(object $admin, string $session, string $callback): array {
     $payload = json_encode([
         'session'    => $session,
@@ -120,7 +139,7 @@ function mcp_render(string $title, string $bodyHtml): void {
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         :root { color-scheme: light dark; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 460px; margin: 4rem auto; padding: 0 1.5rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 480px; margin: 4rem auto; padding: 0 1.5rem; }
         h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
         p.subtitle { color: #666; margin-top: 0; }
         .card { border: 1px solid rgba(127,127,127,.25); border-radius: 12px; padding: 1.25rem 1.5rem; margin-top: 1rem; }
@@ -145,13 +164,66 @@ function mcp_render(string $title, string $bodyHtml): void {
 </html><?php
 }
 
+function mcp_render_confirm(object $admin, string $session, string $callback): void {
+    $action = htmlspecialchars($_SERVER['REQUEST_URI'] ?? '', ENT_QUOTES);
+    $csrf   = mcp_csrf_token();
+    $exp    = (int) ($admin->token_exp_admin ?? 0);
+    $expIso = $exp ? gmdate('Y-m-d\TH:i:s\Z', $exp) : '(sin token)';
+
+    ob_start();
+    ?>
+    <div class="card">
+        <div class="row"><span>Admin</span><span><?= htmlspecialchars($admin->email_admin ?? '', ENT_QUOTES) ?></span></div>
+        <div class="row"><span>JWT vence</span><span><?= htmlspecialchars($expIso, ENT_QUOTES) ?> UTC</span></div>
+        <div class="row"><span>Sesión MCP</span><span><?= htmlspecialchars(substr($session, 0, 8), ENT_QUOTES) ?>…</span></div>
+        <div class="row"><span>Callback</span><span><?= htmlspecialchars($callback, ENT_QUOTES) ?></span></div>
+    </div>
+    <form method="post" action="<?= $action ?>">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
+        <input type="hidden" name="confirm_auth" value="1">
+        <input type="hidden" name="session" value="<?= htmlspecialchars($session, ENT_QUOTES) ?>">
+        <input type="hidden" name="callback" value="<?= htmlspecialchars($callback, ENT_QUOTES) ?>">
+        <button type="submit">Autorizar MCP</button>
+        <p class="muted">El callback debe apuntar a tu MCP local (verificá la URL arriba). El JWT se entrega solo si lo confirmás explícitamente.</p>
+    </form>
+    <?php
+    mcp_render('Confirmar autorización', (string) ob_get_clean());
+}
+
+function mcp_render_login_form(string $session, string $callback, ?string $loginError): void {
+    $action = htmlspecialchars($_SERVER['REQUEST_URI'] ?? '', ENT_QUOTES);
+    $csrf   = mcp_csrf_token();
+    ob_start();
+    ?>
+    <p class="muted">Iniciá sesión en el CMS para autorizar el MCP local.</p>
+    <?php if ($loginError): ?>
+    <div class="alert"><?= htmlspecialchars($loginError, ENT_QUOTES) ?></div>
+    <?php endif ?>
+    <form method="post" action="<?= $action ?>" autocomplete="on">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
+        <input type="hidden" name="session" value="<?= htmlspecialchars($session, ENT_QUOTES) ?>">
+        <input type="hidden" name="callback" value="<?= htmlspecialchars($callback, ENT_QUOTES) ?>">
+
+        <label for="email_admin">Email</label>
+        <input id="email_admin" type="email" name="email_admin" required autofocus autocomplete="username">
+
+        <label for="password_admin">Password</label>
+        <input id="password_admin" type="password" name="password_admin" required autocomplete="current-password">
+
+        <button type="submit">Iniciar sesión</button>
+        <p class="muted">Después del login vas a confirmar la entrega del JWT en un paso extra (sin password).</p>
+    </form>
+    <?php
+    mcp_render('Iniciar sesión', (string) ob_get_clean());
+}
+
 // --- request handling -------------------------------------------------------
 
-$session  = $_REQUEST['session']  ?? '';
-$callback = $_REQUEST['callback'] ?? '';
+$session  = (string) ($_REQUEST['session']  ?? '');
+$callback = (string) ($_REQUEST['callback'] ?? '');
 
-if (!preg_match('/^[a-f0-9]{16,64}$/', (string) $session)) {
-    mcp_render('Falta sesión MCP', '<div class="alert">Esta página solo se abre desde el comando <code>mcp_login</code> del MCP local.</div>');
+if (!preg_match('/^[a-f0-9]{16,64}$/', $session)) {
+    mcp_render('Falta sesión MCP', '<div class="alert">Esta página solo se abre desde <code>mcp_login</code> del MCP local.</div>');
     exit;
 }
 if (!mcp_is_safe_callback($callback)) {
@@ -161,28 +233,21 @@ if (!mcp_is_safe_callback($callback)) {
 
 $admin = $_SESSION['admin'] ?? null;
 $loginError = null;
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-// Login submit — only when no session yet.
-if (!is_object($admin) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $email = trim((string) ($_POST['email_admin'] ?? ''));
-    $password = (string) ($_POST['password_admin'] ?? '');
-    if ($email === '' || $password === '') {
-        $loginError = 'Email y password son requeridos.';
-    } else {
-        $logged = mcp_perform_login($email, $password);
-        if ($logged) {
-            $_SESSION['admin'] = $logged;
-            $admin = $logged;
-        } else {
-            $loginError = 'Email o password incorrectos.';
-        }
+// Branch A — POST with confirm_auth=1: deliver the JWT (CSRF gated).
+if ($method === 'POST' && (($_POST['confirm_auth'] ?? '') === '1')) {
+    if (!is_object($admin) || empty($admin->token_admin)) {
+        mcp_render('Sin sesión', '<div class="alert">No hay sesión activa. Iniciá sesión y reintentá.</div>');
+        exit;
     }
-}
-
-// Already authenticated (either from a previous CMS session or from the
-// inline login above) → deliver the JWT immediately and close the flow.
-if (is_object($admin) && !empty($admin->token_admin)) {
+    if (!mcp_check_csrf()) {
+        http_response_code(403);
+        mcp_render('CSRF', '<div class="alert">Token CSRF inválido. Volvé a abrir <code>mcp_login</code>.</div>');
+        exit;
+    }
     $delivery = mcp_deliver_jwt($admin, $session, $callback);
+    mcp_rotate_csrf();
     if ($delivery['ok']) {
         mcp_render('Listo',
             '<div class="alert success"><strong>JWT entregado al MCP.</strong><br>'
@@ -197,26 +262,32 @@ if (is_object($admin) && !empty($admin->token_admin)) {
     exit;
 }
 
-// No session → render inline login form.
-$action = htmlspecialchars($_SERVER['REQUEST_URI'] ?? '', ENT_QUOTES);
+// Branch B — POST with email/password: inline login (CSRF gated).
+if ($method === 'POST' && !is_object($admin) && isset($_POST['email_admin'], $_POST['password_admin'])) {
+    if (!mcp_check_csrf()) {
+        http_response_code(403);
+        mcp_render('CSRF', '<div class="alert">Token CSRF inválido. Recargá esta página desde el cliente MCP.</div>');
+        exit;
+    }
+    $email = trim((string) $_POST['email_admin']);
+    $password = (string) $_POST['password_admin'];
+    if ($email === '' || $password === '') {
+        $loginError = 'Email y password son requeridos.';
+    } else {
+        $logged = mcp_perform_login($email, $password);
+        if ($logged) {
+            $_SESSION['admin'] = $logged;
+            $admin = $logged;
+            mcp_rotate_csrf(); // fresh token for the confirm form
+        } else {
+            $loginError = 'Email o password incorrectos.';
+        }
+    }
+}
 
-ob_start();
-?>
-<p class="muted">Iniciá sesión en el CMS para que el MCP local pueda usar tu JWT.</p>
-
-<?php if ($loginError): ?>
-<div class="alert"><?= htmlspecialchars($loginError, ENT_QUOTES) ?></div>
-<?php endif ?>
-
-<form method="post" action="<?= $action ?>" autocomplete="on">
-    <label for="email_admin">Email</label>
-    <input id="email_admin" type="email" name="email_admin" required autofocus autocomplete="username">
-
-    <label for="password_admin">Password</label>
-    <input id="password_admin" type="password" name="password_admin" required autocomplete="current-password">
-
-    <button type="submit">Iniciar sesión y autorizar MCP</button>
-    <p class="muted">Al iniciar sesión, el JWT vigente se entrega al servidor MCP local automáticamente. No queda guardado en este servidor.</p>
-</form>
-<?php
-mcp_render('Iniciar sesión', (string) ob_get_clean());
+// Render: if we have a session, show the confirm form; otherwise the login form.
+if (is_object($admin) && !empty($admin->token_admin)) {
+    mcp_render_confirm($admin, $session, $callback);
+} else {
+    mcp_render_login_form($session, $callback, $loginError);
+}
