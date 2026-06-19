@@ -33,7 +33,14 @@ if(isset($_GET["scode"])){
 			
 			<form method="POST" class="needs-validation" novalidate>
 				
-				<h3 class="pt-3 text-center">
+				<?php $loginLogo = $_SESSION['cms_theme']['theme_brand_logo'] ?? ''; ?>
+				<?php if ($loginLogo): ?>
+					<div class="text-center pt-3">
+						<img src="<?php echo htmlspecialchars($loginLogo, ENT_QUOTES) ?>" alt="<?php echo htmlspecialchars($admin->title_admin ?? '', ENT_QUOTES) ?>" style="max-height:64px; max-width:220px; object-fit:contain;">
+					</div>
+				<?php endif ?>
+
+				<h3 class="<?php echo $loginLogo ? 'pt-2' : 'pt-3' ?> text-center">
 					<i class="<?php echo $admin->symbol_admin ?> textColor"></i> <?php echo $admin->title_admin ?>
 				</h3>
 
