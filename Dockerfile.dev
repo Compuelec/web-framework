@@ -1,0 +1,16 @@
+FROM php:8.2-apache
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libzip-dev libpng-dev libonig-dev libjpeg-dev libfreetype6-dev \
+        unzip git curl ca-certificates default-mysql-client \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql mysqli gd zip mbstring \
+    && a2enmod rewrite headers \
+    && curl -sS https://getcomposer.org/installer \
+       | php -- --install-dir=/usr/local/bin --filename=composer \
+    && rm -rf /var/lib/apt/lists/*
+
+# Override default Apache vhost so the framework's .htaccess + /api routing works.
+RUN sed -ri 's!AllowOverride None!AllowOverride All!' /etc/apache2/apache2.conf
+
+WORKDIR /var/www/html
