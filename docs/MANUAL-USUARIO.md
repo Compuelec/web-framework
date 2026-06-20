@@ -312,8 +312,9 @@ Al crear una columna eliges su **tipo**, que determina el widget del formulario 
   columna hermana** que guarda la unidad por fila (p. ej. `unidad_insumo`). En el listado recorta los
   decimales sobrantes (`15.00` → `15`, `2.50` → `2.5`) y añade la unidad.
 - `select` y `relations` usan el campo *matrix* de la columna para definir opciones o la tabla relacionada.
-  Una `relations` puede apuntar a la tabla del núcleo **`admins`** (muestra el nombre del usuario/cajero,
-  no su id) y elegir qué columna mostrar con `"tabla:columna"` (sin `:` muestra la segunda columna).
+  Una `relations` a una **tabla-módulo** muestra por defecto su **segunda columna**, o la que indiques con
+  `"tabla:columna"`. Si apunta a la tabla del núcleo **`admins`** (matrix `"admins"`) tiene trato especial:
+  muestra siempre el **nombre** del usuario/cajero (o su email), nunca el id ni una columna sensible.
 - En el listado, `money` se muestra con la **moneda** configurada, `select` como **píldoras de color**
   y las fechas en formato legible — todo según el bloque opcional `localization` de `cms/config.php`
   (ver §3 / [Instalación](INSTALACION.md#3-archivos-de-configuración)).
