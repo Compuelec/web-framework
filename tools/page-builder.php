@@ -105,20 +105,25 @@ function pb_replaceFields($html, array $row, array $formRow = []) {
     }, $html);
 
     // {{money campo}} → format the column as currency (localization config).
-    $html = preg_replace_callback('/\{\{\s*money\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
-        $c = pb_loc()['currency'];
-        $v = (array_key_exists($m[1], $row) && is_numeric($row[$m[1]])) ? (float) $row[$m[1]] : 0;
+    $c = pb_loc()['currency'];
+    $html = preg_replace_callback('/\{\{\s*money\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row, $c) {
+        $val = array_key_exists($m[1], $row) ? $row[$m[1]] : null;
+        if ($val === null || $val === '') { return ''; }
+        $v = is_numeric($val) ? (float) $val : 0;
         return htmlspecialchars($c['symbol'] . number_format($v, (int) $c['decimals'], $c['decimal_sep'], $c['thousands_sep']), ENT_QUOTES);
     }, $html);
 
-    // {{fecha campo}} / {{date campo}} → friendly date/datetime, raw if unparseable.
-    $html = preg_replace_callback('/\{\{\s*(?:fecha|date)\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
+    // {{fecha campo}} / {{date campo}} → friendly date/datetime/time, raw if unparseable.
+    $loc = pb_loc();
+    $html = preg_replace_callback('/\{\{\s*(?:fecha|date)\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row, $loc) {
         $raw = (array_key_exists($m[1], $row) && is_scalar($row[$m[1]])) ? trim((string) $row[$m[1]]) : '';
         if ($raw === '' || strpos($raw, '0000-00-00') === 0) { return ''; }
         $ts = strtotime($raw);
         if ($ts === false) { return htmlspecialchars($raw, ENT_QUOTES); }
-        $l = pb_loc();
-        return htmlspecialchars(date(strlen($raw) <= 10 ? $l['date_format'] : $l['datetime_format'], $ts), ENT_QUOTES);
+        $fmt = (strpos($raw, ':') !== false)
+            ? ((strpos($raw, '-') !== false || strpos($raw, '/') !== false) ? $loc['datetime_format'] : $loc['time_format'])
+            : $loc['date_format'];
+        return htmlspecialchars(date($fmt, $ts), ENT_QUOTES);
     }, $html);
 
     // Then simple {{field}} tags.
@@ -507,19 +512,24 @@ if (!function_exists('wpb_fields')) {
             \$val = array_key_exists(\$m[1], \$row) && is_scalar(\$row[\$m[1]]) ? (string) \$row[\$m[1]] : '';
             return htmlspecialchars(urldecode(\$val), ENT_QUOTES);
         }, \$html);
-        // {{money campo}} → currency; {{fecha|date campo}} → friendly date.
-        \$html = preg_replace_callback('/\\{\\{\\s*money\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
-            \$c = wpb_loc()['currency'];
-            \$v = (array_key_exists(\$m[1], \$row) && is_numeric(\$row[\$m[1]])) ? (float) \$row[\$m[1]] : 0;
+        // {{money campo}} → currency; {{fecha|date campo}} → friendly date/time.
+        \$c = wpb_loc()['currency'];
+        \$html = preg_replace_callback('/\\{\\{\\s*money\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row, \$c) {
+            \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : null;
+            if (\$val === null || \$val === '') { return ''; }
+            \$v = is_numeric(\$val) ? (float) \$val : 0;
             return htmlspecialchars(\$c['symbol'] . number_format(\$v, (int) \$c['decimals'], \$c['decimal_sep'], \$c['thousands_sep']), ENT_QUOTES);
         }, \$html);
-        \$html = preg_replace_callback('/\\{\\{\\s*(?:fecha|date)\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
+        \$loc = wpb_loc();
+        \$html = preg_replace_callback('/\\{\\{\\s*(?:fecha|date)\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row, \$loc) {
             \$raw = (array_key_exists(\$m[1], \$row) && is_scalar(\$row[\$m[1]])) ? trim((string) \$row[\$m[1]]) : '';
             if (\$raw === '' || strpos(\$raw, '0000-00-00') === 0) { return ''; }
             \$ts = strtotime(\$raw);
             if (\$ts === false) { return htmlspecialchars(\$raw, ENT_QUOTES); }
-            \$l = wpb_loc();
-            return htmlspecialchars(date(strlen(\$raw) <= 10 ? \$l['date_format'] : \$l['datetime_format'], \$ts), ENT_QUOTES);
+            \$fmt = (strpos(\$raw, ':') !== false)
+                ? ((strpos(\$raw, '-') !== false || strpos(\$raw, '/') !== false) ? \$loc['datetime_format'] : \$loc['time_format'])
+                : \$loc['date_format'];
+            return htmlspecialchars(date(\$fmt, \$ts), ENT_QUOTES);
         }, \$html);
         return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
             \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '';
