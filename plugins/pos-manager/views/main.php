@@ -197,6 +197,6 @@ $canDiscount = $posReady && $posCtrl->supportsDiscount() && $posCtrl->canDiscoun
     window.POS_AJAX    = <?php echo json_encode($projectBasePath . '/plugins/pos-manager/ajax.php') ?>;
     window.POS_ADMIN   = <?php echo $adminId ?>;
     window.POS_SUPER   = <?php echo $isSuper ? 'true' : 'false' ?>;
-    window.POS_RECEIPT = <?php echo json_encode($posCtrl->receiptConfig()) ?>;
+    window.POS_RECEIPT = <?php echo json_encode($posCtrl->receiptConfig(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
 <script src="<?php echo $projectBasePath ?>/plugins/pos-manager/assets/js/pos-manager.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-manager.js') ?>"></script>
