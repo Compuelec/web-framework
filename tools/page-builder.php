@@ -81,6 +81,18 @@ function pb_replaceFields($html, array $row, array $formRow = []) {
              . '</form>';
     }, $html);
 
+    // Conditional blocks: {{#si campo}}…{{/si}} keeps the inner HTML when the field
+    // is truthy; {{#no campo}}…{{/no}} keeps it when falsy (empty / 0). Inner tags
+    // are processed by the passes below.
+    $html = preg_replace_callback('/\{\{#si\s+([a-zA-Z0-9_]+)\s*\}\}(.*?)\{\{\/si\}\}/s', function ($m) use ($row) {
+        $v = array_key_exists($m[1], $row) ? $row[$m[1]] : null;
+        return (!empty($v) && (string)$v !== '0') ? $m[2] : '';
+    }, $html);
+    $html = preg_replace_callback('/\{\{#no\s+([a-zA-Z0-9_]+)\s*\}\}(.*?)\{\{\/no\}\}/s', function ($m) use ($row) {
+        $v = array_key_exists($m[1], $row) ? $row[$m[1]] : null;
+        return (empty($v) || (string)$v === '0') ? $m[2] : '';
+    }, $html);
+
     // Expand image-gallery blocks first: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
     // Repeats the inner HTML once per URL in the field's JSON array.
     $html = preg_replace_callback('/\{\{#imagenes\s+([a-zA-Z0-9_]+)\s*\}\}(.*?)\{\{\/imagenes\}\}/s', function ($m) use ($row) {
@@ -495,6 +507,15 @@ if (!function_exists('wpb_fields')) {
         // mode (\$formRow), so create forms appear empty.
         \$html = preg_replace_callback('/\\{\\{#form\\}\\}(.*?)\\{\\{\\/form\\}\\}/s', function (\$m) use (\$formRow) {
             return '<form method="post" enctype="multipart/form-data" class="wpb-form">' . wpb_form_fields(\$m[1], \$formRow) . '</form>';
+        }, \$html);
+        // Conditional blocks: {{#si campo}}…{{/si}} (truthy) / {{#no campo}}…{{/no}} (falsy).
+        \$html = preg_replace_callback('/\\{\\{#si\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/si\\}\\}/s', function (\$m) use (\$row) {
+            \$v = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : null;
+            return (!empty(\$v) && (string)\$v !== '0') ? \$m[2] : '';
+        }, \$html);
+        \$html = preg_replace_callback('/\\{\\{#no\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/no\\}\\}/s', function (\$m) use (\$row) {
+            \$v = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : null;
+            return (empty(\$v) || (string)\$v === '0') ? \$m[2] : '';
         }, \$html);
         // Image-gallery blocks: {{#imagenes campo}}<img src="{{url}}">{{/imagenes}}
         \$html = preg_replace_callback('/\\{\\{#imagenes\\s+([a-zA-Z0-9_]+)\\s*\\}\\}(.*?)\\{\\{\\/imagenes\\}\\}/s', function (\$m) use (\$row) {
