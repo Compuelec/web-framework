@@ -112,7 +112,9 @@ if ($action === 'tables') {
     }
     try {
         $db = $link->query('SELECT DATABASE()')->fetchColumn();
-        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type = 'BASE TABLE' ORDER BY TABLE_NAME");
+        // Include views too, so pages can be bound to a curated/filtered view
+        // (e.g. "active products only"), not just base tables.
+        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY TABLE_NAME");
         $stmt->execute([':db' => $db]);
         $all    = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $custom = array_values(array_filter($all, function ($t) { return !pb_isSystemTable($t); }));
@@ -314,11 +316,27 @@ if (pb_isIdentifier($config['table'])) {
                  WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION"
             );
             $colStmt->execute([':db' => $db, ':t' => $config['table']]);
+            $firstCol     = null;
+            $bestFallback = null;
+            $expectedId   = 'id_' . pb_deriveSuffix($config['table']);
             foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
                 $config['columns'][] = $c['name'];
+                if ($firstCol === null) { $firstCol = $c['name']; }
                 if ($c['k'] === 'PRI') {
                     $config['idColumn'] = $c['name'];
                 }
+                // Heuristic id pick for views (no PRIMARY KEY): prefer `id` /
+                // `id_<suffix>`, then any `id_*` / `*_id` column.
+                $lower = strtolower($c['name']);
+                if ($lower === 'id' || $lower === strtolower($expectedId)) {
+                    $bestFallback = $c['name'];
+                } elseif ($bestFallback === null && (substr($lower, 0, 3) === 'id_' || substr($lower, -3) === '_id')) {
+                    $bestFallback = $c['name'];
+                }
+            }
+            // Views have no PRIMARY KEY; fall back to a likely id column, else the first.
+            if (empty($config['idColumn'])) {
+                $config['idColumn'] = $bestFallback ?? $firstCol;
             }
         } catch (Throwable $e) {
             Logger::warning('web-pages column lookup failed', ['error' => $e->getMessage()]);
