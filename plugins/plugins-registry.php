@@ -133,3 +133,14 @@ PluginsRegistry::register('rbac-manager', [
     'author'      => 'Web Framework'
 ]);
 
+// Register POS Manager plugin
+PluginsRegistry::register('pos-manager', [
+    'url'         => 'pos-manager',
+    'name'        => 'POS Manager',
+    'description' => 'Punto de venta configurable: vende productos y descuenta el stock de forma atómica. Se mapea a tus tablas vía config.php',
+    'icon'        => 'bi-cash-coin',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Web Framework'
+]);
+

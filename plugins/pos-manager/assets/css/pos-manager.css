@@ -1,0 +1,41 @@
+/* =========================================================
+   POS Manager — cashier point-of-sale styles
+   ========================================================= */
+
+#pos-app #pos-products {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+#pos-app .pos-prod {
+    min-height: 78px;
+    border-radius: 10px;
+    transition: transform .08s ease, box-shadow .08s ease;
+}
+
+#pos-app .pos-prod:hover:not(.disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+
+#pos-app .pos-prod.disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+#pos-app #pos-cart {
+    max-height: 46vh;
+    overflow-y: auto;
+}
+
+#pos-app .pos-line .btn-group .btn {
+    min-width: 30px;
+}
+
+#pos-app #pos-total {
+    line-height: 1;
+}
+
+#pos-receipt-modal .table {
+    font-size: 13px;
+}
