@@ -87,7 +87,8 @@ class PosManagerController {
 
     private function readDbSettings() {
         try {
-            $row = $this->link->query("SELECT config_setting FROM pos_settings ORDER BY id_setting DESC LIMIT 1")->fetch(PDO::FETCH_OBJ);
+            $stmt = $this->link->query("SELECT config_setting FROM pos_settings ORDER BY id_setting DESC LIMIT 1");
+            $row  = $stmt ? $stmt->fetch(PDO::FETCH_OBJ) : null;
             if ($row && $row->config_setting) {
                 $decoded = json_decode($row->config_setting, true);
                 if (is_array($decoded)) { return $decoded; }
@@ -170,7 +171,9 @@ class PosManagerController {
     public function allowedPaymentMethodsForCashier($cashierId, $role = '') {
         $all = $this->paymentMethods();
         if ($role === 'superadmin') { return $all; }
-        $perm = $this->config['permissions']['payments'][(string) $cashierId] ?? null;
+        $perm = (isset($this->config['permissions']['payments']) && is_array($this->config['permissions']['payments']))
+            ? ($this->config['permissions']['payments'][(string) $cashierId] ?? null)
+            : null;
         if ($perm === null) { return $all; }
         return array_values(array_intersect($all, (array) $perm));
     }
@@ -272,7 +275,8 @@ class PosManagerController {
     /** User/data tables available to map (system tables hidden). */
     public function getTables() {
         try {
-            $tables = $this->link->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+            $stmt = $this->link->query("SHOW TABLES");
+            $tables = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
             return array_values(array_filter($tables, function ($t) {
                 return !in_array(strtolower($t), $this->excludedTables, true);
             }));
@@ -285,7 +289,8 @@ class PosManagerController {
     public function getColumns($table) {
         if (!$this->isIdentifier($table)) { return []; }
         try {
-            return $this->link->query("SHOW COLUMNS FROM `{$table}`")->fetchAll(PDO::FETCH_COLUMN);
+            $stmt = $this->link->query("SHOW COLUMNS FROM `{$table}`");
+            return $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
         } catch (Exception $e) {
             return [];
         }
@@ -361,6 +366,9 @@ class PosManagerController {
         $cart = [];   // product_id => qty
         $manual = []; // [ ['name','price','qty'] ]
         foreach ($items as $it) {
+            if (!is_array($it)) {
+                return ['success' => false, 'error' => 'Hay una línea inválida en el carrito.'];
+            }
             if (!empty($it['manual'])) {
                 if (!$this->supportsManualItems()) {
                     return ['success' => false, 'error' => 'Los ítems manuales no están habilitados (mapea una columna de nombre en el detalle).'];
@@ -527,7 +535,7 @@ class PosManagerController {
         $ls->execute([(int) $saleId]);
         $lines = $ls->fetchAll(PDO::FETCH_OBJ);
 
-        $total    = (float) $h[$s['total']];
+        $total    = (float) ($h[$s['total']] ?? 0.0);
         $discount = ($hasDisc && isset($h[$s['discount']])) ? (float) $h[$s['discount']] : 0.0;
 
         return [
