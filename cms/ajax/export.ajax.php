@@ -19,7 +19,6 @@ if (!isset($_SESSION["admin"])) {
     exit;
 }
 
-$format = isset($_GET['format']) ? $_GET['format'] : 'csv';
 $module = isset($_GET['module']) ? $_GET['module'] : '';
 $token = isset($_GET['token']) ? $_GET['token'] : '';
 
@@ -28,19 +27,63 @@ if (empty($module)) {
     exit;
 }
 
+// Never export framework / sensitive tables, regardless of role.
+$blacklist = ['admins', 'roles', 'pages', 'modules', 'columns', 'folders', 'files',
+    'cms_settings', 'activity_logs', 'framework_migrations', 'dashboard_widgets',
+    'page_seo', 'payku_orders', 'workflows'];
+if (in_array(strtolower($module), $blacklist, true)) {
+    header('HTTP/1.1 403 Forbidden');
+    exit;
+}
+
 try {
-    // Get module info to get suffix
-    $urlModule = "modules?linkTo=title_module&equalTo=" . $module . "&select=suffix_module";
+    // A page usually has several modules sharing the same title_module (e.g. a
+    // breadcrumbs module plus the table module). Fetch them all and pick the
+    // TABLE module with a real suffix — grabbing results[0] blindly can land on
+    // the breadcrumbs row (empty suffix), which builds an invalid "id_" order
+    // column and makes the API return 404 (surfacing here as a silent 500).
+    $urlModule = "modules?linkTo=title_module&equalTo=" . urlencode($module) . "&select=id_module,suffix_module,type_module,id_page_module";
     $method = "GET";
     $fields = array();
-    
+
     $moduleInfo = CurlController::request($urlModule, $method, $fields);
-    $suffix = 'id';
-    
-    if ($moduleInfo->status == 200 && isset($moduleInfo->results[0])) {
-        $suffix = $moduleInfo->results[0]->suffix_module;
+
+    $chosen = null;
+    if (is_object($moduleInfo) && $moduleInfo->status == 200 && !empty($moduleInfo->results)) {
+        foreach ($moduleInfo->results as $m) {
+            $s = trim((string)($m->suffix_module ?? ''));
+            if ($s === '') { continue; }
+            // Prefer the tables module; otherwise the first one with a suffix.
+            if (($m->type_module ?? '') === 'tables') { $chosen = $m; break; }
+            if ($chosen === null) { $chosen = $m; }
+        }
     }
-    
+
+    // Only a registered "tables" module may be exported — this blocks arbitrary
+    // table names that aren't exposed as a data table in the CMS.
+    if ($chosen === null) {
+        header('HTTP/1.1 403 Forbidden');
+        exit;
+    }
+
+    $suffix   = trim((string)$chosen->suffix_module) ?: 'id';
+    $moduleId = $chosen->id_module ?? 0;
+
+    // Access control: superadmin/admin have full access; other roles (editor)
+    // may only export tables on pages they have permission for.
+    $role = $_SESSION['admin']->rol_admin ?? '';
+    if ($role !== 'superadmin' && $role !== 'admin') {
+        $idPage   = (int)($chosen->id_page_module ?? 0);
+        $pageResp = CurlController::request("pages?linkTo=id_page&equalTo=" . $idPage . "&select=url_page", $method, $fields);
+        $urlPage  = (is_object($pageResp) && $pageResp->status == 200 && !empty($pageResp->results))
+            ? ($pageResp->results[0]->url_page ?? '') : '';
+        $perms = json_decode(urldecode($_SESSION['admin']->permissions_admin ?? ''), true);
+        if (!is_array($perms) || $urlPage === '' || ($perms[$urlPage] ?? '') !== 'on') {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
+    }
+
     // Get all data from the table
     $url = $module . "?orderBy=id_" . $suffix . "&orderMode=DESC";
     
@@ -60,16 +103,7 @@ try {
         exit;
     }
     
-    // Get module ID first
-    $urlModuleId = "modules?linkTo=title_module&equalTo=" . $module . "&select=id_module";
-    $moduleIdResult = CurlController::request($urlModuleId, $method, $fields);
-    $moduleId = 0;
-    
-    if ($moduleIdResult->status == 200 && isset($moduleIdResult->results[0])) {
-        $moduleId = $moduleIdResult->results[0]->id_module;
-    }
-    
-    // Get module columns
+    // Get module columns ($moduleId was resolved above with the suffix)
     $urlColumns = "columns?linkTo=id_module_column&equalTo=" . $moduleId;
     $columns = CurlController::request($urlColumns, $method, $fields);
     
@@ -104,7 +138,7 @@ try {
             
             // Format according to type
             if ($col->type_column == 'boolean') {
-                $value = $value == 1 ? 'Yes' : 'No';
+                $value = $value == 1 ? 'Sí' : 'No';
             } else if ($col->type_column == 'money' || $col->type_column == 'double') {
                 $value = is_numeric($value) ? number_format($value, 2) : $value;
             } else if ($col->type_column == 'image' || $col->type_column == 'file' || $col->type_column == 'video') {
@@ -120,222 +154,24 @@ try {
         $exportData[] = $rowData;
     }
     
-    // Export according to format
-    switch ($format) {
-        case 'csv':
-            exportCSV($exportData, $module, false);
-            break;
-        case 'excel':
-            exportExcel($exportData, $module);
-            break;
-        case 'pdf':
-            exportPDF($exportData, $module, $visibleColumns);
-            break;
-        default:
-            exportCSV($exportData, $module, false);
+    // Return the prepared data as JSON. The browser builds the CSV / styled XLSX
+    // / styled PDF client-side with locally-vendored libraries (no CDN), so there
+    // is no popup and the files come out formatted (see export-data.js).
+    $colTypes = ['index'];
+    foreach ($visibleColumns as $col) {
+        $colTypes[] = $col->type_column;
     }
-    
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'title'   => $module,
+        'rows'    => $exportData,   // rows[0] = headers, the rest are data
+        'types'   => $colTypes,     // aligned with each column ('index' = #)
+    ]);
+    exit;
+
 } catch (Exception $e) {
     Logger::error("Export AJAX error", ['exception' => $e->getMessage()]);
     header('HTTP/1.1 500 Internal Server Error');
     echo "Internal server error";
 }
-
-function exportCSV($data, $filename, $addBOM = true) {
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '_' . date('Y-m-d') . '.csv"');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for Excel compatibility if requested
-    if ($addBOM) {
-        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    }
-    
-    foreach ($data as $row) {
-        fputcsv($output, $row);
-    }
-    
-    fclose($output);
-    exit;
-}
-
-function exportExcel($data, $filename) {
-    // Excel format: CSV with BOM and .xls extension for compatibility
-    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '_' . date('Y-m-d') . '.xls"');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for Excel compatibility
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    foreach ($data as $row) {
-        fputcsv($output, $row, "\t"); // Use tab separator for Excel
-    }
-    
-    fclose($output);
-    exit;
-}
-
-function exportPDF($data, $filename, $columns) {
-    // Generate HTML page that uses jsPDF to create and download PDF
-    header('Content-Type: text/html; charset=utf-8');
-    
-    echo '<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generando PDF...</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: #f5f5f5;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="loading">
-        <div class="spinner"></div>
-        <p>Generando PDF...</p>
-    </div>
-    <script>
-        const { jsPDF } = window.jspdf;
-        
-        // Create PDF document
-        const doc = new jsPDF({
-            orientation: "landscape",
-            unit: "mm",
-            format: "a4"
-        });
-        
-        // Set font
-        doc.setFont("helvetica");
-        
-        // Add title
-        doc.setFontSize(16);
-        doc.text("' . htmlspecialchars($filename, ENT_QUOTES, 'UTF-8') . '", 14, 15);
-        
-        // Add export date
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Fecha de exportación: ' . date('Y-m-d H:i:s') . '", 14, 22);
-        
-        // Prepare table data
-        const tableData = [';
-    
-    // Add headers
-    $headers = array();
-    foreach ($data[0] as $header) {
-        $headers[] = '"' . addslashes($header) . '"';
-    }
-    echo '[' . implode(',', $headers) . ']';
-    
-    // Add data rows
-    for ($i = 1; $i < count($data); $i++) {
-        echo ',
-            [';
-        $rowData = array();
-        foreach ($data[$i] as $cell) {
-            $rowData[] = '"' . addslashes(str_replace(array("\r\n", "\r", "\n"), " ", $cell)) . '"';
-        }
-        echo implode(',', $rowData) . ']';
-    }
-    
-    echo '
-        ];
-        
-        // Add table using autoTable plugin
-        doc.autoTable({
-            head: [tableData[0]],
-            body: tableData.slice(1),
-            startY: 28,
-            styles: {
-                fontSize: 8,
-                cellPadding: 2,
-                overflow: "linebreak"
-            },
-            headStyles: {
-                fillColor: [74, 85, 104],
-                textColor: [255, 255, 255],
-                fontStyle: "bold"
-            },
-            alternateRowStyles: {
-                fillColor: [247, 250, 252]
-            },
-            margin: { top: 28, left: 14, right: 14 },
-            tableWidth: "auto"
-        });
-        
-        // Add footer
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(
-                "Página " + i + " de " + pageCount + " | Total de registros: ' . (count($data) - 1) . ' | Generado por CMS Builder",
-                doc.internal.pageSize.getWidth() / 2,
-                doc.internal.pageSize.getHeight() - 10,
-                { align: "center" }
-            );
-        }
-        
-        // Save PDF
-        doc.save("' . addslashes($filename) . '_' . date('Y-m-d') . '.pdf");
-        
-        // Close only this popup window (not the main page)
-        setTimeout(function() {
-            // Only close if this is a popup window (opened with window.open)
-            if (window.opener) {
-                window.close();
-            } else {
-                // If not a popup, show message and allow user to close manually
-                document.querySelector(".loading").innerHTML = `
-                    <div style="color: #28a745;">
-                        <i class="bi bi-check-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
-                        <p style="font-size: 16px; margin: 0;">PDF generado y descargado exitosamente</p>
-                        <p style="font-size: 12px; color: #666; margin-top: 10px;">Puedes cerrar esta ventana</p>
-                    </div>
-                `;
-            }
-        }, 500);
-    </script>
-</body>
-</html>';
-    
-    exit;
-}
-

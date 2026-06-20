@@ -385,7 +385,11 @@
                 document.querySelectorAll('.dm-type-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 _selectedType = card.dataset.type;
-                goToStep2(_selectedType);
+                // Wait until the table list is loaded before rendering the
+                // type-specific fields, otherwise the table <select> renders
+                // empty (loadTables() is async and renderTypeFields reads
+                // _tables synchronously).
+                loadTables(function () { goToStep2(_selectedType); });
             });
         });
 
@@ -404,12 +408,17 @@
             resetModal();
         });
 
-        // Pre-load tables when modal opens for add
-        document.getElementById('dm-add-btn').addEventListener('click', function () {
-            _editingId = null;
-            _tables    = null; // Invalidate cache so new tables are picked up
-            resetModal();
-            loadTables();
+        // Pre-load tables whenever the modal opens for the add flow. Using the
+        // modal's show event covers BOTH the header "Agregar widget" button and
+        // the empty-state "Agregar primer widget" button, which both open the
+        // modal via data-bs-toggle. The edit flow (_editingId set) loads its own
+        // tables through openEditModal().
+        document.getElementById('dm-modal').addEventListener('show.bs.modal', function () {
+            if (_editingId === null) {
+                _tables = null; // Invalidate cache so newly created tables appear
+                resetModal();
+                loadTables();
+            }
         });
     }
 

@@ -29,6 +29,10 @@ Web Pages builder (template + live preview)
     var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
     var partialMode = null; // 'header' | 'footer' while editing a shared partial
 
+    // "Página en blanco" mode is chosen via the page-type radios (NOT the table
+    // dropdown). In this mode the page has no table binding — just free HTML/CSS/JS.
+    function isStatic() { return $("input[name='wpb-mode']:checked").val() === "static"; }
+
     /* ---------- code editors (CodeMirror 5) ---------- */
     // CodeMirror 5 is bundled and loaded by the builder view, captured as
     // WPB_CM so it stays isolated from the legacy CodeMirror 3 the CMS uses
@@ -91,7 +95,6 @@ Web Pages builder (template + live preview)
                 if (!res || !res.success) { $table.empty().append('<option value="">Error al cargar tablas</option>'); return; }
                 var tables = Array.isArray(res.tables) ? res.tables : [];
                 $table.empty();
-                if (!tables.length) { $table.append('<option value="">No hay tablas propias todavía</option>'); return; }
                 $table.append('<option value="">— Elige una tabla —</option>');
                 tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
             })
@@ -137,6 +140,34 @@ Web Pages builder (template + live preview)
                 if (cb) { cb(); }
             })
             .fail(function () { $fields.html('<span class="text-danger small">Error al cargar campos</span>'); });
+    }
+
+    /* ---------- static page (no table) ---------- */
+    // A page with no table binding: just the user's HTML/CSS/JS. The data tools
+    // (fields/repeat/form) don't apply, but name/SEO/visibility/home still do.
+    function enterStaticMode() {
+        $("#wpb-mode-static").prop("checked", true);
+        $(".wpb-table-only").hide();
+        currentColumns = []; currentTypes = {}; currentIdColumn = "";
+        $repeat.prop("disabled", true);
+        $formBtn.prop("disabled", true);
+        $gen.prop("disabled", false);
+        $("#wpb-name").attr("placeholder", "nombre-de-la-pagina");
+        if (cmTemplate) { cmTemplate.save(); }
+        if (cmCss) { cmCss.save(); }
+        runPreview();
+    }
+
+    // Back to data-backed mode: show the table picker and wait for a table.
+    function enterTableMode() {
+        $("#wpb-mode-table").prop("checked", true);
+        $(".wpb-table-only").show();
+        $table.val("");
+        $fields.html('<span class="text-muted small">Elige una tabla</span>');
+        $repeat.prop("disabled", true);
+        $formBtn.prop("disabled", true);
+        $gen.prop("disabled", true);
+        setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
     }
 
     /* ---------- editor helpers ---------- */
@@ -198,6 +229,13 @@ Web Pages builder (template + live preview)
 
     function runPreview() {
         if (partialMode) { return; } // header/footer have no data preview
+        if (isStatic()) {
+            // No data binding — show the HTML/CSS exactly as written.
+            if (cmTemplate) { cmTemplate.save(); }
+            if (cmCss) { cmCss.save(); }
+            setPreview($template.val(), 0, $("#wpb-css").val());
+            return;
+        }
         var table = $table.val();
         if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
         // Abort any in-flight preview so a slow earlier response can't overwrite
@@ -254,7 +292,7 @@ Web Pages builder (template + live preview)
         syncEditors();
         return {
             action:    "generate",
-            table:     $table.val(),
+            table:     isStatic() ? "" : $table.val(),
             name:      $("#wpb-name").val(),
             heading:   $("#wpb-heading").val(),
             template:  $template.val(),
@@ -310,7 +348,7 @@ Web Pages builder (template + live preview)
     }
 
     function applyConfig(c) {
-        $table.val(c.table);
+        // The table <select> is set at the end (real table vs. static sentinel).
         $("#wpb-heading").val(c.heading || "");
         $("#wpb-name").val(c.fileName || "");
         $template.val(c.template || "");
@@ -330,7 +368,14 @@ Web Pages builder (template + live preview)
         if (cmTemplate) { cmTemplate.setValue(c.template || ""); }
         if (cmCss) { cmCss.setValue(c.customCss || ""); }
         if (cmJs) { cmJs.setValue(c.customJs || ""); }
-        loadFields(c.table, runPreview);
+        if (c.table) {
+            enterTableMode();
+            $table.val(c.table);
+            loadFields(c.table, runPreview);
+        } else {
+            // Static page (no table): switch to blank-page mode.
+            enterStaticMode();
+        }
     }
 
     function loadForEdit(file) {
@@ -369,6 +414,8 @@ Web Pages builder (template + live preview)
         if (cmTemplate) { cmTemplate.setValue(""); }
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }
+        $("#wpb-mode-table").prop("checked", true);
+        $(".wpb-table-only").show();
         $table.val("");
         $("#wpb-vis-public").prop("checked", true);
         $("#wpb-access").hide();
@@ -384,7 +431,9 @@ Web Pages builder (template + live preview)
     /* ---------- generate ---------- */
     function generate() {
         if (partialMode) { savePartial(); return; }
-        if (!$table.val()) { return; }
+        if (isStatic()) {
+            if (!$("#wpb-name").val().trim()) { fncToastr("warning", "Escribe un nombre de archivo para la página."); return; }
+        } else if (!$table.val()) { return; }
         $gen.prop("disabled", true);
         $result.html("");
 
@@ -431,7 +480,14 @@ Web Pages builder (template + live preview)
     /* ---------- events ---------- */
     $table.on("change", function () {
         var t = $(this).val();
-        if (t) { loadFields(t, runPreview); } else { resetForm(); }
+        if (t) { loadFields(t, runPreview); }
+        else if (!isStatic()) { resetForm(); }
+    });
+
+    // Page-type toggle: data-backed table vs blank HTML/CSS/JS page.
+    $("input[name='wpb-mode']").on("change", function () {
+        if ($(this).val() === "static") { enterStaticMode(); }
+        else { enterTableMode(); }
     });
     $template.on("input", schedulePreview);
     $("#wpb-css").on("input", schedulePreview);

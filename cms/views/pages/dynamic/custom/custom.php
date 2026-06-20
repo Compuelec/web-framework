@@ -8,7 +8,7 @@ Custom
 
 		<div class="position-absolute border rounded" style="top:0px; right:12px; z-index:100">
 			
-			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 myModule" item='<?php echo json_encode($module) ?>' idPage="<?php echo $page->results[0]->id_page ?>">
+			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 myModule" item="<?php echo htmlspecialchars(json_encode($module), ENT_QUOTES) ?>" idPage="<?php echo $page->results[0]->id_page ?>">
 				<i class="bi bi-pencil-square"></i>
 			</button>
 
