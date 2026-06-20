@@ -172,7 +172,7 @@ var ExportData = {
         }).join('\r\n');
 
         // Prepend UTF-8 BOM so Excel reads accents correctly.
-        var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
         this.download(blob, this.fileName(res, 'csv'));
     },
 
@@ -242,12 +242,16 @@ var ExportData = {
             try {
                 var arr = JSON.parse(s);
                 if (Array.isArray(arr)) {
-                    return arr.filter(function (u) { return typeof u === 'string' && /^https?:\/\//.test(u); });
+                    return arr.filter(function (u) { return typeof u === 'string' && u.trim() !== ''; })
+                              .map(function (u) { return u.trim(); });
                 }
             } catch (e) { /* fall through to token extraction */ }
-            return s.match(/https?:\/\/[^\s",\]]+/g) || [];
+            // Accept absolute URLs and relative image paths (uploads/x.webp, /img/y.png…).
+            return s.match(/(https?:\/\/[^\s",\]]+|[\w\/.\-]+\.(?:png|jpe?g|gif|webp|svg|bmp|avif))/gi) || [];
         }
-        return /^https?:\/\//.test(s) ? [s] : [];
+        // Single image: the column value is the image path (absolute or relative).
+        // loadImageData resolves to null on failure, so an invalid path is harmless.
+        return [s];
     },
 
     // Load an image and return { url, data(JPEG dataURL), w, h } — or null on
