@@ -135,6 +135,7 @@ $(document).on("click",".myModule",function(){
 		$("#suffixModule").hide();
 		$("#editableModule").hide();
 		$("#columnsBlock").hide();
+		$("#htmlBlock").hide();
 
 		/*=============================================
 		Selected module type
@@ -147,6 +148,7 @@ $(document).on("click",".myModule",function(){
 			$("#suffixModule").hide();
 			$("#editableModule").hide();
 			$("#columnsBlock").hide();
+			$("#htmlBlock").hide();
 
 			/*=============================================
 			Show metrics fields
@@ -188,6 +190,16 @@ $(document).on("click",".myModule",function(){
 				$("#suffixModule").show();
 				$("#editableModule").show();
 				$("#columnsBlock").show();
+			}
+
+			/*=============================================
+			Show free HTML/CSS/JS fields
+			=============================================*/
+
+			if($(this).val() == "html"){
+
+				$("#htmlBlock").show();
+				updateHtmlContent();
 			}
 
 
@@ -579,6 +591,41 @@ $(document).on("click",".myModule",function(){
 				$("#title_module").attr("readonly", true);
 			}
 
+			/*=============================================
+			Free HTML/CSS/JS type
+			=============================================*/
+
+			if(JSON.parse(item).type_module == "html"){
+
+				$("#type_module").val("html");
+				$("#type_module").attr("disabled",true);
+				$("#title_module").attr("readonly",false);
+				$("#title_module").val(JSON.parse(item).title_module);
+				$("#width_module").val(JSON.parse(item).width_module);
+
+				$("#htmlBlock").show();
+
+				// Parse content_module - handle both string and already parsed cases
+				var htmlModuleData = JSON.parse(item);
+				var htmlContent;
+
+				try {
+					htmlContent = (typeof htmlModuleData.content_module === 'string')
+						? JSON.parse(htmlModuleData.content_module)
+						: htmlModuleData.content_module;
+				} catch(e) {
+					htmlContent = {};
+				}
+
+				if(!htmlContent){ htmlContent = {}; }
+
+				$("#html_html").val(htmlContent.html || "");
+				$("#html_css").val(htmlContent.css || "");
+				$("#html_js").val(htmlContent.js || "");
+
+				updateHtmlContent();
+			}
+
 
 		/*=============================================
 		We are creating a module
@@ -601,6 +648,10 @@ $(document).on("click",".myModule",function(){
 		$("#type_module").val("breadcrumbs");
 		$("#metricsBlock").hide();
 		$("#graphicsBlock").hide();
+		$("#htmlBlock").hide();
+		$("#html_html").val("");
+		$("#html_css").val("");
+		$("#html_js").val("");
 	})
 
 })
@@ -740,6 +791,28 @@ $(document).on("change",".changeGraphic",function(){
 	$("#content_module").val(JSON.stringify(graphicData));	           
 
 })
+
+/*=============================================
+Change in free HTML/CSS/JS content
+=============================================*/
+
+function updateHtmlContent(){
+
+	var htmlData = {
+		html: $("#html_html").val() || "",
+		css:  $("#html_css").val()  || "",
+		js:   $("#html_js").val()   || ""
+	};
+
+	$("#content_module").val(JSON.stringify(htmlData));
+}
+
+$(document).on("input change", ".changeHtml", function(){
+
+	updateHtmlContent();
+
+})
+
 
 /*=============================================
 Add columns

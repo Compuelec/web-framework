@@ -89,17 +89,37 @@ if($modules->status == 200){
                         if(file_exists($modulePath)){
                             include $includePath;
                         }else{
-                            // If file doesn't exist, show informative message
-                            // File should have been created when module was created
-                            echo '<div class="alert alert-warning">
-                                <strong>Módulo no encontrado:</strong> El archivo del módulo "'.$module->title_module.'" no existe. 
-                                Por favor, recree el módulo desde el panel de administración.
-                            </div>';
+                            // File doesn't exist (e.g. a legacy "custom" module whose
+                            // PHP file was never created). Show the warning and, for
+                            // superadmins, a button to delete the orphan module so the
+                            // page is no longer blocked by it.
+                            echo '<div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2 mb-0">
+                                <div>
+                                    <strong>Módulo no encontrado:</strong> El archivo del módulo "'.htmlspecialchars($module->title_module).'" no existe.
+                                </div>';
+
+                            if(($_SESSION["admin"]->rol_admin ?? "") == "superadmin"){
+                                echo '<button type="button" class="btn btn-sm btn-danger deleteModule" idModule="'.base64_encode($module->id_module).'">
+                                    <i class="bi bi-trash me-1"></i>Eliminar módulo
+                                </button>';
+                            }
+
+                            echo '</div>';
                         }
                     ?>
                     
                 <?php endif ?>
-   
+
+                <!--=========================================
+                When the module is free HTML/CSS/JS content
+                ===========================================-->
+
+                <?php if ($module->type_module == "html"): ?>
+
+                    <?php include "html/html.php" ?>
+
+                <?php endif ?>
+
             <?php endforeach ?>
             
         <?php endif ?>

@@ -31,7 +31,8 @@
               <option value="metrics">Métrica</option>
               <option value="graphics">Gráfico</option>
               <option value="tables">Tabla</option>
-              <option value="custom">Personalizable</option>
+              <option value="custom" hidden>Personalizable</option>
+              <option value="html">Contenido libre (HTML, CSS y JS)</option>
 
             </select>
 
@@ -417,6 +418,69 @@
                 <div class="mt-3 text-muted small">
                   <i class="bi bi-info-circle"></i> Las columnas definidas aquí se crearán en la base de datos cuando se guarde el módulo.
                 </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!--=============================================
+          Add fields for free HTML/CSS/JS content
+          ===============================================-->
+
+          <div id="htmlBlock" style="display:none">
+
+            <div class="mb-3">
+              <h6 class="text-muted mb-3">
+                <i class="bi bi-code-slash"></i> Contenido libre (HTML, CSS y JS)
+              </h6>
+            </div>
+
+            <div class="card border-0 bg-light">
+              <div class="card-body">
+
+                <div class="mb-3">
+                  <label for="html_html" class="form-label small fw-semibold">
+                    <i class="bi bi-filetype-html"></i> HTML
+                  </label>
+                  <textarea
+                    class="form-control form-control-sm rounded changeHtml"
+                    id="html_html"
+                    rows="8"
+                    spellcheck="false"
+                    style="font-family:monospace"
+                    placeholder="<div class=&quot;mi-bloque&quot;>Hola mundo</div>"></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label for="html_css" class="form-label small fw-semibold">
+                    <i class="bi bi-filetype-css"></i> CSS
+                  </label>
+                  <textarea
+                    class="form-control form-control-sm rounded changeHtml"
+                    id="html_css"
+                    rows="6"
+                    spellcheck="false"
+                    style="font-family:monospace"
+                    placeholder=".mi-bloque { color: #333; }"></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label for="html_js" class="form-label small fw-semibold">
+                    <i class="bi bi-filetype-js"></i> JavaScript
+                  </label>
+                  <textarea
+                    class="form-control form-control-sm rounded changeHtml"
+                    id="html_js"
+                    rows="6"
+                    spellcheck="false"
+                    style="font-family:monospace"
+                    placeholder="console.log('Hola');"></textarea>
+                </div>
+
+                <div class="text-muted small">
+                  <i class="bi bi-info-circle"></i> El contenido se renderiza tal cual en la página. El CSS y el JS se aplican de forma global, así que usa una clase contenedora propia para evitar afectar el resto del sitio.
+                </div>
+
               </div>
             </div>
 

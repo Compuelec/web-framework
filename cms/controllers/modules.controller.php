@@ -31,7 +31,7 @@ class ModulesController{
 
 				$url = "modules?id=".(int)base64_decode($_POST["id_module"], true)."&nameId=id_module&token=".$_SESSION["admin"]->token_admin."&table=admins&suffix=admin";
 				$method = "PUT";
-				$fields = "title_module=".strtolower(trim($_POST["title_module"]))."&suffix_module=".strtolower(trim($_POST["suffix_module"]))."&content_module=".$_POST["content_module"]."&width_module=".$_POST["width_module"]."&editable_module=".$_POST["editable_module"];
+				$fields = "title_module=".strtolower(trim($_POST["title_module"]))."&suffix_module=".strtolower(trim($_POST["suffix_module"]))."&content_module=".urlencode($_POST["content_module"])."&width_module=".$_POST["width_module"]."&editable_module=".$_POST["editable_module"];
 
 				$title_module = strtolower(trim($_POST["title_module"]));
 				$suffix_module = strtolower(trim($_POST["suffix_module"]));
