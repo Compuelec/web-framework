@@ -544,22 +544,47 @@ Load table module
 
 											if($item->matrix_column != null && $value[$item->title_column] > 0){
 
-												$url = "relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables,".$item->matrix_column."&select=url_page,suffix_module";
-												$method = "GET";
-												$array = array();
+												if($item->matrix_column == "admins"){
 
-												$urlPage = CurlController::request($url,$method,$fields)->results[0]->url_page;
-												$suffixModule = CurlController::request($url,$method,$fields)->results[0]->suffix_module;
+													/*=============================================
+													Relation to the core "admins" table (cashiers /
+													users). It is not a generated "tables" module, so
+													resolve it directly by id_admin and show a human
+													label (name, falling back to email). A bounded
+													select avoids exposing the password hash.
+													=============================================*/
 
-												$url = $item->matrix_column.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
-												$relation = CurlController::request($url,$method,$fields);
-												$arrayRelation  = (array)$relation->results[0];
-						
-												echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.urldecode($arrayRelation[array_keys($arrayRelation)[1]]).'</a>';
+													$url = "admins?linkTo=id_admin&equalTo=".$value[$item->title_column]."&select=id_admin,title_admin,email_admin";
+													$relation = CurlController::request($url,"GET",$fields);
+													$row = (!empty($relation->results)) ? $relation->results[0] : null;
+
+													if($row){
+														$label = (!empty($row->title_admin)) ? $row->title_admin : ($row->email_admin ?? $value[$item->title_column]);
+														echo '<a href="'.$cmsBasePath.'/admins" target="_blank" class="badge badge-default border rounded bg-indigo">'.htmlspecialchars(urldecode((string)$label)).'</a>';
+													}else{
+														echo $value[$item->title_column];
+													}
+
+												}else{
+
+													$url = "relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables,".$item->matrix_column."&select=url_page,suffix_module";
+													$method = "GET";
+													$array = array();
+
+													$urlPage = CurlController::request($url,$method,$fields)->results[0]->url_page;
+													$suffixModule = CurlController::request($url,$method,$fields)->results[0]->suffix_module;
+
+													$url = $item->matrix_column.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
+													$relation = CurlController::request($url,$method,$fields);
+													$arrayRelation  = (array)$relation->results[0];
+
+													echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.urldecode($arrayRelation[array_keys($arrayRelation)[1]]).'</a>';
+
+												}
 
 											}else{
 
-												echo $value[$item->title_column]; 
+												echo $value[$item->title_column];
 
 											}
 
