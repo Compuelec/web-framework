@@ -26,7 +26,7 @@ function exp_buildRelationMap($matrix) {
 
     if ($table === 'admins') {
         $resp = CurlController::request("admins?select=id_admin,title_admin,email_admin", "GET", []);
-        if (is_object($resp) && $resp->status == 200 && !empty($resp->results)) {
+        if (is_object($resp) && $resp->status == 200 && is_array($resp->results) && !empty($resp->results)) {
             foreach ($resp->results as $r) {
                 $r = (array)$r;
                 $label = (!empty($r['title_admin'])) ? $r['title_admin'] : ($r['email_admin'] ?? ($r['id_admin'] ?? ''));
@@ -37,13 +37,13 @@ function exp_buildRelationMap($matrix) {
     }
 
     // Module-backed table: resolve its id column from the module suffix.
-    $mod = CurlController::request("relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables," . $table . "&select=url_page,suffix_module", "GET", []);
-    if (!is_object($mod) || $mod->status != 200 || empty($mod->results)) { return $map; }
+    $mod = CurlController::request("relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables," . urlencode($table) . "&select=url_page,suffix_module", "GET", []);
+    if (!is_object($mod) || $mod->status != 200 || !is_array($mod->results) || empty($mod->results)) { return $map; }
     $suffix = trim((string)($mod->results[0]->suffix_module ?? ''));
     if ($suffix === '') { return $map; }
     $idCol = 'id_' . $suffix;
     $rows = CurlController::request($table, "GET", []);
-    if (!is_object($rows) || $rows->status != 200 || empty($rows->results)) { return $map; }
+    if (!is_object($rows) || $rows->status != 200 || !is_array($rows->results) || empty($rows->results)) { return $map; }
     foreach ($rows->results as $r) {
         $r = (array)$r;
         if (!array_key_exists($idCol, $r)) { continue; }
@@ -200,8 +200,10 @@ try {
                 if (is_numeric($value)) {
                     $unit = '';
                     if (!empty($col->matrix_column)) {
-                        $unit = isset($row->{$col->matrix_column})
-                            ? urldecode((string)$row->{$col->matrix_column})
+                        // property_exists (not isset) so a null sibling value still
+                        // counts as "this is a column", not a literal unit.
+                        $unit = property_exists($row, $col->matrix_column)
+                            ? urldecode((string)($row->{$col->matrix_column} ?? ''))
                             : $col->matrix_column;
                     }
                     $num = rtrim(rtrim(number_format((float)$value, 2, '.', ''), '0'), '.');
