@@ -251,6 +251,9 @@ class ProductionManagerController {
             if (!$lines) {
                 return ['success' => false, 'error' => 'no_recipe'];
             }
+            // Lock supplies in a consistent order (by id) to avoid deadlocks when
+            // two production runs share supplies.
+            usort($lines, function ($a, $b) { return (int)$a->supply <=> (int)$b->supply; });
             // Recipe quantities are expressed per "batch" of `yield` units.
             $yield = $this->productYield($productId);
 
@@ -274,9 +277,14 @@ class ProductionManagerController {
                 }
             }
 
-            // Add the produced units to the product stock.
-            $this->link->prepare("UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` + ? WHERE `{$p['id']}` = ?")
-                       ->execute([$qty, $productId]);
+            // Add the produced units to the product stock — must hit exactly one row,
+            // else the product is gone and the whole run rolls back (no supplies lost).
+            $prodStmt = $this->link->prepare("UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` + ? WHERE `{$p['id']}` = ?");
+            $prodStmt->execute([$qty, $productId]);
+            if ($prodStmt->rowCount() !== 1) {
+                $this->link->rollBack();
+                return ['success' => false, 'error' => 'product_not_found'];
+            }
 
             // Production log row.
             $cols  = ["`{$pr['product']}`", "`{$pr['qty']}`"];
@@ -307,10 +315,10 @@ class ProductionManagerController {
             $st->execute([(int)$supplyId]);
             $row = $st->fetch(PDO::FETCH_OBJ);
             return [
-                'name'      => $row->name ?? '',
-                'available' => (float)($row->available ?? 0),
+                'name'      => $row ? ($row->name ?? '') : '',
+                'available' => $row ? (float)($row->available ?? 0) : 0.0,
                 'required'  => (float)$required,
-                'unit'      => $row->unit ?? '',
+                'unit'      => $row ? ($row->unit ?? '') : '',
             ];
         } catch (Exception $e) {
             return ['name' => '', 'available' => 0, 'required' => (float)$required, 'unit' => ''];

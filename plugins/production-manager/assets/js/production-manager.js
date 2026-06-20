@@ -42,17 +42,17 @@
         $('#mk-norecipe').hide();
         var enough = true, maxUnits = Infinity;
         mkRecipe.forEach(function (r) {
-            var perUnit = parseFloat(r.per_unit) / mkYield;
-            var need = perUnit * qty, avail = parseFloat(r.available);
+            var perUnit = (parseFloat(r.per_unit) || 0) / mkYield;
+            var need = perUnit * qty, avail = parseFloat(r.available) || 0;
             var canMake = perUnit > 0 ? Math.floor(avail / perUnit) : Infinity;
             if (canMake < maxUnits) { maxUnits = canMake; }
             var short = need > avail; if (short) { enough = false; }
-            $b.append(
-                '<tr class="' + (short ? 'pm-short' : '') + '">' +
-                '<td>' + esc(r.name) + '</td>' +
-                '<td class="text-end fw-semibold">' + num(need) + unitOf(r) + '</td>' +
-                '<td class="text-end ' + (short ? 'text-danger fw-semibold' : 'text-muted') + '">' + num(avail) + unitOf(r) + '</td></tr>'
-            );
+            var unit = r.unit ? (' ' + r.unit) : '';
+            var $tr = $('<tr>', { 'class': short ? 'pm-short' : '' });
+            $tr.append($('<td>').text(r.name));
+            $tr.append($('<td class="text-end fw-semibold">').text(num(need) + unit));
+            $tr.append($('<td>', { 'class': 'text-end ' + (short ? 'text-danger fw-semibold' : 'text-muted') }).text(num(avail) + unit));
+            $b.append($tr);
         });
         if (maxUnits === Infinity) { maxUnits = 0; }
         $('#mk-max').html('<i class="bi bi-lightning-charge-fill"></i> Máx. ahora: ' + maxUnits);
@@ -85,6 +85,7 @@
                 var s = res.supply || {}, u = s.unit ? (' ' + s.unit) : '';
                 msg('error', 'Falta insumo: "' + (s.name || '') + '" (necesita ' + num(s.required) + u + ', hay ' + num(s.available) + u + ').');
             } else if (res && res.error === 'no_recipe') { msg('error', 'Este producto no tiene receta.'); }
+            else if (res && res.error === 'product_not_found') { msg('error', 'El producto ya no existe.'); mkSearch(); }
             else { msg('error', (res && res.error) || 'No se pudo fabricar.'); }
         }).fail(function () { $btn.prop('disabled', false).html('<i class="bi bi-hammer me-1"></i>Fabricar'); msg('error', 'Sin conexión con el servidor.'); });
     });
@@ -145,7 +146,10 @@
                 var $d = $('#rc-add-results').empty();
                 if (!res || !res.success || !res.supplies.length) { $d.hide(); return; }
                 res.supplies.forEach(function (s) {
-                    $d.append('<button type="button" class="pm-dd-item rc-add" data-id="' + s.id + '" data-name="' + esc(s.name) + '" data-unit="' + esc(s.unit || '') + '">' + esc(s.name) + (s.unit ? ' <span class="text-muted">(' + esc(s.unit) + ')</span>' : '') + '</button>');
+                    var $b = $('<button>', { type: 'button', 'class': 'pm-dd-item rc-add', 'data-id': s.id, 'data-name': s.name, 'data-unit': s.unit || '' });
+                    $b.text(s.name);
+                    if (s.unit) { $b.append($('<span class="text-muted">').text(' (' + s.unit + ')')); }
+                    $d.append($b);
                 });
                 $d.show();
             });
@@ -187,9 +191,12 @@
     /* ===================== shared ===================== */
     function renderProductList($el, res, cls) {
         $el.empty();
-        if (!res || !res.success || !res.products.length) { $el.html('<div class="text-muted small p-2">Sin resultados.</div>'); return; }
+        if (!res || !res.success || !res.products.length) { $el.append($('<div class="text-muted small p-2">').text('Sin resultados.')); return; }
         res.products.forEach(function (p) {
-            $el.append('<button type="button" class="pm-li ' + cls + '" data-id="' + p.id + '" data-name="' + esc(p.name) + '" data-stock="' + esc(p.stock) + '"><span>' + esc(p.name) + '</span><span class="pm-li-badge">Stock: ' + esc(p.stock) + '</span></button>');
+            var $b = $('<button>', { type: 'button', 'class': 'pm-li ' + cls, 'data-id': p.id, 'data-name': p.name, 'data-stock': p.stock });
+            $b.append($('<span>').text(p.name));
+            $b.append($('<span class="pm-li-badge">').text('Stock: ' + p.stock));
+            $el.append($b);
         });
     }
     function pickData($el) { return { id: parseInt($el.data('id'), 10), name: $el.data('name'), stock: $el.data('stock') }; }
