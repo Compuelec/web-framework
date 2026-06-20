@@ -534,7 +534,7 @@ Load table module
 
 										}else if($item->type_column == "money"){
 
-									    	echo '$'.number_format(urldecode($value[$item->title_column]),2);
+									    	echo TemplateController::formatMoney(urldecode($value[$item->title_column]));
 
 										/*=============================================
 										Relations type content
@@ -631,10 +631,30 @@ Load table module
 
 											echo '<span class="badge rounded-pill px-2 py-1" style="background-color:'.$stateColor.'">'.htmlspecialchars($stateLabel).'</span>';
 
+										/*=============================================
+										Select type content — colored pill per value
+										=============================================*/
+
+										}else if($item->type_column == "select"){
+
+											$selectValue = urldecode((string)$value[$item->title_column]);
+											if($selectValue === ""){
+												echo "";
+											}else{
+												echo '<span class="badge rounded-pill px-2 py-1" style="background-color:'.TemplateController::badgeColor($selectValue).'">'.htmlspecialchars(ucfirst($selectValue)).'</span>';
+											}
+
+										/*=============================================
+										Date / datetime / time content — friendly format
+										=============================================*/
+
+										}else if($item->type_column == "date" || $item->type_column == "datetime" || $item->type_column == "time"){
+
+											echo TemplateController::formatListDate($item->type_column, urldecode((string)$value[$item->title_column]));
 
 										}else{
 
-			        						echo TemplateController::reduceText(urldecode($value[$item->title_column]),25); 
+			        						echo TemplateController::reduceText(urldecode($value[$item->title_column]),25);
 
 			        					}
 

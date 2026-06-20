@@ -64,6 +64,21 @@ return [
     // Timezone
     'timezone' => 'America/Santiago',
 
+    // Localization for table listings (currency + date formats). Optional — these
+    // defaults preserve the previous behavior ($ + 2 decimals) and a friendly date.
+    // Example for Chilean pesos: decimals 0, '.' thousands, ',' decimals → $1.500
+    'localization' => [
+        'currency' => [
+            'symbol'        => '$',
+            'decimals'      => 2,     // CLP: 0
+            'thousands_sep' => ',',   // CLP: '.'
+            'decimal_sep'   => '.',   // CLP: ','
+        ],
+        'date_format'     => 'd-m-Y',
+        'datetime_format' => 'd-m-Y H:i',
+        'time_format'     => 'H:i',
+    ],
+
     // Password encryption
     'password' => [
         'salt' => 'your-password-salt-here' // Blowfish salt format: $2a$07$... (22 chars)
