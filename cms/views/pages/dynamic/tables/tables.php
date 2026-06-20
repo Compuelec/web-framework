@@ -98,7 +98,7 @@ Load table module
 
 				<div class="position-absolute" style="top:10px; right:10px; z-index:10;">
 					
-					<button type="button" class="btn btn-sm text-muted rounded m-0 px-2 py-1 border bg-white shadow-sm myModule" item='<?php echo json_encode($module) ?>' idPage="<?php echo $page->results[0]->id_page ?>" title="Editar módulo">
+					<button type="button" class="btn btn-sm text-muted rounded m-0 px-2 py-1 border bg-white shadow-sm myModule" item="<?php echo htmlspecialchars(json_encode($module), ENT_QUOTES) ?>" idPage="<?php echo $page->results[0]->id_page ?>" title="Editar módulo">
 						<i class="bi bi-pencil-square"></i>
 					</button>
 
@@ -260,7 +260,7 @@ Load table module
 			Initial filters
 			=========================================-->
 
-			<input type="hidden" id="contentModule" value='<?php echo json_encode($module) ?>'>
+			<input type="hidden" id="contentModule" value="<?php echo htmlspecialchars(json_encode($module), ENT_QUOTES) ?>">
 			<input type="hidden" id="orderByTable" value="id_<?php echo $module->suffix_module ?>">
 			<input type="hidden" id="orderModeTable" value="DESC">
 		    <input type="hidden" id="limitTable" value="<?php echo $limit ?>">

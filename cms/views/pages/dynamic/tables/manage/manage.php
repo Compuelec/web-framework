@@ -46,7 +46,7 @@ $block2 = count($module->columns) - $block1;
 
 		<div class="card rounded">
 
-			<input type="hidden" name="module" value='<?php echo json_encode($module) ?>'>
+			<input type="hidden" name="module" value="<?php echo htmlspecialchars(json_encode($module), ENT_QUOTES) ?>">
 			<input type="hidden" name="_csrf_token" value="<?php echo htmlspecialchars(SessionController::getCsrfToken(), ENT_QUOTES, 'UTF-8'); ?>"><?php // CSRF protection ?>
 
 			<?php if (!empty($data) && empty($routesArray[3])): ?>

@@ -91,7 +91,7 @@ if($pages->status == 200){
 								</button>
 								
 								<div class="page-actions-menu" id="menu-<?php echo base64_encode($value->id_page) ?>" style="display: none;">
-									<button type="button" class="page-action-item myPage" page='<?php echo json_encode($value) ?>'>
+									<button type="button" class="page-action-item myPage" page="<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES) ?>">
 										<i class="bi bi-pencil-square"></i>
 										<span>Editar</span>
 									</button>
@@ -134,7 +134,7 @@ if($pages->status == 200){
 													</button>
 													
 													<div class="page-actions-menu" id="menu-<?php echo base64_encode($subPage->id_page) ?>" style="display: none;">
-														<button type="button" class="page-action-item myPage" page='<?php echo json_encode($subPage) ?>'>
+														<button type="button" class="page-action-item myPage" page="<?php echo htmlspecialchars(json_encode($subPage), ENT_QUOTES) ?>">
 															<i class="bi bi-pencil-square"></i>
 															<span>Editar</span>
 														</button>
@@ -173,7 +173,7 @@ if($pages->status == 200){
 				 			</button>
 
 				 			<div class="page-actions-menu" id="menu-<?php echo base64_encode($value->id_page) ?>" style="display: none;">
-				 				<button type="button" class="page-action-item myPage" page='<?php echo json_encode($value) ?>'>
+				 				<button type="button" class="page-action-item myPage" page="<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES) ?>">
 				 					<i class="bi bi-pencil-square"></i>
 				 					<span>Editar</span>
 				 				</button>
@@ -255,9 +255,15 @@ document.addEventListener('DOMContentLoaded', function() {
 	// Handle menu toggle clicks with smooth animation
 	document.querySelectorAll('.menu-toggle').forEach(function(toggle) {
 		toggle.addEventListener('click', function(e) {
+			// The page actions (kebab / Editar / Eliminar) live inside this
+			// menu-toggle. Their Editar/Eliminar handlers are delegated on
+			// document, so we must NOT stopPropagation for those clicks or they
+			// never reach the handler. Let them bubble through untouched.
+			if (e.target.closest('.page-actions-wrapper')) { return; }
+
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			var menuId = this.getAttribute('data-menu-id');
 			var submenu = document.getElementById('submenu-' + menuId);
 			var menuItem = this.closest('.menu-item');
