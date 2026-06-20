@@ -47,6 +47,7 @@ cms/config.php
 web/config.php
 plugins/payku/config.php
 plugins/pos-manager/config.php
+plugins/production-manager/config.php
 # Test/diagnostic scripts must never be committed
 cms/test-email.php
 cms/test-email-simple.php

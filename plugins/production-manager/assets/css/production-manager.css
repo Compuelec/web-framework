@@ -1,0 +1,5 @@
+/* Production Manager — manufacturing UI */
+#pm-app .list-group-item.active { background:#eef3ff; border-color:#cdd9ff; color:#1c3aa9; }
+#pm-app .pm-pick { cursor:pointer; }
+#pm-app .table-danger td { background:#fde8e8 !important; }
+#pm-app #pm-produce:disabled { opacity:.6; }

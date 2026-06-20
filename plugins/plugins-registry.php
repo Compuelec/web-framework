@@ -144,3 +144,13 @@ PluginsRegistry::register('pos-manager', [
     'author'      => 'Web Framework'
 ]);
 
+PluginsRegistry::register('production-manager', [
+    'url'         => 'production-manager',
+    'name'        => 'Production Manager',
+    'description' => 'Fabricación configurable: produce unidades de un producto consumiendo los insumos de su receta y subiendo el stock, de forma atómica. Se mapea a tus tablas vía config.php',
+    'icon'        => 'bi-hammer',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Web Framework'
+]);
+
