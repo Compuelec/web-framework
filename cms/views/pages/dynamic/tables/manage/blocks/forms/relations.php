@@ -50,13 +50,15 @@
 
 		<?php 
 
-			$url = $module->columns[$i]->matrix_column;
+			// matrix_column may be "table" or "table:display_column"; the options
+			// list only needs the table part.
+			$relTable = trim(explode(":", $module->columns[$i]->matrix_column, 2)[0]);
 			$method = "GET";
 			$fields = array();
 
 			// Bounded select for the core admins table so the option list never
 			// carries the password hash; other tables keep the default fetch.
-			$relUrl = ($url == "admins") ? "admins?select=id_admin,title_admin,email_admin" : $url;
+			$relUrl = ($relTable == "admins") ? "admins?select=id_admin,title_admin,email_admin" : $relTable;
 
 			$columnsTable = CurlController::request($relUrl,$method,$fields);
 
