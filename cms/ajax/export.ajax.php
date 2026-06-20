@@ -29,16 +29,33 @@ if (empty($module)) {
 }
 
 try {
-    // Get module info to get suffix
-    $urlModule = "modules?linkTo=title_module&equalTo=" . $module . "&select=suffix_module";
+    // A page usually has several modules sharing the same title_module (e.g. a
+    // breadcrumbs module plus the table module). Fetch them all and pick the
+    // TABLE module with a real suffix — grabbing results[0] blindly can land on
+    // the breadcrumbs row (empty suffix), which builds an invalid "id_" order
+    // column and makes the API return 404 (surfacing here as a silent 500).
+    $urlModule = "modules?linkTo=title_module&equalTo=" . $module . "&select=id_module,suffix_module,type_module";
     $method = "GET";
     $fields = array();
-    
+
     $moduleInfo = CurlController::request($urlModule, $method, $fields);
+
     $suffix = 'id';
-    
-    if ($moduleInfo->status == 200 && isset($moduleInfo->results[0])) {
-        $suffix = $moduleInfo->results[0]->suffix_module;
+    $moduleId = 0;
+
+    if ($moduleInfo->status == 200 && !empty($moduleInfo->results)) {
+        $chosen = null;
+        foreach ($moduleInfo->results as $m) {
+            $s = trim((string)($m->suffix_module ?? ''));
+            if ($s === '') { continue; }
+            // Prefer the tables module; otherwise the first one with a suffix.
+            if (($m->type_module ?? '') === 'tables') { $chosen = $m; break; }
+            if ($chosen === null) { $chosen = $m; }
+        }
+        if ($chosen !== null) {
+            $suffix   = trim((string)$chosen->suffix_module);
+            $moduleId = $chosen->id_module ?? 0;
+        }
     }
     
     // Get all data from the table
@@ -60,16 +77,7 @@ try {
         exit;
     }
     
-    // Get module ID first
-    $urlModuleId = "modules?linkTo=title_module&equalTo=" . $module . "&select=id_module";
-    $moduleIdResult = CurlController::request($urlModuleId, $method, $fields);
-    $moduleId = 0;
-    
-    if ($moduleIdResult->status == 200 && isset($moduleIdResult->results[0])) {
-        $moduleId = $moduleIdResult->results[0]->id_module;
-    }
-    
-    // Get module columns
+    // Get module columns ($moduleId was resolved above with the suffix)
     $urlColumns = "columns?linkTo=id_module_column&equalTo=" . $moduleId;
     $columns = CurlController::request($urlColumns, $method, $fields);
     
