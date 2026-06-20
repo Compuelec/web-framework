@@ -589,12 +589,13 @@ Load table module
 
 														if($relation->status == 200 && !empty($relation->results)){
 															$arrayRelation = (array)$relation->results[0];
+																$relKeys = array_keys($arrayRelation);
 															// Show the configured display column when present, else the
 															// related table's second column (legacy behavior).
 															if($relDisplayCol !== null && array_key_exists($relDisplayCol, $arrayRelation)){
 																$displayValue = urldecode((string)$arrayRelation[$relDisplayCol]);
 															}else{
-																$displayValue = urldecode((string)$arrayRelation[array_keys($arrayRelation)[1]]);
+																$displayValue = urldecode((string)$arrayRelation[$relKeys[1] ?? $relKeys[0]]);
 															}
 															echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.htmlspecialchars($displayValue).'</a>';
 														}else{
