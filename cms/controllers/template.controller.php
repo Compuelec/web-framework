@@ -92,10 +92,10 @@ class TemplateController{
 		
 		}
 
-		if($value == "double" || $value == "money"){
-	       
+		if($value == "double" || $value == "money" || $value == "measure"){
+
 	       	$type = "DOUBLE NULL DEFAULT '0'";
-		
+
 		}
 
 		if($value == "date"){

@@ -537,6 +537,29 @@ Load table module
 									    	echo TemplateController::formatMoney(urldecode($value[$item->title_column] ?? '0'));
 
 										/*=============================================
+										Measure type content — number + unit. matrix_column is
+										either a literal unit ("kg") or a sibling column name
+										holding the per-row unit (e.g. "unidad_insumo").
+										=============================================*/
+
+										}else if($item->type_column == "measure"){
+
+											$measureRaw = $value[$item->title_column] ?? '';
+											$measureUnit = '';
+											if($item->matrix_column !== null && $item->matrix_column !== ''){
+												$measureUnit = array_key_exists($item->matrix_column, $value)
+													? urldecode((string)$value[$item->matrix_column])
+													: $item->matrix_column;
+											}
+											if($measureRaw === '' || $measureRaw === null){
+												echo '';
+											}else{
+												// Trim insignificant decimals: 15.00 -> 15, 2.50 -> 2.5
+												$measureNum = rtrim(rtrim(number_format((float)$measureRaw, 2, '.', ''), '0'), '.');
+												echo htmlspecialchars(trim($measureNum.' '.$measureUnit));
+											}
+
+										/*=============================================
 										Relations type content
 										=============================================*/
 

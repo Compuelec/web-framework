@@ -45,13 +45,19 @@ if (!empty($module->columns[$i]->conditions_column)) {
 		Decimal number type form
 		=============================================*/
 		
-		include "forms/double.php"; 
+		include "forms/double.php";
+
+		/*=============================================
+		Measure type form (number + unit)
+		=============================================*/
+
+		include "forms/measure.php";
 
 		/*=============================================
 		Select type form
 		=============================================*/
-		
-		include "forms/select.php"; 
+
+		include "forms/select.php";
 
 		/*=============================================
 		Boolean type form
