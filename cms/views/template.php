@@ -941,7 +941,7 @@ if (!isset($_SESSION['cms_theme'])) {
 	
 	<!-- New improved features -->
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/search/global-search.js"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/export/export-data.js?v=<?php echo @filemtime(__DIR__ . '/assets/js/export/export-data.js') ?>"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/notifications/notifications.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/performance/performance.js"></script>
 		
