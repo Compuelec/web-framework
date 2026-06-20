@@ -38,7 +38,8 @@ cp cms/config.example.php cms/config.php
 
 - **`api/config.php`**: credenciales de BD, API Key, JWT Secret, Password Salt.
 - **`cms/config.php`**: URL base de la API + API Key, timezone, Password Salt, y
-  (opcional) servicios externos (webhook, email, OpenAI).
+  (opcional) servicios externos (webhook, email, OpenAI) y formato regional
+  (`localization`, ver abajo).
 - **`web/config.php`**: lo genera `setup.sh` automáticamente desde `cms/config.php`
   (ver paso 6). Es necesario para que las páginas públicas carguen datos.
 
@@ -50,6 +51,27 @@ En vez de `config.php` puedes usar variables de entorno:
   `PASSWORD_SALT`.
 - **CMS**: `API_BASE_URL`, `API_KEY`, `PASSWORD_SALT`, y opcionales
   (`WEBHOOK_TOKEN`, `OPENAI_*`).
+
+### Formato regional (`localization`, opcional)
+
+En `cms/config.php` puedes añadir un bloque **opcional** `localization` que define
+cómo se formatean los listados: moneda de las columnas `money` y formato de las
+columnas `date` / `datetime` / `time`. Si lo omites se conserva el comportamiento
+por defecto (`$` con 2 decimales; fechas en formato legible):
+
+```php
+'localization' => [
+    'currency' => [
+        'symbol'        => '$',
+        'decimals'      => 2,   // CLP: 0
+        'thousands_sep' => ',', // CLP: '.'
+        'decimal_sep'   => '.', // CLP: ','
+    ],
+    'date_format'     => 'd-m-Y',
+    'datetime_format' => 'd-m-Y H:i',
+    'time_format'     => 'H:i',
+],
+```
 
 ## 4. Servidor web
 

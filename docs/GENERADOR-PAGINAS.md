@@ -13,7 +13,11 @@ interactivas (formularios para crear/editar) y protegidas por login.
 ## Cómo funciona
 
 1. **Elige una tabla** de datos. Solo se muestran tus tablas (las del framework
-   se ocultan).
+   se ocultan). El selector también lista las **vistas (VIEWs)** de la base de
+   datos, así que puedes vincular una página a una vista curada/filtrada (p. ej.
+   "solo productos activos"). Cuando la tabla o vista **no tiene clave primaria**,
+   el generador elige una columna id probable, en este orden: `id`, `id_<sufijo>`,
+   cualquier `id_*` / `*_id`, y si no, la **primera columna**.
 2. **Escribe tu HTML** en el editor (con resaltado de sintaxis y autocompletado).
 3. **Inserta datos** haciendo clic en los chips de campos o usando los botones.
 4. Mira la **vista previa en vivo** a la derecha (con datos reales).

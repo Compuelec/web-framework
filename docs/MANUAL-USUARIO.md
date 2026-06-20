@@ -264,6 +264,10 @@ guardar (sin recargar):
 > El **nombre, logo, símbolo y color** del dashboard se configuran aquí (ya no en
 > el perfil del superadmin).
 
+> El **formato regional** de los listados (moneda y formato de fechas) se ajusta en
+> el bloque opcional `localization` de `cms/config.php`, no aquí. Ver
+> [Instalación](INSTALACION.md#3-archivos-de-configuración).
+
 ### 5.6.1 Secciones vs. Páginas Web
 - **Agregar Sección** (menú lateral) crea un **ítem del menú del CMS** (una tabla,
   un enlace, etc.). *No* es una página pública.
@@ -295,13 +299,24 @@ Al crear una columna eliges su **tipo**, que determina el widget del formulario 
 | Selección | `select` (opciones predefinidas en *matrix*), `color` |
 | Estructurados | `array`, `object`, `json` |
 | Multimedia | `image`, `multiimage` (varias imágenes), `video`, `file`, `link` |
+| Medida | `measure` (número + unidad en una sola celda) |
 | Avanzados | `relations` (vínculo a otra tabla), `code` (editor WYSIWYG Summernote / CodeMirror), `workflow` (estados), `chatgpt` (integración OpenAI), `order` (ordenamiento) |
 
 **Notas:**
 - `image` — una imagen: se **sube directo** con el botón "Agregar imagen" y se ve una miniatura.
 - `multiimage` — **varias imágenes** en un registro: seleccionas varias a la vez, se muestran como
   miniaturas (con quitar) y se guardan como arreglo JSON. Puedes fijar un **máximo** por columna.
+- `measure` ("Medida (número + unidad)") — muestra un número junto a su unidad en **una sola celda**
+  (p. ej. `15 Kilogramo`). Se guarda como `DOUBLE`, así que sigue siendo numérico (sumas y cálculos
+  funcionan). La unidad sale del campo *matrix*: una **unidad literal** (`kg`) o el **nombre de una
+  columna hermana** que guarda la unidad por fila (p. ej. `unidad_insumo`). En el listado recorta los
+  decimales sobrantes (`15.00` → `15`, `2.50` → `2.5`) y añade la unidad.
 - `select` y `relations` usan el campo *matrix* de la columna para definir opciones o la tabla relacionada.
+  Una `relations` puede apuntar a la tabla del núcleo **`admins`** (muestra el nombre del usuario/cajero,
+  no su id) y elegir qué columna mostrar con `"tabla:columna"` (sin `:` muestra la segunda columna).
+- En el listado, `money` se muestra con la **moneda** configurada, `select` como **píldoras de color**
+  y las fechas en formato legible — todo según el bloque opcional `localization` de `cms/config.php`
+  (ver §3 / [Instalación](INSTALACION.md#3-archivos-de-configuración)).
 - `code` renderiza un editor enriquecido; el contenido se guarda como texto largo.
 - `password` se hashea con bcrypt al guardar.
 
@@ -400,6 +415,10 @@ Vive en `web/`. Renderiza el sitio que ven los visitantes y consume datos de la 
 > galerías de imágenes, formularios (crear/editar) y login por rol/usuario. Ver
 > **[Generador de Páginas](GENERADOR-PAGINAS.md)**. Lo que sigue describe cómo
 > funcionan las páginas por debajo, útil para casos avanzados o a medida.
+>
+> El selector de tablas del generador también lista las **vistas (VIEWs)** de la
+> base de datos, así que una página puede vincularse a una vista curada/filtrada
+> (p. ej. "solo productos activos").
 
 ### 9.1 Cómo se arma una página
 Patrón de toda página en `web/pages/*.php`:
@@ -466,6 +485,7 @@ disco con escritura atómica y se regenera tras cada guardado de SEO o con `?reg
 | **workflow-manager** | system | Editor visual de estados/transiciones para workflows. |
 | **dashboard-manager** | system | Widgets arrastrables para el dashboard. |
 | **rbac-manager** | system | Permisos granulares por página/acción. |
+| **pos-manager** | system | POS de cajero configurable: venta con descuento de stock atómico. |
 
 ### 11.2 Cómo funcionan
 `plugins/plugins-registry.php` mantiene el registro central; `plugins/plugins-loader.php` escania
