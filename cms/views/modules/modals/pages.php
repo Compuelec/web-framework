@@ -120,9 +120,11 @@
                         id="type_page"
                       >
                         <option value="modules">Modular</option>
-                        <!-- 'custom' kept hidden: not offered for new sections (needs a manual PHP
-                             file), but preserved so editing existing custom system sections works. -->
-                        <option value="custom" hidden>Personalizable</option>
+                        <!-- 'custom' is the page type used by plugins and core system pages
+                             (Dashboard, Archivos, Logs, plugins…). Hidden for new sections, but
+                             labeled "Plugin / Sistema" so editing such a page reads clearly and
+                             does not collide with the module-level custom type. -->
+                        <option value="custom" hidden>Plugin / Sistema</option>
                         <option value="plugins">Plugin</option>
                         <option value="menu">Menú</option>
                         <option value="external_link">Enlace Externo</option>

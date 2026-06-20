@@ -31,7 +31,10 @@
               <option value="metrics">Métrica</option>
               <option value="graphics">Gráfico</option>
               <option value="tables">Tabla</option>
-              <option value="custom" hidden>Personalizable</option>
+              <!-- 'custom' = legacy module backed by a hand-written PHP file. Hidden for new
+                   modules (use "Contenido libre" instead); relabeled so it no longer clashes
+                   with the page-level "Plugin / Sistema" type. -->
+              <option value="custom" hidden>Módulo PHP (avanzado)</option>
               <option value="html">Contenido libre (HTML, CSS y JS)</option>
 
             </select>
