@@ -270,7 +270,12 @@ guardar (sin recargar):
 
 ### 5.6.1 Secciones vs. Páginas Web
 - **Agregar Sección** (menú lateral) crea un **ítem del menú del CMS** (una tabla,
-  un enlace, etc.). *No* es una página pública.
+  un enlace, etc.). *No* es una página pública. Una **Sección Modular** registra una
+  tabla y le da su **mantenedor CRUD** (`type_page = modules`) — así aparecen ítems
+  como "Productos", "Insumos", etc.
+- **Página de Plugin** (`type_page = custom`): algunos ítems del menú (ej. *Caja*,
+  *Fabricación*) son la **pantalla de un plugin**. El plugin aporta la UI; la página
+  la creas tú (el plugin **no** la crea solo). Ver §11.
 - **Páginas Web** (`/cms/web-pages`) es el **Generador de Páginas públicas**
   (catálogos, landings…). El **SEO/Open Graph** de cada página se configura ahí.
   Ver **[Generador de Páginas](GENERADOR-PAGINAS.md)**.
@@ -487,6 +492,16 @@ disco con escritura atómica y se regenera tras cada guardado de SEO o con `?reg
 | **dashboard-manager** | system | Widgets arrastrables para el dashboard. |
 | **rbac-manager** | system | Permisos granulares por página/acción. |
 | **pos-manager** | system | POS de cajero configurable: venta con descuento de stock atómico. |
+| **production-manager** | system | Fabricación configurable: produce un producto consumiendo los insumos de su receta (atómico). |
+
+> **Importante — los plugins NO crean tablas ni ítems del menú al instalarse.**
+> Se registran como **disponibles** (no se auto-activan). Para usar un plugin
+> configurable (pos-manager, production-manager): **(1)** creas tus tablas de datos
+> con el constructor de módulos (o por SQL) — esas tablas aparecen en el menú como
+> **Secciones Modulares** (mantenedores CRUD), no las pone el plugin; **(2)** mapeas
+> esas tablas en el `config.php` del plugin; **(3)** creas una **página de Plugin**
+> (`type_page = custom`) para que su pantalla salga en el menú. Así, un mismo plugin
+> sirve para cualquier proyecto sin imponer una estructura de datos.
 
 ### 11.2 Cómo funcionan
 `plugins/plugins-registry.php` mantiene el registro central; `plugins/plugins-loader.php` escania

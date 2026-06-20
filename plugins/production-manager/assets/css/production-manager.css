@@ -1,0 +1,41 @@
+/* Production Manager — manufacturing UI. Inherits the CMS theme color
+   (var(--cms-accent), set by cms/views/template.php). */
+#pm-app { --pm: var(--cms-accent, #5b54e0); }
+#pm-app .pm-logo {
+    width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--pm), color-mix(in srgb, var(--pm) 65%, #000));
+    color: #fff; font-size: 1.4rem; box-shadow: 0 6px 16px color-mix(in srgb, var(--pm) 35%, transparent);
+}
+#pm-app .pm-tabs .nav-link { color: #5b5670; font-weight: 600; border-radius: 30px; padding: .45rem 1.1rem; }
+#pm-app .pm-tabs .nav-link.active { background: var(--pm); color: #fff; }
+
+#pm-app .pm-card { background: #fff; border: 1px solid #ecebf5; border-radius: 16px; box-shadow: 0 4px 18px rgba(40, 36, 90, .05); overflow: hidden; height: 100%; }
+#pm-app .pm-card-h { padding: .75rem 1rem; font-weight: 600; font-size: .9rem; color: #3a3550; border-bottom: 1px solid #f0eff8; background: #fbfbfe; }
+#pm-app .pm-card-b { padding: 1rem; }
+
+/* product list */
+#pm-app .pm-list { max-height: 340px; overflow: auto; display: flex; flex-direction: column; gap: .35rem; }
+#pm-app .pm-li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; width: 100%;
+    text-align: left; border: 1px solid #eeedf8; background: #fff; border-radius: 10px; padding: .5rem .75rem; font-size: .9rem; transition: .12s; }
+#pm-app .pm-li:hover { border-color: color-mix(in srgb, var(--pm) 35%, #fff); background: color-mix(in srgb, var(--pm) 5%, #fff); }
+#pm-app .pm-li.active { border-color: var(--pm); background: color-mix(in srgb, var(--pm) 10%, #fff); color: var(--pm); font-weight: 600; }
+#pm-app .pm-li-badge { font-size: .72rem; background: #f2f1fb; color: #6b6790; padding: .15rem .5rem; border-radius: 20px; white-space: nowrap; }
+
+/* make panel */
+#pm-app .pm-max { background: #eafaf1; color: #1f9d57; font-size: .78rem; font-weight: 700; padding: .35rem .7rem; border-radius: 20px; white-space: nowrap; }
+#pm-app .pm-recipe-table tbody tr.pm-short td { background: #fdecec; }
+#pm-app .pm-empty-note { color: #b33; font-size: .82rem; padding: .4rem 0; }
+#pm-app .pm-btn-primary { background: var(--pm); color: #fff; font-weight: 600; border: 0; border-radius: 10px; }
+#pm-app .pm-btn-primary:hover:not(:disabled) { filter: brightness(.9); color: #fff; }
+#pm-app .pm-btn-primary:disabled { opacity: .55; }
+
+/* recipe editor */
+#pm-app .pm-ing-head { font-weight: 600; margin-bottom: .4rem; }
+#pm-app .pm-ing { display: flex; align-items: center; gap: .6rem; padding: .4rem .55rem; border: 1px solid #f0eff8; border-radius: 10px; margin-bottom: .4rem; background: #fcfcff; }
+#pm-app .pm-ing-name { flex: 1; font-size: .9rem; font-weight: 500; }
+#pm-app .pm-ing-qty { width: 150px; }
+#pm-app .pm-add-row { display: flex; }
+#pm-app .pm-dropdown { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin-top: 2px; background: #fff;
+    border: 1px solid #e3e1f2; border-radius: 10px; box-shadow: 0 10px 24px rgba(40, 36, 90, .12); max-height: 240px; overflow: auto; display: none; }
+#pm-app .pm-dd-item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: .45rem .75rem; font-size: .88rem; }
+#pm-app .pm-dd-item:hover { background: color-mix(in srgb, var(--pm) 8%, #fff); }
