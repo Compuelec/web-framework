@@ -13,6 +13,51 @@ require_once __DIR__ . '/session-init.php';
 require_once "../controllers/curl.controller.php";
 require_once "../controllers/template.controller.php";
 
+/**
+ * Build an id → label map for a relations column, fetched once (not per row).
+ * matrix_column is "admins", "tabla" or "tabla:columna" (display column).
+ */
+function exp_buildRelationMap($matrix) {
+    $parts = explode(':', (string)$matrix, 2);
+    $table = trim($parts[0]);
+    $displayCol = (isset($parts[1]) && trim($parts[1]) !== '') ? trim($parts[1]) : null;
+    $map = [];
+    if ($table === '') { return $map; }
+
+    if ($table === 'admins') {
+        $resp = CurlController::request("admins?select=id_admin,title_admin,email_admin", "GET", []);
+        if (is_object($resp) && $resp->status == 200 && is_array($resp->results) && !empty($resp->results)) {
+            foreach ($resp->results as $r) {
+                $r = (array)$r;
+                $label = (!empty($r['title_admin'])) ? $r['title_admin'] : ($r['email_admin'] ?? ($r['id_admin'] ?? ''));
+                $map[(string)($r['id_admin'] ?? '')] = urldecode((string)$label);
+            }
+        }
+        return $map;
+    }
+
+    // Module-backed table: resolve its id column from the module suffix.
+    $mod = CurlController::request("relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables," . urlencode($table) . "&select=url_page,suffix_module", "GET", []);
+    if (!is_object($mod) || $mod->status != 200 || !is_array($mod->results) || empty($mod->results)) { return $map; }
+    $suffix = trim((string)($mod->results[0]->suffix_module ?? ''));
+    if ($suffix === '') { return $map; }
+    $idCol = 'id_' . $suffix;
+    $rows = CurlController::request($table, "GET", []);
+    if (!is_object($rows) || $rows->status != 200 || !is_array($rows->results) || empty($rows->results)) { return $map; }
+    foreach ($rows->results as $r) {
+        $r = (array)$r;
+        if (!array_key_exists($idCol, $r)) { continue; }
+        if ($displayCol !== null && array_key_exists($displayCol, $r)) {
+            $label = $r[$displayCol];
+        } else {
+            $keys = array_keys($r);
+            $label = $r[$keys[1] ?? $keys[0]] ?? '';
+        }
+        $map[(string)$r[$idCol]] = urldecode((string)$label);
+    }
+    return $map;
+}
+
 // Check if user is authenticated
 if (!isset($_SESSION["admin"])) {
     header('HTTP/1.1 401 Unauthorized');
@@ -125,7 +170,15 @@ try {
     }
     
     $exportData[] = $headers;
-    
+
+    // Pre-resolve relations columns to id → label maps (one fetch per column).
+    $relationMaps = [];
+    foreach ($visibleColumns as $col) {
+        if ($col->type_column === 'relations' && !empty($col->matrix_column)) {
+            $relationMaps[$col->title_column] = exp_buildRelationMap($col->matrix_column);
+        }
+    }
+
     foreach ($data->results as $index => $row) {
         $rowData = [$index + 1];
         
@@ -136,11 +189,33 @@ try {
                 $value = urldecode($value);
             }
             
-            // Format according to type
+            // Format according to type — consistent with the table listing.
             if ($col->type_column == 'boolean') {
                 $value = $value == 1 ? 'Sí' : 'No';
-            } else if ($col->type_column == 'money' || $col->type_column == 'double') {
+            } else if ($col->type_column == 'money') {
+                $value = is_numeric($value) ? TemplateController::formatMoney($value) : $value;
+            } else if ($col->type_column == 'double') {
                 $value = is_numeric($value) ? number_format($value, 2) : $value;
+            } else if ($col->type_column == 'measure') {
+                if (is_numeric($value)) {
+                    $unit = '';
+                    if (!empty($col->matrix_column)) {
+                        // property_exists (not isset) so a null sibling value still
+                        // counts as "this is a column", not a literal unit.
+                        $unit = property_exists($row, $col->matrix_column)
+                            ? urldecode((string)($row->{$col->matrix_column} ?? ''))
+                            : $col->matrix_column;
+                    }
+                    $num = rtrim(rtrim(number_format((float)$value, 2, '.', ''), '0'), '.');
+                    $value = trim($num . ' ' . $unit);
+                }
+            } else if ($col->type_column == 'date' || $col->type_column == 'datetime' || $col->type_column == 'time') {
+                $value = TemplateController::formatListDate($col->type_column, $value);
+            } else if ($col->type_column == 'relations') {
+                $key = (string)$value;
+                if (isset($relationMaps[$col->title_column][$key])) {
+                    $value = $relationMaps[$col->title_column][$key];
+                }
             } else if ($col->type_column == 'image' || $col->type_column == 'file' || $col->type_column == 'video') {
                 $value = $value ?: 'No file';
             }
