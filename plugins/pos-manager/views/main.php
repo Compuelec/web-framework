@@ -172,6 +172,16 @@ $canDiscount = $posReady && $posCtrl->supportsDiscount() && $posCtrl->canDiscoun
                 <label class="form-label fw-semibold small">Permisos por rol</label>
                 <p class="text-muted small mb-2">Qué rol puede aplicar descuentos y qué métodos de pago puede usar. Vacío = sin restricción.</p>
                 <div id="pos-cfg-permissions"></div>
+                <hr>
+                <label class="form-label fw-semibold small">Comprobante</label>
+                <p class="text-muted small mb-2">Encabezado y pie del comprobante (nombre del local, datos de contacto y logo).</p>
+                <div class="row g-2">
+                    <div class="col-md-6"><input type="text" id="pos-rcpt-business" class="form-control form-control-sm" placeholder="Nombre del local"></div>
+                    <div class="col-md-6"><input type="text" id="pos-rcpt-phone" class="form-control form-control-sm" placeholder="Teléfono / contacto"></div>
+                    <div class="col-12"><input type="text" id="pos-rcpt-address" class="form-control form-control-sm" placeholder="Dirección"></div>
+                    <div class="col-12"><input type="text" id="pos-rcpt-logo" class="form-control form-control-sm" placeholder="URL del logo (opcional)"></div>
+                    <div class="col-12"><input type="text" id="pos-rcpt-footer" class="form-control form-control-sm" placeholder="Mensaje de pie (ej. ¡Gracias por su compra!)"></div>
+                </div>
                 <div id="pos-cfg-msg" class="small mt-3"></div>
             </div>
             <div class="modal-footer">
@@ -184,8 +194,9 @@ $canDiscount = $posReady && $posCtrl->supportsDiscount() && $posCtrl->canDiscoun
 <?php endif; ?>
 
 <script>
-    window.POS_AJAX  = <?php echo json_encode($projectBasePath . '/plugins/pos-manager/ajax.php') ?>;
-    window.POS_ADMIN = <?php echo $adminId ?>;
-    window.POS_SUPER = <?php echo $isSuper ? 'true' : 'false' ?>;
+    window.POS_AJAX    = <?php echo json_encode($projectBasePath . '/plugins/pos-manager/ajax.php') ?>;
+    window.POS_ADMIN   = <?php echo $adminId ?>;
+    window.POS_SUPER   = <?php echo $isSuper ? 'true' : 'false' ?>;
+    window.POS_RECEIPT = <?php echo json_encode($posCtrl->receiptConfig(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
 <script src="<?php echo $projectBasePath ?>/plugins/pos-manager/assets/js/pos-manager.js?v=<?php echo @filemtime(__DIR__ . '/../assets/js/pos-manager.js') ?>"></script>
