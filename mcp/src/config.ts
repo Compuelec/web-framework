@@ -1,20 +1,15 @@
 const DEFAULT_DENY_TABLES = ["admins", "activity_logs", "sessions", "tokens"];
 
-export type AuthCredentials = {
-  table: string;
-  suffix: string;
-  email: string;
-  password: string;
-};
-
 export type Config = {
   apiBaseUrl: string;
   apiKey: string;
   denyTables: Set<string>;
   httpTimeoutMs: number;
-  auth: AuthCredentials | null;
   callbackHost: string;
   openBrowserOnLogin: boolean;
+  phpCmd: string | null;
+  repoRoot: string | null;
+  cliTimeoutMs: number;
 };
 
 export function loadConfig(): Config {
@@ -38,28 +33,27 @@ export function loadConfig(): Config {
   const parsedTimeout = Number(process.env.FW_HTTP_TIMEOUT_MS ?? 15000);
   const httpTimeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 15000;
 
-  const email = process.env.FW_AUTH_EMAIL ?? "";
-  const password = process.env.FW_AUTH_PASSWORD ?? "";
-  const auth: AuthCredentials | null =
-    email && password
-      ? {
-          table: process.env.FW_AUTH_TABLE ?? "admins",
-          suffix: process.env.FW_AUTH_SUFFIX ?? "admin",
-          email,
-          password,
-        }
-      : null;
-
-  // For `mcp_login`, the framework POSTs back to a loopback URL on this host.
-  // When the framework runs inside Docker Desktop and the MCP runs on the host,
-  // use `host.docker.internal`. Default works when both live on the same host.
   const callbackHost = process.env.FW_CALLBACK_HOST || "127.0.0.1";
 
-  // When set to "1" / "true", the `mcp_login` tool spawns the OS's default
-  // browser pointing at the CMS authorization URL instead of just returning it.
-  // Convenient for local desktop use; skip it on servers/CI.
   const openBrowserRaw = (process.env.FW_OPEN_BROWSER ?? "").toLowerCase();
   const openBrowserOnLogin = openBrowserRaw === "1" || openBrowserRaw === "true";
 
-  return { apiBaseUrl, apiKey, denyTables, httpTimeoutMs, auth, callbackHost, openBrowserOnLogin };
+  const phpCmd = process.env.FW_PHP_CMD?.trim() || null;
+  const repoRoot = process.env.FW_REPO_ROOT?.trim().replace(/\/+$/, "") || null;
+
+  const parsedCliTimeout = Number(process.env.FW_CLI_TIMEOUT_MS ?? 30000);
+  const cliTimeoutMs =
+    Number.isFinite(parsedCliTimeout) && parsedCliTimeout > 0 ? parsedCliTimeout : 30000;
+
+  return {
+    apiBaseUrl,
+    apiKey,
+    denyTables,
+    httpTimeoutMs,
+    callbackHost,
+    openBrowserOnLogin,
+    phpCmd,
+    repoRoot,
+    cliTimeoutMs,
+  };
 }

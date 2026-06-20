@@ -199,7 +199,13 @@ Web Pages builder (template + live preview)
     function runPreview() {
         if (partialMode) { return; } // header/footer have no data preview
         var table = $table.val();
-        if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
+        // Static pages (no table bound) render their template as-is — there is
+        // no data to interpolate, so we skip the backend roundtrip and just
+        // pipe the current HTML/CSS into the iframe.
+        if (!table) {
+            setPreview($template.val() || '<p style="color:#888;font-family:sans-serif">Escribe tu HTML para ver la vista previa.</p>', 0, $("#wpb-css").val());
+            return;
+        }
         // Abort any in-flight preview so a slow earlier response can't overwrite
         // a newer one (race condition while typing fast).
         if (previewXhr) { previewXhr.abort(); }
@@ -239,7 +245,17 @@ Web Pages builder (template + live preview)
                 pages.forEach(function (p) {
                     var $item = $('<div class="list-group-item d-flex justify-content-between align-items-start px-2"></div>');
                     var $info = $('<a href="#" class="flex-grow-1 text-decoration-none text-body small"></a>');
-                    $info.html('<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + "</div><div class='text-muted'>" + escapeHtml(p.file) + ".php</div>");
+                    // Badge: "Estática" (intencional, marcada con confirmedStatic) tiene
+                    // prioridad sobre la pista neutral "Sin tabla" para páginas legacy.
+                    // Estilos inline porque el CMS carga Bootstrap 5.0 (las utilidades
+                    // -subtle / -emphasis recién existen desde 5.3).
+                    var badge = "";
+                    if (p.confirmedStatic) {
+                        badge = ' <span class="badge ms-1" style="font-size:.62rem;background:#cfe2ff;color:#084298;border:1px solid #b6d4fe" title="Página estática (sin datos vinculados, intencional)"><i class="bi bi-file-earmark-text me-1"></i>Estática</span>';
+                    } else if (!p.table) {
+                        badge = ' <span class="badge ms-1" style="font-size:.62rem;background:#f8f9fa;color:#6c757d;border:1px solid #dee2e6" title="Página sin tabla vinculada">Sin tabla</span>';
+                    }
+                    $info.html('<div class="fw-semibold">' + escapeHtml(p.heading || p.file) + badge + "</div><div class='text-muted'>" + escapeHtml(p.file) + ".php</div>");
                     $info.on("click", function (e) { e.preventDefault(); loadForEdit(p.file); });
                     var $del = $('<button class="btn btn-sm btn-link text-danger p-0 ms-1" title="Eliminar"><i class="bi bi-trash"></i></button>');
                     $del.on("click", function (e) { e.preventDefault(); deletePage(p.file); });

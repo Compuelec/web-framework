@@ -1,6 +1,6 @@
 {
   "name": "@compuelec/web-framework-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server for Compuelec web-framework — exposes the REST API and CMS tables as MCP tools for LLM clients.",
   "type": "module",
   "bin": {
