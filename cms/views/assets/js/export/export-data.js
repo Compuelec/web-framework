@@ -166,7 +166,7 @@ var ExportData = {
         var csv = res.rows.map(function (row) {
             return row.map(function (cell) {
                 var s = (cell == null) ? '' : String(cell);
-                if (/[",\n;]/.test(s)) { s = '"' + s.replace(/"/g, '""') + '"'; }
+                if (/[",\r\n;]/.test(s)) { s = '"' + s.replace(/"/g, '""') + '"'; }
                 return s;
             }).join(',');
         }).join('\r\n');
@@ -275,9 +275,11 @@ var ExportData = {
             img.onerror = function () { resolve(null); };
 
             // Resolve relative paths against the project root, not the current
-            // admin page URL (which would 404). Absolute URLs are left untouched.
+            // admin page URL (which would 404). Absolute URLs, protocol-relative
+            // URLs, root-relative paths and data: URIs are left untouched.
             var resolvedUrl = url;
-            if (url && !/^(https?:)?\/\//i.test(url) && url.indexOf('/') !== 0) {
+            var isAbsolute = /^(https?:)?\/\//i.test(url) || /^data:/i.test(url) || url.indexOf('/') === 0;
+            if (url && !isAbsolute) {
                 var projectBase = (window.CMS_BASE_PATH || '').replace(/\/cms$/, '');
                 resolvedUrl = projectBase + '/' + url;
             }

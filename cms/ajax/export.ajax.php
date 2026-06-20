@@ -27,23 +27,29 @@ if (empty($module)) {
     exit;
 }
 
+// Never export framework / sensitive tables, regardless of role.
+$blacklist = ['admins', 'roles', 'pages', 'modules', 'columns', 'folders', 'files',
+    'cms_settings', 'activity_logs', 'framework_migrations', 'dashboard_widgets',
+    'page_seo', 'payku_orders', 'workflows'];
+if (in_array(strtolower($module), $blacklist, true)) {
+    header('HTTP/1.1 403 Forbidden');
+    exit;
+}
+
 try {
     // A page usually has several modules sharing the same title_module (e.g. a
     // breadcrumbs module plus the table module). Fetch them all and pick the
     // TABLE module with a real suffix — grabbing results[0] blindly can land on
     // the breadcrumbs row (empty suffix), which builds an invalid "id_" order
     // column and makes the API return 404 (surfacing here as a silent 500).
-    $urlModule = "modules?linkTo=title_module&equalTo=" . urlencode($module) . "&select=id_module,suffix_module,type_module";
+    $urlModule = "modules?linkTo=title_module&equalTo=" . urlencode($module) . "&select=id_module,suffix_module,type_module,id_page_module";
     $method = "GET";
     $fields = array();
 
     $moduleInfo = CurlController::request($urlModule, $method, $fields);
 
-    $suffix = 'id';
-    $moduleId = 0;
-
+    $chosen = null;
     if (is_object($moduleInfo) && $moduleInfo->status == 200 && !empty($moduleInfo->results)) {
-        $chosen = null;
         foreach ($moduleInfo->results as $m) {
             $s = trim((string)($m->suffix_module ?? ''));
             if ($s === '') { continue; }
@@ -51,12 +57,33 @@ try {
             if (($m->type_module ?? '') === 'tables') { $chosen = $m; break; }
             if ($chosen === null) { $chosen = $m; }
         }
-        if ($chosen !== null) {
-            $suffix   = trim((string)$chosen->suffix_module);
-            $moduleId = $chosen->id_module ?? 0;
+    }
+
+    // Only a registered "tables" module may be exported — this blocks arbitrary
+    // table names that aren't exposed as a data table in the CMS.
+    if ($chosen === null) {
+        header('HTTP/1.1 403 Forbidden');
+        exit;
+    }
+
+    $suffix   = trim((string)$chosen->suffix_module) ?: 'id';
+    $moduleId = $chosen->id_module ?? 0;
+
+    // Access control: superadmin/admin have full access; other roles (editor)
+    // may only export tables on pages they have permission for.
+    $role = $_SESSION['admin']->rol_admin ?? '';
+    if ($role !== 'superadmin' && $role !== 'admin') {
+        $idPage   = (int)($chosen->id_page_module ?? 0);
+        $pageResp = CurlController::request("pages?linkTo=id_page&equalTo=" . $idPage . "&select=url_page", $method, $fields);
+        $urlPage  = (is_object($pageResp) && $pageResp->status == 200 && !empty($pageResp->results))
+            ? ($pageResp->results[0]->url_page ?? '') : '';
+        $perms = json_decode(urldecode($_SESSION['admin']->permissions_admin ?? ''), true);
+        if (!is_array($perms) || $urlPage === '' || ($perms[$urlPage] ?? '') !== 'on') {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
         }
     }
-    
+
     // Get all data from the table
     $url = $module . "?orderBy=id_" . $suffix . "&orderMode=DESC";
     
