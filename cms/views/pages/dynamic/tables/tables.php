@@ -567,18 +567,30 @@ Load table module
 
 												}else{
 
+													// Resolve the related "tables" module once (one API call,
+													// not two), guard the result, and escape the output.
 													$url = "relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables,".$item->matrix_column."&select=url_page,suffix_module";
-													$method = "GET";
-													$array = array();
+													$relationModule = CurlController::request($url,"GET",$fields);
 
-													$urlPage = CurlController::request($url,$method,$fields)->results[0]->url_page;
-													$suffixModule = CurlController::request($url,$method,$fields)->results[0]->suffix_module;
+													if($relationModule->status == 200 && !empty($relationModule->results)){
 
-													$url = $item->matrix_column.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
-													$relation = CurlController::request($url,$method,$fields);
-													$arrayRelation  = (array)$relation->results[0];
+														$urlPage = $relationModule->results[0]->url_page;
+														$suffixModule = $relationModule->results[0]->suffix_module;
 
-													echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.urldecode($arrayRelation[array_keys($arrayRelation)[1]]).'</a>';
+														$urlRelation = $item->matrix_column.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
+														$relation = CurlController::request($urlRelation,"GET",$fields);
+
+														if($relation->status == 200 && !empty($relation->results)){
+															$arrayRelation = (array)$relation->results[0];
+															$displayValue = urldecode((string)$arrayRelation[array_keys($arrayRelation)[1]]);
+															echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.htmlspecialchars($displayValue).'</a>';
+														}else{
+															echo $value[$item->title_column];
+														}
+
+													}else{
+														echo $value[$item->title_column];
+													}
 
 												}
 
