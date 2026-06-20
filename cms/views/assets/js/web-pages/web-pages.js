@@ -29,6 +29,11 @@ Web Pages builder (template + live preview)
     var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
     var partialMode = null; // 'header' | 'footer' while editing a shared partial
 
+    // Sentinel value of the table <select> for a static page (free HTML/CSS/JS,
+    // no table binding). Sent to the backend as an empty table.
+    var STATIC_VALUE = "__static__";
+    function isStatic() { return $table.val() === STATIC_VALUE; }
+
     /* ---------- code editors (CodeMirror 5) ---------- */
     // CodeMirror 5 is bundled and loaded by the builder view, captured as
     // WPB_CM so it stays isolated from the legacy CodeMirror 3 the CMS uses
@@ -91,8 +96,10 @@ Web Pages builder (template + live preview)
                 if (!res || !res.success) { $table.empty().append('<option value="">Error al cargar tablas</option>'); return; }
                 var tables = Array.isArray(res.tables) ? res.tables : [];
                 $table.empty();
-                if (!tables.length) { $table.append('<option value="">No hay tablas propias todavía</option>'); return; }
                 $table.append('<option value="">— Elige una tabla —</option>');
+                // Static page: free HTML/CSS/JS with no table binding. Always
+                // offered, even when there are no custom tables yet.
+                $table.append('<option value="' + STATIC_VALUE + '">Página en blanco (sin tabla)</option>');
                 tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
             })
             .fail(function () { $table.empty().append('<option value="">Error al cargar tablas</option>'); });
@@ -137,6 +144,19 @@ Web Pages builder (template + live preview)
                 if (cb) { cb(); }
             })
             .fail(function () { $fields.html('<span class="text-danger small">Error al cargar campos</span>'); });
+    }
+
+    /* ---------- static page (no table) ---------- */
+    // A page with no table binding: just the user's HTML/CSS/JS. The data tools
+    // (fields/repeat/form) don't apply, but name/SEO/visibility/home still do.
+    function enterStaticMode() {
+        currentColumns = []; currentTypes = {}; currentIdColumn = "";
+        $fields.html('<span class="text-muted small">Página en blanco: escribe tu HTML/CSS/JS, sin datos de tabla.</span>');
+        $repeat.prop("disabled", true);
+        $formBtn.prop("disabled", true);
+        $gen.prop("disabled", false);
+        $("#wpb-name").attr("placeholder", "nombre-de-la-pagina");
+        runPreview();
     }
 
     /* ---------- editor helpers ---------- */
@@ -198,6 +218,11 @@ Web Pages builder (template + live preview)
 
     function runPreview() {
         if (partialMode) { return; } // header/footer have no data preview
+        if (isStatic()) {
+            // No data binding — show the HTML/CSS exactly as written.
+            setPreview($template.val(), 0, $("#wpb-css").val());
+            return;
+        }
         var table = $table.val();
         if (!table) { setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0); return; }
         // Abort any in-flight preview so a slow earlier response can't overwrite
@@ -254,7 +279,7 @@ Web Pages builder (template + live preview)
         syncEditors();
         return {
             action:    "generate",
-            table:     $table.val(),
+            table:     isStatic() ? "" : $table.val(),
             name:      $("#wpb-name").val(),
             heading:   $("#wpb-heading").val(),
             template:  $template.val(),
@@ -310,7 +335,7 @@ Web Pages builder (template + live preview)
     }
 
     function applyConfig(c) {
-        $table.val(c.table);
+        // The table <select> is set at the end (real table vs. static sentinel).
         $("#wpb-heading").val(c.heading || "");
         $("#wpb-name").val(c.fileName || "");
         $template.val(c.template || "");
@@ -330,7 +355,14 @@ Web Pages builder (template + live preview)
         if (cmTemplate) { cmTemplate.setValue(c.template || ""); }
         if (cmCss) { cmCss.setValue(c.customCss || ""); }
         if (cmJs) { cmJs.setValue(c.customJs || ""); }
-        loadFields(c.table, runPreview);
+        if (c.table) {
+            $table.val(c.table);
+            loadFields(c.table, runPreview);
+        } else {
+            // Static page (no table): select the sentinel and enable the builder.
+            $table.val(STATIC_VALUE);
+            enterStaticMode();
+        }
     }
 
     function loadForEdit(file) {
@@ -384,7 +416,9 @@ Web Pages builder (template + live preview)
     /* ---------- generate ---------- */
     function generate() {
         if (partialMode) { savePartial(); return; }
-        if (!$table.val()) { return; }
+        if (isStatic()) {
+            if (!$("#wpb-name").val().trim()) { fncToastr("warning", "Escribe un nombre de archivo para la página."); return; }
+        } else if (!$table.val()) { return; }
         $gen.prop("disabled", true);
         $result.html("");
 
@@ -431,7 +465,9 @@ Web Pages builder (template + live preview)
     /* ---------- events ---------- */
     $table.on("change", function () {
         var t = $(this).val();
-        if (t) { loadFields(t, runPreview); } else { resetForm(); }
+        if (t === STATIC_VALUE) { enterStaticMode(); }
+        else if (t) { loadFields(t, runPreview); }
+        else { resetForm(); }
     });
     $template.on("input", schedulePreview);
     $("#wpb-css").on("input", schedulePreview);
