@@ -269,6 +269,11 @@ if ($action === 'preview') {
         }
     }
     $single = isset($rows[0]) ? $rows[0] : [];
+    // Use the public site's localization so {{money}}/{{fecha}} in the preview
+    // match the published page (the generated page reads it from web/config.php).
+    $webCfgPath = __DIR__ . '/../../web/config.php';
+    $siteCfg = file_exists($webCfgPath) ? @require $webCfgPath : [];
+    $GLOBALS['__wpb_loc'] = (is_array($siteCfg) && isset($siteCfg['localization']) && is_array($siteCfg['localization'])) ? $siteCfg['localization'] : [];
     echo json_encode([
         'success' => true,
         'html'    => pb_renderTemplate($template, $rows, $single),
