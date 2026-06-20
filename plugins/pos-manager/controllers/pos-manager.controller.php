@@ -35,7 +35,8 @@ class PosManagerController {
 
     public function __construct() {
         $this->link = InstallController::connect();
-        $this->ensureSettingsTable();
+        // pos_settings is created lazily on first save (see saveSettings), so we
+        // don't run DDL on every page load / AJAX request.
         $this->loadConfig();
     }
 
@@ -92,7 +93,11 @@ class PosManagerController {
                 if (is_array($decoded)) { return $decoded; }
             }
         } catch (Exception $e) {
-            error_log('POS readDbSettings error: ' . $e->getMessage());
+            // Before the first save the table does not exist yet (SQLSTATE 42S02);
+            // that is expected, so don't flood the error log with it.
+            if (!($e instanceof PDOException && $e->getCode() === '42S02')) {
+                error_log('POS readDbSettings error: ' . $e->getMessage());
+            }
         }
         return null;
     }
@@ -248,6 +253,7 @@ class PosManagerController {
         }
 
         try {
+            $this->ensureSettingsTable(); // lazy create on first save
             $json = json_encode($cfg, JSON_UNESCAPED_UNICODE);
             $exists = (int)$this->link->query("SELECT COUNT(*) FROM pos_settings")->fetchColumn();
             if ($exists > 0) {
@@ -413,29 +419,31 @@ class PosManagerController {
             $this->link->prepare($hSql)->execute($hVals);
             $saleId = (int) $this->link->lastInsertId();
 
-            $decSql   = "UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` - ? "
-                      . "WHERE `{$p['id']}` = ? AND `{$p['stock']}` >= ?" . $activeCond;
-            $priceSql = "SELECT `{$p['name']}` AS name, `{$p['price']}` AS price FROM `{$p['table']}` WHERE `{$p['id']}` = ?";
+            // Prepare each statement once and reuse it across the loops.
+            $decStmt   = $this->link->prepare(
+                "UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` - ? "
+                . "WHERE `{$p['id']}` = ? AND `{$p['stock']}` >= ?" . $activeCond
+            );
+            $priceStmt = $this->link->prepare("SELECT `{$p['name']}` AS name, `{$p['price']}` AS price FROM `{$p['table']}` WHERE `{$p['id']}` = ?");
+            $lineStmt  = $this->link->prepare($lineSql);
 
             $subtotal = 0.0;
 
             // Product lines — atomic, race-safe stock decrement.
             foreach ($cart as $pid => $qty) {
-                $dec = $this->link->prepare($decSql);
-                $dec->execute([$qty, $pid, $qty]);
-                if ($dec->rowCount() !== 1) {
+                $decStmt->execute([$qty, $pid, $qty]);
+                if ($decStmt->rowCount() !== 1) {
                     $this->link->rollBack();
                     return ['success' => false, 'error' => 'insufficient_stock', 'product' => $this->productBrief($pid)];
                 }
-                $ps = $this->link->prepare($priceSql);
-                $ps->execute([$pid]);
-                $prod = $ps->fetch(PDO::FETCH_OBJ);
-                $unit = (float) ($prod->price ?? 0);
+                $priceStmt->execute([$pid]);
+                $prod = $priceStmt->fetch(PDO::FETCH_OBJ);
+                $unit = $prod ? (float) ($prod->price ?? 0) : 0.0;
                 $sub  = $unit * $qty;
                 $subtotal += $sub;
                 $vals = [$saleId, $pid, $qty, $unit, $sub];
-                if ($hasName) { $vals[] = (string) ($prod->name ?? ''); }
-                $this->link->prepare($lineSql)->execute($vals);
+                if ($hasName) { $vals[] = $prod ? (string) ($prod->name ?? '') : ''; }
+                $lineStmt->execute($vals);
             }
 
             // Manual lines — no product, no stock.
@@ -444,7 +452,7 @@ class PosManagerController {
                 $subtotal += $sub;
                 $vals = [$saleId, 0, $m['qty'], $m['price'], $sub];
                 if ($hasName) { $vals[] = $m['name']; }
-                $this->link->prepare($lineSql)->execute($vals);
+                $lineStmt->execute($vals);
             }
 
             // Clamp the discount to the subtotal and finalize the header.

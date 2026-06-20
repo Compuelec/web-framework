@@ -4,7 +4,7 @@
 // scope). The plugin assets live at the project root, so strip the trailing /cms.
 
 $cmsBasePath     = $cmsBasePath ?? '';
-$projectBasePath = preg_replace('#/cms$#', '', $cmsBasePath);
+$projectBasePath = preg_replace('#/cms/?$#', '', $cmsBasePath);
 
 require_once __DIR__ . '/../controllers/pos-manager.controller.php';
 $posCtrl  = new PosManagerController();
