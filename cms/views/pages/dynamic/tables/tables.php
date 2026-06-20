@@ -404,6 +404,18 @@ Load table module
 										Image type content
 										=============================================*/
 
+										// Low-value alert: a numeric column whose matrix_column carries
+										// "min:<column|number>" renders red when its value falls below it.
+										$lowAlert = false;
+										if (in_array($item->type_column, ['measure','int','double','money'], true)
+											&& isset($value[$item->title_column]) && is_numeric($value[$item->title_column])
+											&& !empty($item->matrix_column) && preg_match('/min:([A-Za-z0-9_.]+)/', (string)$item->matrix_column, $mm)) {
+											$thrVal = is_numeric($mm[1]) ? (float)$mm[1]
+												: ((array_key_exists($mm[1], $value) && is_numeric($value[$mm[1]])) ? (float)$value[$mm[1]] : null);
+											if ($thrVal !== null && (float)$value[$item->title_column] < $thrVal) { $lowAlert = true; }
+										}
+										if ($lowAlert) { echo '<span class="text-danger fw-semibold" title="Bajo el mínimo">'; }
+
 										if($item->type_column == "image"){
 
 											if(!empty($value[$item->title_column])){
@@ -546,10 +558,11 @@ Load table module
 
 											$measureRaw = $value[$item->title_column] ?? '';
 											$measureUnit = '';
-											if($item->matrix_column !== null && $item->matrix_column !== ''){
-												$measureUnit = array_key_exists($item->matrix_column, $value)
-													? urldecode((string)$value[$item->matrix_column])
-													: $item->matrix_column;
+											$unitSpec = trim(explode('|', (string)$item->matrix_column)[0]); // unit before optional "|min:..."
+												if($unitSpec !== ''){
+												$measureUnit = array_key_exists($unitSpec, $value)
+													? urldecode((string)$value[$unitSpec])
+													: $unitSpec;
 											}
 											if($measureRaw === '' || $measureRaw === null){
 												echo '';
@@ -695,8 +708,9 @@ Load table module
 
 			        					}
 
+										if ($lowAlert) { echo ' <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i></span>'; }
 
-		        						?> 
+		        						?>
 
 		        						</td>
 
