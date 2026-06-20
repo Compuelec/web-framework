@@ -387,7 +387,7 @@ $(document).on("click",".myModule",function(){
 					Mark selected column type
 					=============================================*/
 
-					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow","multiimage"];
+					var typeColumn = ["text","textarea","int","double","image","video","file","boolean","select","array","object","json","date","time","datetime","timestamp","code","link","color","money","password","email","relations","order","chatgpt","workflow","multiimage","measure"];
 					var selectColumn = [];
 
 					typeColumn.forEach((v,f)=>{
@@ -494,6 +494,7 @@ $(document).on("click",".myModule",function(){
 												<option value="link" ${selectColumn[17]}>Enlace</option>
 												<option value="color" ${selectColumn[18]}>Color</option>
 												<option value="money" ${selectColumn[19]}>Dinero</option>
+												<option value="measure" ${selectColumn[27]}>Medida (número + unidad)</option>
 												<option value="password" ${selectColumn[20]}>Contraseña</option>
 												<option value="email" ${selectColumn[21]}>Email</option>
 												<option value="relations" ${selectColumn[22]}>Relaciones</option>
@@ -519,9 +520,9 @@ $(document).on("click",".myModule",function(){
 											<div class="invalid-feedback">Campo Inválido</div>
 										</div>
 
-										<div class="col-12 matrixMaxWrap" style="${e.type_column == 'multiimage' ? '' : 'display:none;'}">
-											<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
-											<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${i}" value="${e.matrix_column || ''}" placeholder="Sin límite">
+										<div class="col-12 matrixMaxWrap" style="${e.type_column == 'multiimage' || e.type_column == 'measure' ? '' : 'display:none;'}">
+											<label class="form-label small fw-semibold">Parámetro del tipo <span class="text-muted fw-normal">(Múltiples imágenes: máximo · Medida: unidad, ej. "kg" o el nombre de una columna hermana)</span></label>
+											<input type="text" class="form-control form-control-sm" style="max-width:280px;" name="matrix_column_${i}" value="${e.matrix_column || ''}" placeholder='Ej: 5 · kg · unidad_insumo'>
 										</div>
 
 										<div class="col-12 mt-3">
@@ -894,6 +895,7 @@ $(document).on("click",".addColumn",function(){
 								<option value="link">Enlace</option>
 								<option value="color">Color</option>
 								<option value="money">Dinero</option>
+								<option value="measure">Medida (número + unidad)</option>
 								<option value="password">Contraseña</option>
 								<option value="email">Email</option>
 								<option value="relations">Relaciones</option>
@@ -920,8 +922,8 @@ $(document).on("click",".addColumn",function(){
 						</div>
 
 						<div class="col-12 matrixMaxWrap" style="display:none;">
-							<label class="form-label small fw-semibold">Máximo de imágenes (opcional)</label>
-							<input type="number" min="1" class="form-control form-control-sm" style="max-width:170px;" name="matrix_column_${indexRandom}" value="" placeholder="Sin límite">
+							<label class="form-label small fw-semibold">Parámetro del tipo <span class="text-muted fw-normal">(Múltiples imágenes: máximo · Medida: unidad, ej. "kg" o el nombre de una columna hermana)</span></label>
+							<input type="text" class="form-control form-control-sm" style="max-width:280px;" name="matrix_column_${indexRandom}" value="" placeholder='Ej: 5 · kg · unidad_insumo'>
 						</div>
 
 						<div class="col-12 mt-3">
@@ -987,7 +989,7 @@ $(document).on("change", "[name^='type_column_']", function(){
 
 	const wrap = $(this).closest(".row.g-3").find(".matrixMaxWrap");
 
-	wrap.toggle($(this).val() === "multiimage");
+	wrap.toggle($(this).val() === "multiimage" || $(this).val() === "measure");
 
 })
 
