@@ -112,7 +112,9 @@ if ($action === 'tables') {
     }
     try {
         $db = $link->query('SELECT DATABASE()')->fetchColumn();
-        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type = 'BASE TABLE' ORDER BY TABLE_NAME");
+        // Include views too, so pages can be bound to a curated/filtered view
+        // (e.g. "active products only"), not just base tables.
+        $stmt = $link->prepare("SELECT TABLE_NAME AS t FROM information_schema.tables WHERE table_schema = :db AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY TABLE_NAME");
         $stmt->execute([':db' => $db]);
         $all    = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $custom = array_values(array_filter($all, function ($t) { return !pb_isSystemTable($t); }));
@@ -314,11 +316,17 @@ if (pb_isIdentifier($config['table'])) {
                  WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION"
             );
             $colStmt->execute([':db' => $db, ':t' => $config['table']]);
+            $firstCol = null;
             foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
                 $config['columns'][] = $c['name'];
+                if ($firstCol === null) { $firstCol = $c['name']; }
                 if ($c['k'] === 'PRI') {
                     $config['idColumn'] = $c['name'];
                 }
+            }
+            // Views have no PRIMARY KEY; fall back to the first column for ordering.
+            if (empty($config['idColumn']) && $firstCol !== null) {
+                $config['idColumn'] = $firstCol;
             }
         } catch (Throwable $e) {
             Logger::warning('web-pages column lookup failed', ['error' => $e->getMessage()]);
