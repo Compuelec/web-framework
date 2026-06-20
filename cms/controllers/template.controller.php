@@ -328,6 +328,54 @@ class TemplateController{
 		return $config['password']['salt'] ?? '$2a$07$azybxcags23425sdg23sdfhsd$';
 	}
 
+	// Localization settings (currency + date formats), cached per request.
+	// Defaults preserve the previous money rendering ($ + 2 decimals) and add a
+	// friendly date format; override the `localization` block in config.php.
+	static private $localizationCache = null;
+	static private function localization(){
+		if(self::$localizationCache !== null){ return self::$localizationCache; }
+		$configPath  = __DIR__ . '/../config.php';
+		$examplePath = __DIR__ . '/../config.example.php';
+		$config = file_exists($configPath) ? require $configPath : (file_exists($examplePath) ? require $examplePath : []);
+		$config = is_array($config) ? $config : [];
+		$loc = (isset($config['localization']) && is_array($config['localization'])) ? $config['localization'] : [];
+		$currency = (isset($loc['currency']) && is_array($loc['currency'])) ? $loc['currency'] : [];
+		self::$localizationCache = [
+			'currency' => array_merge(['symbol' => '$', 'decimals' => 2, 'thousands_sep' => ',', 'decimal_sep' => '.'], $currency),
+			'date_format'     => $loc['date_format']     ?? 'd-m-Y',
+			'datetime_format' => $loc['datetime_format'] ?? 'd-m-Y H:i',
+			'time_format'     => $loc['time_format']     ?? 'H:i',
+		];
+		return self::$localizationCache;
+	}
+
+	// Format a numeric value as currency using the localization config.
+	static public function formatMoney($value){
+		$c = self::localization()['currency'];
+		return $c['symbol'] . number_format((float)$value, (int)$c['decimals'], $c['decimal_sep'], $c['thousands_sep']);
+	}
+
+	// Format a date/datetime/time value for a listing; falls back to the raw
+	// string if it cannot be parsed (e.g. empty or zero dates).
+	static public function formatListDate($type, $value){
+		$raw = trim((string)$value);
+		if($raw === '' || strpos($raw, '0000-00-00') === 0){ return htmlspecialchars($raw); }
+		$ts = strtotime($raw);
+		if($ts === false){ return htmlspecialchars($raw); }
+		$loc = self::localization();
+		$fmt = ($type === 'date') ? $loc['date_format'] : (($type === 'time') ? $loc['time_format'] : $loc['datetime_format']);
+		return htmlspecialchars(date($fmt, $ts));
+	}
+
+	// Deterministic Bootstrap-ish color for a select/enum value so the same value
+	// always renders the same colored pill.
+	static public function badgeColor($value){
+		$palette = ['#0d6efd','#198754','#dc3545','#fd7e14','#6f42c1','#0dcaf0','#d63384','#20c997','#6c757d'];
+		// md5-based index is platform-independent (crc32 can be negative on 32-bit).
+		$idx = hexdec(substr(md5((string)$value), 0, 4)) % count($palette);
+		return $palette[$idx];
+	}
+
 	// Send email function
 	// Uses EmailService for professional email sending with SMTP support
 
