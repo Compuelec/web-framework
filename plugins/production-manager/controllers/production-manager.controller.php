@@ -57,7 +57,7 @@ class ProductionManagerController {
             'product'    => ['table', 'id', 'name', 'stock'],
             'supply'     => ['table', 'id', 'name', 'stock'],
             'recipe'     => ['table', 'product', 'supply', 'qty'],
-            'production' => ['table', 'product', 'qty'],
+            'production' => ['table', 'id', 'product', 'qty'],
         ];
         foreach ($required as $group => $keys) {
             if (empty($cfg[$group]) || !is_array($cfg[$group])) {
@@ -70,7 +70,7 @@ class ProductionManagerController {
             }
         }
         // Optional identifiers.
-        foreach ([['supply', 'unit'], ['production', 'user'], ['production', 'status'], ['production', 'date']] as $opt) {
+        foreach ([['product', 'yield'], ['supply', 'unit'], ['production', 'user'], ['production', 'status'], ['production', 'date']] as $opt) {
             if (!empty($cfg[$opt[0]][$opt[1]]) && !$this->isIdentifier($cfg[$opt[0]][$opt[1]])) {
                 return "Identificador inválido en {$opt[0]}.{$opt[1]}.";
             }
@@ -118,10 +118,105 @@ class ProductionManagerController {
             $st = $this->link->prepare($sql);
             $st->execute([(int)$productId]);
             $lines = $st->fetchAll(PDO::FETCH_OBJ);
-            return ['success' => true, 'recipe' => $lines];
+            return ['success' => true, 'recipe' => $lines, 'yield' => $this->productYield($productId)];
         } catch (Exception $e) {
             error_log('Production getRecipe: ' . $e->getMessage());
             return ['success' => false, 'error' => 'No se pudo cargar la receta.'];
+        }
+    }
+
+    /** Batch yield: how many product units one recipe "batch" makes (default 1). */
+    public function productYield($productId) {
+        $p = $this->config['product'];
+        if (empty($p['yield'])) { return 1.0; }
+        try {
+            $st = $this->link->prepare("SELECT `{$p['yield']}` AS y FROM `{$p['table']}` WHERE `{$p['id']}` = ?");
+            $st->execute([(int)$productId]);
+            $y = (float)$st->fetchColumn();
+            return $y > 0 ? $y : 1.0;
+        } catch (Exception $e) { return 1.0; }
+    }
+
+    /** Supplies for the recipe editor's ingredient picker. */
+    public function searchSupplies($q, $limit = 60) {
+        if (!$this->isConfigured()) { return ['success' => false, 'error' => $this->configError]; }
+        $s = $this->config['supply'];
+        $unitSel = !empty($s['unit']) ? ", `{$s['unit']}` AS unit" : '';
+        $where = ''; $params = [];
+        if ($q !== '') { $where = "WHERE `{$s['name']}` LIKE ?"; $params[] = '%' . $q . '%'; }
+        try {
+            $st = $this->link->prepare("SELECT `{$s['id']}` AS id, `{$s['name']}` AS name{$unitSel} FROM `{$s['table']}` {$where} ORDER BY `{$s['name']}` ASC LIMIT " . (int)$limit);
+            $st->execute($params);
+            return ['success' => true, 'supplies' => $st->fetchAll(PDO::FETCH_OBJ)];
+        } catch (Exception $e) {
+            error_log('Production searchSupplies: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'No se pudieron cargar los insumos.'];
+        }
+    }
+
+    /**
+     * Replace a product's recipe with the given lines and (optionally) its batch
+     * yield. $lines = [ ['supply'=>id, 'qty'=>number], ... ].
+     */
+    public function saveRecipe($productId, $lines, $yield = 1) {
+        if (!$this->isConfigured()) { return ['success' => false, 'error' => $this->configError]; }
+        $productId = (int) $productId;
+        if ($productId <= 0) { return ['success' => false, 'error' => 'Producto inválido.']; }
+        if (!is_array($lines)) { $lines = []; }
+
+        // Validate + dedupe lines (merge same supply).
+        $clean = [];
+        foreach ($lines as $l) {
+            $sid = (int)($l['supply'] ?? 0);
+            $qty = (float)($l['qty'] ?? 0);
+            if ($sid <= 0 || $qty <= 0) { continue; }
+            $clean[$sid] = ($clean[$sid] ?? 0) + $qty;
+        }
+        $yield = (float)$yield; if ($yield <= 0) { $yield = 1.0; }
+
+        $r = $this->config['recipe'];
+        $p = $this->config['product'];
+        try {
+            $this->link->beginTransaction();
+            $this->link->prepare("DELETE FROM `{$r['table']}` WHERE `{$r['product']}` = ?")->execute([$productId]);
+            if ($clean) {
+                $ins = $this->link->prepare("INSERT INTO `{$r['table']}` (`{$r['product']}`, `{$r['supply']}`, `{$r['qty']}`) VALUES (?, ?, ?)");
+                foreach ($clean as $sid => $qty) { $ins->execute([$productId, $sid, $qty]); }
+            }
+            if (!empty($p['yield'])) {
+                $this->link->prepare("UPDATE `{$p['table']}` SET `{$p['yield']}` = ? WHERE `{$p['id']}` = ?")->execute([$yield, $productId]);
+            }
+            $this->link->commit();
+            return ['success' => true, 'lines' => count($clean)];
+        } catch (Exception $e) {
+            if ($this->link->inTransaction()) { $this->link->rollBack(); }
+            error_log('Production saveRecipe: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'No se pudo guardar la receta.'];
+        }
+    }
+
+    /** Recent production runs (joined to product + user names). */
+    public function getProductions($limit = 25) {
+        if (!$this->isConfigured()) { return ['success' => false, 'error' => $this->configError]; }
+        $pr = $this->config['production'];
+        $p  = $this->config['product'];
+        $dateSel = !empty($pr['date']) ? "pr.`{$pr['date']}`" : "NULL";
+        $userJoin = ''; $userSel = "'' AS user_name";
+        if (!empty($pr['user'])) {
+            $userJoin = "LEFT JOIN admins a ON pr.`{$pr['user']}` = a.id_admin";
+            $userSel  = "COALESCE(NULLIF(a.title_admin,''), a.email_admin, '') AS user_name";
+        }
+        try {
+            $sql = "SELECT pr.`{$pr['id']}` AS id, pr.`{$pr['qty']}` AS qty, "
+                 . "pp.`{$p['name']}` AS product, {$dateSel} AS date, {$userSel} "
+                 . "FROM `{$pr['table']}` pr "
+                 . "LEFT JOIN `{$p['table']}` pp ON pr.`{$pr['product']}` = pp.`{$p['id']}` "
+                 . "{$userJoin} ORDER BY pr.`{$pr['id']}` DESC LIMIT " . (int)$limit;
+            $st = $this->link->query($sql);
+            return ['success' => true, 'productions' => $st ? $st->fetchAll(PDO::FETCH_OBJ) : []];
+        } catch (Exception $e) {
+            error_log('Production getProductions: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'No se pudo cargar el historial.'];
         }
     }
 
@@ -156,6 +251,8 @@ class ProductionManagerController {
             if (!$lines) {
                 return ['success' => false, 'error' => 'no_recipe'];
             }
+            // Recipe quantities are expressed per "batch" of `yield` units.
+            $yield = $this->productYield($productId);
 
             $this->link->beginTransaction();
 
@@ -164,7 +261,7 @@ class ProductionManagerController {
             $decStmt = $this->link->prepare($decSql);
 
             foreach ($lines as $line) {
-                $required = (float)$line->per_unit * $qty;
+                $required = (float)$line->per_unit * $qty / $yield;
                 if ($required <= 0) { continue; }
                 $decStmt->execute([$required, (int)$line->supply, $required]);
                 if ($decStmt->rowCount() !== 1) {

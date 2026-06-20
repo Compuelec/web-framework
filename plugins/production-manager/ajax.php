@@ -38,7 +38,8 @@ if (!in_array($role, $controller->rolesAllowed(), true)) {
 $action = $_POST['ajax_action'] ?? '';
 
 // State-changing actions require a valid CSRF token.
-if ($action === 'produce' && !SessionController::validateCsrfRequest()) {
+$writeActions = ['produce', 'save_recipe'];
+if (in_array($action, $writeActions, true) && !SessionController::validateCsrfRequest()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
     exit;
@@ -50,8 +51,21 @@ switch ($action) {
         echo json_encode($controller->searchProducts(trim($_POST['q'] ?? ''), 60));
         break;
 
+    case 'search_supplies':
+        echo json_encode($controller->searchSupplies(trim($_POST['q'] ?? ''), 60));
+        break;
+
     case 'get_recipe':
         echo json_encode($controller->getRecipe((int)($_POST['product_id'] ?? 0)));
+        break;
+
+    case 'save_recipe':
+        $lines = json_decode($_POST['lines'] ?? '[]', true) ?: [];
+        echo json_encode($controller->saveRecipe((int)($_POST['product_id'] ?? 0), $lines, (float)($_POST['yield'] ?? 1)));
+        break;
+
+    case 'get_productions':
+        echo json_encode($controller->getProductions(25));
         break;
 
     case 'produce':

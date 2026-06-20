@@ -61,4 +61,12 @@ serialize concurrent runs and supply stock can never go negative.
 
 ## AJAX actions
 
-`search_products`, `get_recipe`, `produce` (write, CSRF).
+`search_products`, `search_supplies`, `get_recipe`, `produce` (write, CSRF), `save_recipe` (write, CSRF), `get_productions`.
+
+## UI
+
+Three tabs: **Fabricar** (pick a product, see needed-vs-available + how many you can make now, manufacture), **Recetas** (visual recipe editor: per-batch yield + add/remove ingredients with quantities), **Historial** (recent production runs).
+
+## Optional: batch yield
+
+Map `product.yield` to a column holding how many units one recipe batch makes (default 1). Recipe quantities are then per batch; producing `qty` units consumes `qty * recipe_qty / yield` of each supply.

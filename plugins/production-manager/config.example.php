@@ -20,6 +20,7 @@ return [
         'id'    => 'id_producto',
         'name'  => 'nombre_producto',
         'stock' => 'stock_producto',
+        'yield' => 'rendimiento_producto', // optional — units a recipe batch makes (default 1)
     ],
 
     // The supplies / insumos whose stock DECREASES when manufacturing.
@@ -42,6 +43,7 @@ return [
     // The production log (one row per manufacturing run).
     'production' => [
         'table'   => 'producciones',
+        'id'      => 'id_produccion',
         'product' => 'producto_produccion',
         'qty'     => 'cantidad_produccion',
         'user'    => 'responsable_produccion', // optional (admin id)
