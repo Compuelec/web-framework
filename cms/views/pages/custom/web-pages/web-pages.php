@@ -48,8 +48,19 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                 <div class="card-body">
                     <input type="hidden" id="wpb-editing" value="">
 
+                    <!-- Page type: data-backed (table) vs blank (free HTML/CSS/JS) -->
+                    <div class="mb-3 wpb-page-only">
+                        <label class="form-label fw-semibold d-block mb-2">Tipo de página</label>
+                        <div class="d-flex gap-2 flex-wrap" id="wpb-mode">
+                            <input type="radio" class="btn-check" name="wpb-mode" id="wpb-mode-table" value="table" checked>
+                            <label class="btn btn-outline-primary px-3" for="wpb-mode-table"><i class="bi bi-table me-1"></i>Con datos de una tabla</label>
+                            <input type="radio" class="btn-check" name="wpb-mode" id="wpb-mode-static" value="static">
+                            <label class="btn btn-outline-secondary px-3" for="wpb-mode-static"><i class="bi bi-file-earmark-code me-1"></i>Página en blanco (HTML/CSS/JS)</label>
+                        </div>
+                    </div>
+
                     <div class="row wpb-page-only">
-                        <div class="col-6 mb-3">
+                        <div class="col-6 mb-3 wpb-table-only">
                             <label class="form-label fw-semibold" for="wpb-table">Tabla de datos</label>
                             <select class="form-select form-select-sm" id="wpb-table"><option value="">Cargando…</option></select>
                         </div>
@@ -59,7 +70,7 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
                         </div>
                     </div>
 
-                    <div class="mb-2 wpb-page-only">
+                    <div class="mb-2 wpb-page-only wpb-table-only">
                         <label class="form-label fw-semibold mb-1">Insertar datos</label>
                         <div class="small text-muted mb-1">
                             Haz clic en un campo para insertar su etiqueta. Para listar <b>todos</b> los registros,

@@ -29,10 +29,9 @@ Web Pages builder (template + live preview)
     var cmTemplate = null, cmCss = null, cmJs = null; // CodeMirror editors (if loaded)
     var partialMode = null; // 'header' | 'footer' while editing a shared partial
 
-    // Sentinel value of the table <select> for a static page (free HTML/CSS/JS,
-    // no table binding). Sent to the backend as an empty table.
-    var STATIC_VALUE = "__static__";
-    function isStatic() { return $table.val() === STATIC_VALUE; }
+    // "Página en blanco" mode is chosen via the page-type radios (NOT the table
+    // dropdown). In this mode the page has no table binding — just free HTML/CSS/JS.
+    function isStatic() { return $("input[name='wpb-mode']:checked").val() === "static"; }
 
     /* ---------- code editors (CodeMirror 5) ---------- */
     // CodeMirror 5 is bundled and loaded by the builder view, captured as
@@ -97,9 +96,6 @@ Web Pages builder (template + live preview)
                 var tables = Array.isArray(res.tables) ? res.tables : [];
                 $table.empty();
                 $table.append('<option value="">— Elige una tabla —</option>');
-                // Static page: free HTML/CSS/JS with no table binding. Always
-                // offered, even when there are no custom tables yet.
-                $table.append('<option value="' + STATIC_VALUE + '">Página en blanco (sin tabla)</option>');
                 tables.forEach(function (t) { $table.append($("<option>").val(t).text(t)); });
             })
             .fail(function () { $table.empty().append('<option value="">Error al cargar tablas</option>'); });
@@ -150,13 +146,28 @@ Web Pages builder (template + live preview)
     // A page with no table binding: just the user's HTML/CSS/JS. The data tools
     // (fields/repeat/form) don't apply, but name/SEO/visibility/home still do.
     function enterStaticMode() {
+        $("#wpb-mode-static").prop("checked", true);
+        $(".wpb-table-only").hide();
         currentColumns = []; currentTypes = {}; currentIdColumn = "";
-        $fields.html('<span class="text-muted small">Página en blanco: escribe tu HTML/CSS/JS, sin datos de tabla.</span>');
         $repeat.prop("disabled", true);
         $formBtn.prop("disabled", true);
         $gen.prop("disabled", false);
         $("#wpb-name").attr("placeholder", "nombre-de-la-pagina");
+        if (cmTemplate) { cmTemplate.save(); }
+        if (cmCss) { cmCss.save(); }
         runPreview();
+    }
+
+    // Back to data-backed mode: show the table picker and wait for a table.
+    function enterTableMode() {
+        $("#wpb-mode-table").prop("checked", true);
+        $(".wpb-table-only").show();
+        $table.val("");
+        $fields.html('<span class="text-muted small">Elige una tabla</span>');
+        $repeat.prop("disabled", true);
+        $formBtn.prop("disabled", true);
+        $gen.prop("disabled", true);
+        setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
     }
 
     /* ---------- editor helpers ---------- */
@@ -220,6 +231,8 @@ Web Pages builder (template + live preview)
         if (partialMode) { return; } // header/footer have no data preview
         if (isStatic()) {
             // No data binding — show the HTML/CSS exactly as written.
+            if (cmTemplate) { cmTemplate.save(); }
+            if (cmCss) { cmCss.save(); }
             setPreview($template.val(), 0, $("#wpb-css").val());
             return;
         }
@@ -356,11 +369,11 @@ Web Pages builder (template + live preview)
         if (cmCss) { cmCss.setValue(c.customCss || ""); }
         if (cmJs) { cmJs.setValue(c.customJs || ""); }
         if (c.table) {
+            enterTableMode();
             $table.val(c.table);
             loadFields(c.table, runPreview);
         } else {
-            // Static page (no table): select the sentinel and enable the builder.
-            $table.val(STATIC_VALUE);
+            // Static page (no table): switch to blank-page mode.
             enterStaticMode();
         }
     }
@@ -401,6 +414,8 @@ Web Pages builder (template + live preview)
         if (cmTemplate) { cmTemplate.setValue(""); }
         if (cmCss) { cmCss.setValue(""); }
         if (cmJs) { cmJs.setValue(""); }
+        $("#wpb-mode-table").prop("checked", true);
+        $(".wpb-table-only").show();
         $table.val("");
         $("#wpb-vis-public").prop("checked", true);
         $("#wpb-access").hide();
@@ -465,9 +480,14 @@ Web Pages builder (template + live preview)
     /* ---------- events ---------- */
     $table.on("change", function () {
         var t = $(this).val();
-        if (t === STATIC_VALUE) { enterStaticMode(); }
-        else if (t) { loadFields(t, runPreview); }
-        else { resetForm(); }
+        if (t) { loadFields(t, runPreview); }
+        else if (!isStatic()) { resetForm(); }
+    });
+
+    // Page-type toggle: data-backed table vs blank HTML/CSS/JS page.
+    $("input[name='wpb-mode']").on("change", function () {
+        if ($(this).val() === "static") { enterStaticMode(); }
+        else { enterTableMode(); }
     });
     $template.on("input", schedulePreview);
     $("#wpb-css").on("input", schedulePreview);
