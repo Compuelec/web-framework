@@ -50,13 +50,17 @@
 
 		<?php 
 
-			$url = $module->columns[$i]->matrix_column;
+			// matrix_column may be "table" or "table:display_column": the options
+			// are fetched from the table part and labeled with the display column.
+			$relParts = explode(":", $module->columns[$i]->matrix_column, 2);
+			$relTable = trim($relParts[0]);
+			$relDisplayCol = (isset($relParts[1]) && trim($relParts[1]) !== "") ? trim($relParts[1]) : null;
 			$method = "GET";
 			$fields = array();
 
 			// Bounded select for the core admins table so the option list never
 			// carries the password hash; other tables keep the default fetch.
-			$relUrl = ($url == "admins") ? "admins?select=id_admin,title_admin,email_admin" : $url;
+			$relUrl = ($relTable == "admins") ? "admins?select=id_admin,title_admin,email_admin" : $relTable;
 
 			$columnsTable = CurlController::request($relUrl,$method,$fields);
 
@@ -77,7 +81,17 @@
 
 			<?php foreach ($columnsTable as $index => $item): ?>
 
-				<option value="<?php echo json_decode(json_encode($item),true)[array_keys((array)$item)[0]] ?>" <?php if (!empty($data) && json_decode(json_encode($item),true)[array_keys((array)$item)[0]] == $data[$module->columns[$i]->title_column]): ?> selected <?php endif ?>><?php echo json_decode(json_encode($item),true)[array_keys((array)$item)[0]] ?> - <?php echo urldecode(json_decode(json_encode($item),true)[array_keys((array)$item)[1]]) ?></option>
+				<?php
+					$row = json_decode(json_encode($item), true);
+					$keys = array_keys($row);
+					$optValue = $row[$keys[0]];
+					// Label with the configured display column, else the second column
+					// (guarded for relations that only expose an id).
+					$labelKey = ($relDisplayCol !== null && array_key_exists($relDisplayCol, $row)) ? $relDisplayCol : ($keys[1] ?? $keys[0]);
+					$optLabel = urldecode((string)$row[$labelKey]);
+				?>
+
+				<option value="<?php echo htmlspecialchars((string)$optValue) ?>" <?php if (!empty($data) && $optValue == ($data[$module->columns[$i]->title_column] ?? null)): ?> selected <?php endif ?>><?php echo htmlspecialchars((string)$optValue) ?> - <?php echo htmlspecialchars($optLabel) ?></option>
 
 			<?php endforeach ?>
 

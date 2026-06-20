@@ -544,7 +544,14 @@ Load table module
 
 											if($item->matrix_column != null && $value[$item->title_column] > 0){
 
-												if($item->matrix_column == "admins"){
+												// matrix_column is "table" or "table:display_column" — the
+												// optional second part picks which related column to show
+												// (defaults to the related table's second column).
+												$relParts = explode(":", $item->matrix_column, 2);
+												$relTable = trim($relParts[0]);
+												$relDisplayCol = (isset($relParts[1]) && trim($relParts[1]) !== "") ? trim($relParts[1]) : null;
+
+												if($relTable == "admins"){
 
 													/*=============================================
 													Relation to the core "admins" table (cashiers /
@@ -569,7 +576,7 @@ Load table module
 
 													// Resolve the related "tables" module once (one API call,
 													// not two), guard the result, and escape the output.
-													$url = "relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables,".$item->matrix_column."&select=url_page,suffix_module";
+													$url = "relations?rel=modules,pages&type=module,page&linkTo=type_module,title_module&equalTo=tables,".$relTable."&select=url_page,suffix_module";
 													$relationModule = CurlController::request($url,"GET",$fields);
 
 													if($relationModule->status == 200 && !empty($relationModule->results)){
@@ -577,12 +584,19 @@ Load table module
 														$urlPage = $relationModule->results[0]->url_page;
 														$suffixModule = $relationModule->results[0]->suffix_module;
 
-														$urlRelation = $item->matrix_column.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
+														$urlRelation = $relTable.'?linkTo=id_'.$suffixModule."&equalTo=".$value[$item->title_column];
 														$relation = CurlController::request($urlRelation,"GET",$fields);
 
 														if($relation->status == 200 && !empty($relation->results)){
 															$arrayRelation = (array)$relation->results[0];
-															$displayValue = urldecode((string)$arrayRelation[array_keys($arrayRelation)[1]]);
+																$relKeys = array_keys($arrayRelation);
+															// Show the configured display column when present, else the
+															// related table's second column (legacy behavior).
+															if($relDisplayCol !== null && array_key_exists($relDisplayCol, $arrayRelation)){
+																$displayValue = urldecode((string)$arrayRelation[$relDisplayCol]);
+															}else{
+																$displayValue = urldecode((string)$arrayRelation[$relKeys[1] ?? $relKeys[0]]);
+															}
 															echo '<a href="'.$urlPage.'/manage/'.base64_encode($value[$item->title_column]).'" target="_blank" class="badge badge-default border rounded bg-indigo">'.htmlspecialchars($displayValue).'</a>';
 														}else{
 															echo $value[$item->title_column];
