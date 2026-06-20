@@ -534,7 +534,7 @@ Load table module
 
 										}else if($item->type_column == "money"){
 
-									    	echo TemplateController::formatMoney(urldecode($value[$item->title_column]));
+									    	echo TemplateController::formatMoney(urldecode($value[$item->title_column] ?? '0'));
 
 										/*=============================================
 										Relations type content
@@ -637,7 +637,7 @@ Load table module
 
 										}else if($item->type_column == "select"){
 
-											$selectValue = urldecode((string)$value[$item->title_column]);
+											$selectValue = urldecode((string)($value[$item->title_column] ?? ''));
 											if($selectValue === ""){
 												echo "";
 											}else{
@@ -650,7 +650,7 @@ Load table module
 
 										}else if($item->type_column == "date" || $item->type_column == "datetime" || $item->type_column == "time"){
 
-											echo TemplateController::formatListDate($item->type_column, urldecode((string)$value[$item->title_column]));
+											echo TemplateController::formatListDate($item->type_column, urldecode((string)($value[$item->title_column] ?? '')));
 
 										}else{
 

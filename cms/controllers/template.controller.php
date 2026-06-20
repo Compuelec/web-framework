@@ -337,6 +337,7 @@ class TemplateController{
 		$configPath  = __DIR__ . '/../config.php';
 		$examplePath = __DIR__ . '/../config.example.php';
 		$config = file_exists($configPath) ? require $configPath : (file_exists($examplePath) ? require $examplePath : []);
+		$config = is_array($config) ? $config : [];
 		$loc = (isset($config['localization']) && is_array($config['localization'])) ? $config['localization'] : [];
 		$currency = (isset($loc['currency']) && is_array($loc['currency'])) ? $loc['currency'] : [];
 		self::$localizationCache = [
@@ -370,7 +371,9 @@ class TemplateController{
 	// always renders the same colored pill.
 	static public function badgeColor($value){
 		$palette = ['#0d6efd','#198754','#dc3545','#fd7e14','#6f42c1','#0dcaf0','#d63384','#20c997','#6c757d'];
-		return $palette[ abs(crc32((string)$value)) % count($palette) ];
+		// md5-based index is platform-independent (crc32 can be negative on 32-bit).
+		$idx = hexdec(substr(md5((string)$value), 0, 4)) % count($palette);
+		return $palette[$idx];
 	}
 
 	// Send email function
