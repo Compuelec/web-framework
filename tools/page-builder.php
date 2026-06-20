@@ -56,6 +56,22 @@ function pb_isSystemTable($table) {
 /**
  * Replace {{field}} tags in a fragment with one row's escaped values.
  */
+/**
+ * Localization (currency + date formats) for public-page formatting tags.
+ * Reads $GLOBALS['__wpb_loc'] when the host set it (from the site/CMS config),
+ * else sensible defaults matching the CMS listing defaults.
+ */
+function pb_loc() {
+    $loc = (isset($GLOBALS['__wpb_loc']) && is_array($GLOBALS['__wpb_loc'])) ? $GLOBALS['__wpb_loc'] : [];
+    $cur = (isset($loc['currency']) && is_array($loc['currency'])) ? $loc['currency'] : [];
+    return [
+        'currency'        => array_merge(['symbol' => '$', 'decimals' => 2, 'thousands_sep' => ',', 'decimal_sep' => '.'], $cur),
+        'date_format'     => $loc['date_format']     ?? 'd-m-Y',
+        'datetime_format' => $loc['datetime_format'] ?? 'd-m-Y H:i',
+        'time_format'     => $loc['time_format']     ?? 'H:i',
+    ];
+}
+
 function pb_replaceFields($html, array $row, array $formRow = []) {
     // Form blocks: {{#form}} ...inputs... {{/form}} → a submit form. Inputs are
     // prefilled only in edit mode ($formRow); create forms appear empty.
@@ -86,6 +102,23 @@ function pb_replaceFields($html, array $row, array $formRow = []) {
     $html = preg_replace_callback('/\{\{\s*img\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
         $val = array_key_exists($m[1], $row) && is_scalar($row[$m[1]]) ? (string) $row[$m[1]] : '';
         return htmlspecialchars(urldecode($val), ENT_QUOTES);
+    }, $html);
+
+    // {{money campo}} → format the column as currency (localization config).
+    $html = preg_replace_callback('/\{\{\s*money\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
+        $c = pb_loc()['currency'];
+        $v = (array_key_exists($m[1], $row) && is_numeric($row[$m[1]])) ? (float) $row[$m[1]] : 0;
+        return htmlspecialchars($c['symbol'] . number_format($v, (int) $c['decimals'], $c['decimal_sep'], $c['thousands_sep']), ENT_QUOTES);
+    }, $html);
+
+    // {{fecha campo}} / {{date campo}} → friendly date/datetime, raw if unparseable.
+    $html = preg_replace_callback('/\{\{\s*(?:fecha|date)\s+([a-zA-Z0-9_]+)\s*\}\}/', function ($m) use ($row) {
+        $raw = (array_key_exists($m[1], $row) && is_scalar($row[$m[1]])) ? trim((string) $row[$m[1]]) : '';
+        if ($raw === '' || strpos($raw, '0000-00-00') === 0) { return ''; }
+        $ts = strtotime($raw);
+        if ($ts === false) { return htmlspecialchars($raw, ENT_QUOTES); }
+        $l = pb_loc();
+        return htmlspecialchars(date(strlen($raw) <= 10 ? $l['date_format'] : $l['datetime_format'], $ts), ENT_QUOTES);
     }, $html);
 
     // Then simple {{field}} tags.
@@ -304,6 +337,9 @@ require_once __DIR__ . '/../controllers/api.controller.php';
 \$siteName = (is_array(\$siteCfg) && isset(\$siteCfg['site']['name'])) ? \$siteCfg['site']['name'] : 'My Website';
 \$baseUrl  = (is_array(\$siteCfg) && isset(\$siteCfg['site']['base_url'])) ? rtrim(\$siteCfg['site']['base_url'], '/') . '/' : '/';
 
+// Localization for {{money}} / {{fecha}} formatting tags (optional).
+\$GLOBALS['__wpb_loc'] = (is_array(\$siteCfg) && isset(\$siteCfg['localization']) && is_array(\$siteCfg['localization'])) ? \$siteCfg['localization'] : [];
+
 \$table    = \$cfg['table'] ?? '';
 \$idColumn = \$cfg['idColumn'] ?? 'id';
 \$template = \$cfg['template'] ?? '';
@@ -439,6 +475,16 @@ if (!function_exists('wpb_fields')) {
         }, \$html);
         return \$html;
     }
+    function wpb_loc() {
+        \$loc = (isset(\$GLOBALS['__wpb_loc']) && is_array(\$GLOBALS['__wpb_loc'])) ? \$GLOBALS['__wpb_loc'] : [];
+        \$cur = (isset(\$loc['currency']) && is_array(\$loc['currency'])) ? \$loc['currency'] : [];
+        return [
+            'currency'        => array_merge(['symbol' => '\$', 'decimals' => 2, 'thousands_sep' => ',', 'decimal_sep' => '.'], \$cur),
+            'date_format'     => \$loc['date_format']     ?? 'd-m-Y',
+            'datetime_format' => \$loc['datetime_format'] ?? 'd-m-Y H:i',
+            'time_format'     => \$loc['time_format']     ?? 'H:i',
+        ];
+    }
     function wpb_fields(\$html, array \$row, array \$formRow = []) {
         // Form blocks: {{#form}} ...inputs... {{/form}} — prefilled only in edit
         // mode (\$formRow), so create forms appear empty.
@@ -460,6 +506,20 @@ if (!function_exists('wpb_fields')) {
         \$html = preg_replace_callback('/\\{\\{\\s*img\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
             \$val = array_key_exists(\$m[1], \$row) && is_scalar(\$row[\$m[1]]) ? (string) \$row[\$m[1]] : '';
             return htmlspecialchars(urldecode(\$val), ENT_QUOTES);
+        }, \$html);
+        // {{money campo}} → currency; {{fecha|date campo}} → friendly date.
+        \$html = preg_replace_callback('/\\{\\{\\s*money\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
+            \$c = wpb_loc()['currency'];
+            \$v = (array_key_exists(\$m[1], \$row) && is_numeric(\$row[\$m[1]])) ? (float) \$row[\$m[1]] : 0;
+            return htmlspecialchars(\$c['symbol'] . number_format(\$v, (int) \$c['decimals'], \$c['decimal_sep'], \$c['thousands_sep']), ENT_QUOTES);
+        }, \$html);
+        \$html = preg_replace_callback('/\\{\\{\\s*(?:fecha|date)\\s+([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
+            \$raw = (array_key_exists(\$m[1], \$row) && is_scalar(\$row[\$m[1]])) ? trim((string) \$row[\$m[1]]) : '';
+            if (\$raw === '' || strpos(\$raw, '0000-00-00') === 0) { return ''; }
+            \$ts = strtotime(\$raw);
+            if (\$ts === false) { return htmlspecialchars(\$raw, ENT_QUOTES); }
+            \$l = wpb_loc();
+            return htmlspecialchars(date(strlen(\$raw) <= 10 ? \$l['date_format'] : \$l['datetime_format'], \$ts), ENT_QUOTES);
         }, \$html);
         return preg_replace_callback('/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/', function (\$m) use (\$row) {
             \$val = array_key_exists(\$m[1], \$row) ? \$row[\$m[1]] : '';
