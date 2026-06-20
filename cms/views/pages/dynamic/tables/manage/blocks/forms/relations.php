@@ -29,8 +29,12 @@
 			<?php foreach ($tables as $index => $item): ?>
 
 				<option value="<?php echo $item ?>" <?php if (!empty($data) && $module->columns[$i]->matrix_column == $item): ?> selected <?php endif ?> ><?php echo $item ?></option>
-				
+
 			<?php endforeach ?>
+
+			<!-- Core "admins" table (cashiers / users): selectable as a relation
+			     target even though it is not a generated "tables" module. -->
+			<option value="admins" <?php if (!empty($data) && $module->columns[$i]->matrix_column == "admins"): ?> selected <?php endif ?>>admins (cajeros / usuarios)</option>
 
 
 	</select>
@@ -50,7 +54,11 @@
 			$method = "GET";
 			$fields = array();
 
-			$columnsTable = CurlController::request($url,$method,$fields);
+			// Bounded select for the core admins table so the option list never
+			// carries the password hash; other tables keep the default fetch.
+			$relUrl = ($url == "admins") ? "admins?select=id_admin,title_admin,email_admin" : $url;
+
+			$columnsTable = CurlController::request($relUrl,$method,$fields);
 
 			if($columnsTable->status == 200){
 
