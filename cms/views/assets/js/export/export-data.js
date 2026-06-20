@@ -86,7 +86,12 @@ var ExportData = {
 
     // Fetch the prepared rows/types as JSON for the current table + filters.
     fetchData: function ($table) {
-        var module = JSON.parse($('#contentModule').val() || '{}');
+        var module;
+        try {
+            module = JSON.parse($('#contentModule').val() || '{}');
+        } catch (e) {
+            return Promise.reject(new Error('No se pudo procesar la información del módulo'));
+        }
         if (!module || !module.title_module) {
             return Promise.reject(new Error('No se pudo obtener la información del módulo'));
         }

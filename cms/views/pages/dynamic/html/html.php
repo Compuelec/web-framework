@@ -3,12 +3,14 @@
 Free HTML / CSS / JS content module
 ================================*/
 
-// Decode the stored content (JSON: { html, css, js })
-$htmlContent = json_decode($module->content_module);
+// Decode the stored content (JSON: { html, css, js }) as an associative array so
+// a null/invalid value can't trigger "read property on null" warnings.
+$htmlContent = json_decode($module->content_module ?? '{}', true);
+if (!is_array($htmlContent)) { $htmlContent = []; }
 
-$freeHtml = isset($htmlContent->html) ? $htmlContent->html : '';
-$freeCss  = isset($htmlContent->css)  ? $htmlContent->css  : '';
-$freeJs   = isset($htmlContent->js)   ? $htmlContent->js   : '';
+$freeHtml = $htmlContent['html'] ?? '';
+$freeCss  = $htmlContent['css']  ?? '';
+$freeJs   = $htmlContent['js']   ?? '';
 
 // Unique wrapper id so authors can scope their own CSS/JS if they wish
 $wrapperId = "cms-html-module-".$module->id_module;
@@ -16,7 +18,7 @@ $wrapperId = "cms-html-module-".$module->id_module;
 
 <div class="<?php if ($module->width_module == "100"): ?> col-lg-12 <?php endif ?><?php if ($module->width_module == "75"): ?> col-lg-9 <?php endif ?><?php if ($module->width_module == "50"): ?> col-lg-6 <?php endif ?><?php if ($module->width_module == "33"): ?> col-lg-4 <?php endif ?><?php if ($module->width_module == "25"): ?> col-lg-3 <?php endif ?> col-12 mb-3 position-relative">
 
-	<?php if ($_SESSION["admin"]->rol_admin == "superadmin"): ?>
+	<?php if (($_SESSION["admin"]->rol_admin ?? "") == "superadmin"): ?>
 
 		<div class="position-absolute border rounded" style="top:0px; right:12px; z-index:100">
 

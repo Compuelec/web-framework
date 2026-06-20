@@ -595,18 +595,19 @@ $(document).on("click",".myModule",function(){
 			Free HTML/CSS/JS type
 			=============================================*/
 
-			if(JSON.parse(item).type_module == "html"){
+			var htmlModuleData = JSON.parse(item);
+
+			if(htmlModuleData.type_module == "html"){
 
 				$("#type_module").val("html");
 				$("#type_module").attr("disabled",true);
 				$("#title_module").attr("readonly",false);
-				$("#title_module").val(JSON.parse(item).title_module);
-				$("#width_module").val(JSON.parse(item).width_module);
+				$("#title_module").val(htmlModuleData.title_module);
+				$("#width_module").val(htmlModuleData.width_module);
 
 				$("#htmlBlock").show();
 
 				// Parse content_module - handle both string and already parsed cases
-				var htmlModuleData = JSON.parse(item);
 				var htmlContent;
 
 				try {

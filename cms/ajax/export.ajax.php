@@ -42,7 +42,7 @@ try {
     $suffix = 'id';
     $moduleId = 0;
 
-    if ($moduleInfo->status == 200 && !empty($moduleInfo->results)) {
+    if (is_object($moduleInfo) && $moduleInfo->status == 200 && !empty($moduleInfo->results)) {
         $chosen = null;
         foreach ($moduleInfo->results as $m) {
             $s = trim((string)($m->suffix_module ?? ''));
