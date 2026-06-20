@@ -147,6 +147,18 @@ class PosManagerController {
     public function rolesAllowed()   { return ($this->config['roles_allowed']   ?? ['superadmin', 'admin', 'cashier']); }
     public function paymentMethods() { return ($this->config['payment_methods'] ?? ['efectivo', 'tarjeta']); }
 
+    /** Optional receipt header/footer (business name, address, phone, footer, logo). */
+    public function receiptConfig() {
+        $r = (isset($this->config['receipt']) && is_array($this->config['receipt'])) ? $this->config['receipt'] : [];
+        return [
+            'business' => (string)($r['business'] ?? ''),
+            'address'  => (string)($r['address'] ?? ''),
+            'phone'    => (string)($r['phone'] ?? ''),
+            'footer'   => (string)($r['footer'] ?? ''),
+            'logo'     => (string)($r['logo'] ?? ''),
+        ];
+    }
+
     /** Manual (free) line items need a name column on the sale-item table. */
     public function supportsManualItems() { return $this->isConfigured() && !empty($this->config['sale_item']['name']); }
     /** Sale-level discount needs a discount column on the sale table. */
@@ -253,6 +265,15 @@ class PosManagerController {
                 }
             }
             $cfg['permissions'] = $perm;
+        }
+
+        // Normalize the optional receipt header/footer block (plain strings).
+        if (isset($cfg['receipt']) && is_array($cfg['receipt'])) {
+            $rc = [];
+            foreach (['business', 'address', 'phone', 'footer', 'logo'] as $k) {
+                $rc[$k] = trim((string)($cfg['receipt'][$k] ?? ''));
+            }
+            $cfg['receipt'] = $rc;
         }
 
         try {

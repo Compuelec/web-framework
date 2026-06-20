@@ -208,11 +208,22 @@ create_sale request automatically.
                 '<div class="d-flex justify-content-between small"><span>Subtotal</span><span>' + money(sale.subtotal) + '</span></div>' +
                 '<div class="d-flex justify-content-between small text-success"><span>Descuento</span><span>-' + money(sale.discount) + '</span></div>';
         }
+        var rc = window.POS_RECEIPT || {};
+        var header = '';
+        if (rc.logo)     { header += '<div class="text-center mb-2"><img src="' + esc(rc.logo) + '" alt="" style="max-height:54px;max-width:170px"></div>'; }
+        if (rc.business) { header += '<div class="text-center fw-bold">' + esc(rc.business) + '</div>'; }
+        if (rc.address)  { header += '<div class="text-center small text-muted">' + esc(rc.address) + '</div>'; }
+        if (rc.phone)    { header += '<div class="text-center small text-muted">' + esc(rc.phone) + '</div>'; }
+        if (header)      { header += '<hr class="my-2">'; }
+        var footer = rc.footer ? '<hr class="my-2"><div class="text-center small text-muted">' + esc(rc.footer) + '</div>' : '';
+
         $('#pos-receipt-body').html(
+            header +
             '<div class="small text-muted mb-2">Venta #' + sale.id + (sale.date ? (' · ' + esc(sale.date)) : '') + '<br>Pago: ' + esc(sale.payment) + '</div>' +
             '<table class="table table-sm mb-2"><thead><tr><th>Ítem</th><th class="text-center">Cant</th><th class="text-end">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
             totals +
-            '<div class="d-flex justify-content-between fw-bold"><span>Total</span><span>' + money(sale.total) + '</span></div>'
+            '<div class="d-flex justify-content-between fw-bold"><span>Total</span><span>' + money(sale.total) + '</span></div>' +
+            footer
         );
         new bootstrap.Modal(document.getElementById('pos-receipt-modal')).show();
     }
@@ -340,6 +351,12 @@ create_sale request automatically.
             cfgPayments = (cfg.payment_methods && cfg.payment_methods.length) ? cfg.payment_methods.slice() : ['efectivo', 'tarjeta'];
             cfgCashiers = res.cashiers || [];
             cfgPermissions = (cfg.permissions && typeof cfg.permissions === 'object') ? cfg.permissions : {};
+            var rc = cfg.receipt || {};
+            $('#pos-rcpt-business').val(rc.business || '');
+            $('#pos-rcpt-phone').val(rc.phone || '');
+            $('#pos-rcpt-address').val(rc.address || '');
+            $('#pos-rcpt-logo').val(rc.logo || '');
+            $('#pos-rcpt-footer').val(rc.footer || '');
             renderPayments();
             renderPermissions();
             ['product', 'sale', 'sale_item'].forEach(function (group) {
@@ -383,6 +400,13 @@ create_sale request automatically.
         if (missing.length) { $('#pos-cfg-msg').html('<span class="text-danger">Faltan campos obligatorios — ' + esc(missing.join(', ')) + '</span>'); return; }
         syncPermissionsFromUI();
         cfg.permissions = cfgPermissions;
+        cfg.receipt = {
+            business: ($('#pos-rcpt-business').val() || '').trim(),
+            phone:    ($('#pos-rcpt-phone').val()    || '').trim(),
+            address:  ($('#pos-rcpt-address').val()  || '').trim(),
+            logo:     ($('#pos-rcpt-logo').val()     || '').trim(),
+            footer:   ($('#pos-rcpt-footer').val()   || '').trim()
+        };
         var $b = $(this);
         $b.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Guardando…');
         post({ ajax_action: 'save_settings', config: JSON.stringify(cfg) }).done(function (res) {
