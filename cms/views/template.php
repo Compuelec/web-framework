@@ -931,7 +931,7 @@ if($adminTable !== null && is_object($adminTable)){
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dashboard/dashboard.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/pages/pages.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/modules/modules.js?v=1.4"></script>
-	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=20"></script>
+	<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages.js?v=22"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/system-health/system-health.js?v=2"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/dynamic-forms.js"></script>
 	<script src="<?php echo $cmsBasePath ?>/views/assets/js/dynamic-forms/conditional-fields.js?v=1.0"></script>

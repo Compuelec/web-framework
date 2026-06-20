@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Config } from "../config.js";
+import type { FrameworkApiClient } from "../framework/apiClient.js";
 import { CliRunner, parseCliJson } from "../framework/cliRunner.js";
 import { assertNotDenied } from "../validators/identifiers.js";
+import { unwrapResults } from "../utils/api.js";
 
 const FIELD_TYPES = [
   "text",
@@ -90,7 +92,25 @@ function renderResult(scriptName: string, configJson: string, raw: unknown, comm
   };
 }
 
-export function registerScaffoldTools(server: McpServer, cfg: Config): void {
+/**
+ * Best-effort lookup of registered CMS sections so `needs_confirmation` can
+ * surface real choices to the LLM. Failures fall back to an empty list — the
+ * gate still works, the LLM just won't see suggestions.
+ */
+async function fetchSectionSuggestions(api: FrameworkApiClient, cfg: Config): Promise<string[]> {
+  try {
+    const data = await api.get("modules", { orderBy: "title_module", orderMode: "asc" });
+    const rows = unwrapResults(data) as unknown as { title_module?: string; suffix_module?: string }[];
+    return rows
+      .map((r) => String(r.title_module ?? ""))
+      .filter((t) => t !== "")
+      .filter((t) => !cfg.denyTables.has(t.toLowerCase()));
+  } catch {
+    return [];
+  }
+}
+
+export function registerScaffoldTools(server: McpServer, cfg: Config, api: FrameworkApiClient): void {
   server.registerTool(
     "create_section",
     {
@@ -163,7 +183,10 @@ export function registerScaffoldTools(server: McpServer, cfg: Config): void {
         "the visual-builder format so the CMS lists and edits it. Optionally binds the page to a " +
         "CMS section's table (enables `{{field}}`/`{{#cada}}` template helpers and forms). " +
         "Pass `dry_run: true` to preview without writing the file. See `framework://agent/guide` " +
-        "for the template tag reference.",
+        "for the template tag reference. **Important:** before calling without `table`, ask the " +
+        "user whether the page needs data (use `create_section` first), can be wired to an " +
+        "existing section (pass `table`), or is truly static (pass `confirmedStatic: true`). " +
+        "Calling without `table` and without `confirmedStatic` returns `needs_confirmation`.",
       inputSchema: {
         name: slugSchema.describe("File slug and URL path. The page lives at `web/pages/<name>.php`."),
         heading: z.string().optional().describe("Browser tab title and label in the CMS list."),
@@ -181,15 +204,62 @@ export function registerScaffoldTools(server: McpServer, cfg: Config): void {
         accessRoles: z.array(z.string()).optional().describe("Admin roles allowed when `private` is true."),
         accessUsers: z.array(z.union([z.string(), z.number()])).optional().describe("Admin ids allowed when `private` is true."),
         isHome: z.boolean().optional().describe("If true, also set this page as the site home."),
+        confirmedStatic: z.boolean().optional().describe("Set to true to acknowledge that the page is intentionally static (no data binding). Required when `table` is omitted; otherwise the tool returns `needs_confirmation`."),
         dry_run: z.boolean().optional().describe("If true, return the JSON config and CLI command without writing the file."),
       },
     },
     async (args) => {
-      const { dry_run, table, ...rest } = args;
+      const { dry_run, table, confirmedStatic, ...rest } = args;
       if (table) assertNotDenied(table, cfg.denyTables);
+
+      // Gate: refuse to silently create a page with no data binding. The LLM must
+      // either pick an existing table or explicitly confirm the page is static.
+      // `dry_run` bypasses the gate so the LLM can still preview both shapes.
+      if (!table && !confirmedStatic && !dry_run) {
+        const suggestions = await fetchSectionSuggestions(api, cfg);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  tool: "create_page",
+                  status: "needs_confirmation",
+                  reason:
+                    "Page has no `table`. Ask the user which path to take, then re-run this tool:",
+                  options: [
+                    {
+                      choice: "bind_existing",
+                      description:
+                        "Wire the page to an existing CMS section. Re-run with `table: \"<suffix>\"`.",
+                      available_sections: suggestions,
+                    },
+                    {
+                      choice: "create_new_section",
+                      description:
+                        "Create a new CMS section first (call `create_section`), then re-run `create_page` with that section's `name` as `table`.",
+                    },
+                    {
+                      choice: "static",
+                      description:
+                        "Page is intentionally static (landing, contact, info). Re-run with `confirmedStatic: true`.",
+                    },
+                  ],
+                  hint:
+                    "Do not pick on the user's behalf. Surface the three options and wait for their decision.",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
 
       const payload: Record<string, unknown> = { ...rest };
       if (table !== undefined) payload.table = table;
+      if (confirmedStatic && !table) payload.confirmedStatic = true;
       const configJson = JSON.stringify(payload);
 
       if (dry_run) {

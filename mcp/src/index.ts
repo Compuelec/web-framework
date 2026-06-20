@@ -15,9 +15,7 @@ import { registerDocResources } from "./resources/docs.js";
 async function main(): Promise<void> {
   const cfg = loadConfig();
   const api = new FrameworkApiClient(cfg);
-  // The token store always exists — it just doesn't auto-login when env credentials
-  // are missing. In that mode the user triggers `mcp_login` to populate it interactively.
-  const tokenStore = new TokenStore(api, cfg.auth);
+  const tokenStore = new TokenStore();
 
   const server = new McpServer({
     name: "web-framework-mcp",
@@ -29,27 +27,12 @@ async function main(): Promise<void> {
   registerTableTools(server, api, cfg);
   registerRecordTools(server, api, cfg, tokenStore);
   registerPageTools(server, api);
-  registerScaffoldTools(server, cfg);
+  registerScaffoldTools(server, cfg, api);
   registerDocResources(server);
 
-  // Eager-login so the first write doesn't pay the login latency and any credential
-  // misconfiguration surfaces at startup instead of mid-conversation.
-  if (cfg.auth) {
-    try {
-      await tokenStore.ensureSession();
-      console.error("[web-framework-mcp] logged in as", cfg.auth.email);
-    } catch (e) {
-      console.error(
-        "[web-framework-mcp] WARNING: eager login failed —",
-        e instanceof Error ? e.message : e,
-      );
-      console.error("[web-framework-mcp] reads will still work; writes will retry on first call.");
-    }
-  } else {
-    console.error(
-      "[web-framework-mcp] no env credentials — call `mcp_login` from the client to authenticate interactively.",
-    );
-  }
+  console.error(
+    "[web-framework-mcp] no active session — call `mcp_login` from the client to authorize the admin JWT.",
+  );
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

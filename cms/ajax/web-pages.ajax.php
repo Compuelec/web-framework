@@ -178,9 +178,10 @@ if ($action === 'list') {
             $cfg = pb_extractConfig(@file_get_contents($file));
             if ($cfg) {
                 $pages[] = [
-                    'file'    => $base,
-                    'table'   => $cfg['table'] ?? '',
-                    'heading' => $cfg['heading'] ?? $base,
+                    'file'            => $base,
+                    'table'           => $cfg['table'] ?? '',
+                    'heading'         => $cfg['heading'] ?? $base,
+                    'confirmedStatic' => !empty($cfg['confirmedStatic']),
                 ];
             }
         }

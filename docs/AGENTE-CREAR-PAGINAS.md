@@ -138,6 +138,7 @@ si faltan, y dejar la página lista.
 | `accessRoles` | array | Roles permitidos (`rol_admin`) cuando es privada. |
 | `accessUsers` | array | IDs de usuarios permitidos cuando es privada. |
 | `isHome` | bool | Además marca esta página como **inicio** del sitio (raíz del dominio). |
+| `confirmedStatic` | bool | Marca explícita de página estática (sin `table`). Opcional pero recomendada cuando la página es de contenido puro; el CMS la muestra con un badge "Estática" en la lista. Se ignora si pasás `table`. |
 
 ---
 
@@ -273,9 +274,15 @@ La página queda en `web/pages/tienda.php`, aparece en el admin y se ve en
      con esa `table`).
    - **Solo datos** (app web / sin página pública): solo `make-table.php`; la app
      consume la tabla por la **API REST**.
-   - **Solo contenido** (landing, info): solo `make-page.php` sin `table`.
+   - **Solo contenido** (landing, info): solo `make-page.php` sin `table`, marcando
+     `"confirmedStatic": true` para indicar que la falta de tabla es intencional.
 
    Si no está claro, **pregunta** qué tablas necesitan página y cuáles son solo-datos.
+
+   > Cuando se usa el MCP, `create_page` **bloquea** las llamadas sin `table` y sin
+   > `confirmedStatic` devolviendo `status: "needs_confirmation"` con las tres
+   > opciones (vincular sección existente, crear una nueva, o confirmar estática).
+   > El agente debe presentarle las opciones al usuario antes de reintentar.
 2. **Siempre** genera con `tools/make-page.php` (nunca escribas el `.php` a mano), o
    la página no aparecerá en el admin ni será editable.
 2. `name` en minúsculas, sin espacios ni acentos (`a-z 0-9 _ -`).
