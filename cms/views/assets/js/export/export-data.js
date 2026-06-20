@@ -231,13 +231,88 @@ var ExportData = {
         });
     },
 
+    /* ---------------- image helpers (for embedding in the PDF) ---------------- */
+
+    // Pull the image URL(s) out of a cell value for a given column type.
+    extractCellUrls: function (value, type) {
+        if (value == null) { return []; }
+        var s = String(value).trim();
+        if (s === '' || s === 'No file') { return []; }
+        if (type === 'multiimage') {
+            try {
+                var arr = JSON.parse(s);
+                if (Array.isArray(arr)) {
+                    return arr.filter(function (u) { return typeof u === 'string' && /^https?:\/\//.test(u); });
+                }
+            } catch (e) { /* fall through to token extraction */ }
+            return s.match(/https?:\/\/[^\s",\]]+/g) || [];
+        }
+        return /^https?:\/\//.test(s) ? [s] : [];
+    },
+
+    // Load an image and return { url, data(JPEG dataURL), w, h } — or null on
+    // failure / a tainted (cross-origin) canvas. Converts webp etc. to JPEG.
+    loadImageData: function (url) {
+        return new Promise(function (resolve) {
+            var img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function () {
+                try {
+                    var max = 220;
+                    var scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+                    var w = Math.max(1, Math.round(img.naturalWidth * scale));
+                    var h = Math.max(1, Math.round(img.naturalHeight * scale));
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve({ url: url, data: canvas.toDataURL('image/jpeg', 0.85), w: w, h: h });
+                } catch (e) { resolve(null); }
+            };
+            img.onerror = function () { resolve(null); };
+            img.src = url;
+        });
+    },
+
+    // Scale (iw x ih) to fit within (maxW x maxH), preserving aspect ratio.
+    fitRect: function (iw, ih, maxW, maxH) {
+        var r = Math.min(maxW / iw, maxH / ih);
+        return { w: iw * r, h: ih * r };
+    },
+
     /* ---------------- PDF (styled, landscape) ---------------- */
     buildPDF: function (res) {
         var self = this;
         var base = this.pluginBase() + '/jspdf';
+
+        // Which columns hold images we can embed as thumbnails.
+        var imgCols = {};
+        (res.types || []).forEach(function (t, i) {
+            if (t === 'image' || t === 'multiimage') { imgCols[i] = t; }
+        });
+
+        // Collect the URLs per cell and the unique set to preload.
+        var body = res.rows.slice(1);
+        var cellUrls = {};   // rowIndex -> { colIndex: [urls] }
+        var urlSet = {};
+        body.forEach(function (row, r) {
+            Object.keys(imgCols).forEach(function (c) {
+                c = +c;
+                var urls = self.extractCellUrls(row[c], imgCols[c]);
+                if (urls.length) {
+                    (cellUrls[r] = cellUrls[r] || {})[c] = urls;
+                    urls.forEach(function (u) { urlSet[u] = 1; });
+                }
+            });
+        });
+        var uniqueUrls = Object.keys(urlSet);
+
         return this.loadScript(base + '/jspdf.umd.min.js')
             .then(function () { return self.loadScript(base + '/jspdf.plugin.autotable.min.js'); })
-            .then(function () {
+            .then(function () { return Promise.all(uniqueUrls.map(self.loadImageData)); })
+            .then(function (loaded) {
+                var imgMap = {};
+                loaded.forEach(function (o) { if (o) { imgMap[o.url] = o; } });
+
                 var jsPDF = window.jspdf.jsPDF;
                 var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
                 var pageW = doc.internal.pageSize.getWidth();
@@ -258,22 +333,73 @@ var ExportData = {
                 doc.setFontSize(9);
                 doc.text('Exportado: ' + now.toLocaleString('es-CL') + '  ·  ' + (res.rows.length - 1) + ' registro(s)', 14, 24);
 
-                // Right-align numeric columns.
-                var columnStyles = {};
+                // Column widths: fixed for image columns, right-align numbers,
+                // a narrow index column. Text columns share the remaining width.
+                var columnStyles = { 0: { cellWidth: 9, halign: 'right' } };
                 (res.types || []).forEach(function (t, i) {
-                    if (self.isNumericType(t)) { columnStyles[i] = { halign: 'right' }; }
+                    if (t === 'multiimage') { columnStyles[i] = { cellWidth: 46, halign: 'center', valign: 'middle' }; }
+                    else if (imgCols[i]) { columnStyles[i] = { cellWidth: 24, halign: 'center', valign: 'middle' }; }
+                    else if (self.isNumericType(t)) { columnStyles[i] = { halign: 'right' }; }
                 });
 
                 doc.autoTable({
                     head: [res.rows[0]],
-                    body: res.rows.slice(1),
+                    body: body,
                     startY: 28,
-                    styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', lineColor: [226, 232, 240], lineWidth: 0.1, textColor: [45, 55, 72] },
-                    headStyles: { fillColor: accent, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle', lineColor: [226, 232, 240], lineWidth: 0.1, textColor: [45, 55, 72] },
+                    headStyles: { fillColor: accent, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', valign: 'middle' },
                     alternateRowStyles: { fillColor: self.zebra },
                     columnStyles: columnStyles,
                     margin: { top: 28, left: 14, right: 14 },
-                    tableWidth: 'auto',
+                    didParseCell: function (data) {
+                        if (data.section !== 'body') { return; }
+                        var c = data.column.index;
+                        if (imgCols[c]) {
+                            data.cell.text = [];               // hide the URL/JSON text
+                            data.cell.styles.minCellHeight = 22; // room for the thumbnail
+                            data.cell.styles.cellPadding = 1.5;
+                            return;
+                        }
+                        // Break very long unbroken tokens (URLs) so the column can shrink.
+                        var raw = (data.cell.text || []).join(' ');
+                        if (/\S{31,}/.test(raw)) {
+                            data.cell.text = raw.replace(/(\S{30})(?=\S)/g, '$1\n').split('\n');
+                        }
+                    },
+                    didDrawCell: function (data) {
+                        if (data.section !== 'body') { return; }
+                        var c = data.column.index;
+                        if (!imgCols[c]) { return; }
+                        var urls = (cellUrls[data.row.index] || {})[c];
+                        if (!urls || !urls.length) { return; }
+
+                        var pad = 1.5;
+                        var cw = data.cell.width - pad * 2;
+                        var ch = data.cell.height - pad * 2;
+
+                        if (imgCols[c] === 'multiimage') {
+                            var n = Math.min(urls.length, 5);
+                            var gap = 1.2;
+                            var slot = (cw - gap * (n - 1)) / n;
+                            for (var i = 0; i < n; i++) {
+                                var o = imgMap[urls[i]];
+                                if (!o) { continue; }
+                                var rect = self.fitRect(o.w, o.h, slot, ch);
+                                doc.addImage(o.data, 'JPEG',
+                                    data.cell.x + pad + i * (slot + gap) + (slot - rect.w) / 2,
+                                    data.cell.y + pad + (ch - rect.h) / 2,
+                                    rect.w, rect.h);
+                            }
+                        } else {
+                            var o2 = imgMap[urls[0]];
+                            if (!o2) { return; }
+                            var rect2 = self.fitRect(o2.w, o2.h, cw, ch);
+                            doc.addImage(o2.data, 'JPEG',
+                                data.cell.x + pad + (cw - rect2.w) / 2,
+                                data.cell.y + pad + (ch - rect2.h) / 2,
+                                rect2.w, rect2.h);
+                        }
+                    },
                     didDrawPage: function (data) {
                         var page = doc.internal.getNumberOfPages();
                         doc.setFontSize(8);
