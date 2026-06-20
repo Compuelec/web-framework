@@ -26,7 +26,7 @@ $wrapperId = "cms-html-module-".$module->id_module;
 				<i class="bi bi-pencil-square"></i>
 			</button>
 
-			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 deleteModule" idModule=<?php echo base64_encode($module->id_module) ?> >
+			<button type="button" class="btn btn-sm text-muted rounded m-0 px-1 py-0 border-0 deleteModule" idModule="<?php echo base64_encode($module->id_module) ?>">
 				<i class="bi bi-trash"></i>
 			</button>
 

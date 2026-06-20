@@ -31,11 +31,15 @@ var ExportData = {
     // Lazy-load a local script once; returns a Promise.
     loadScript: function (url) {
         if (this._scripts[url]) { return this._scripts[url]; }
+        var self = this;
         this._scripts[url] = new Promise(function (resolve, reject) {
             var s = document.createElement('script');
             s.src = url;
             s.onload = function () { resolve(); };
-            s.onerror = function () { reject(new Error('No se pudo cargar ' + url)); };
+            s.onerror = function () {
+                delete self._scripts[url]; // drop the cached rejection so a later call can retry
+                reject(new Error('No se pudo cargar ' + url));
+            };
             document.head.appendChild(s);
         });
         return this._scripts[url];
