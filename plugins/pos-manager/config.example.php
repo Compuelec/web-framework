@@ -3,10 +3,14 @@
 /**
  * POS Manager — configuration template.
  *
- * Copy this file to `config.php` (kept local, gitignored) and map it to YOUR
- * data tables. The plugin is generic: it only needs to know which table holds
- * the products being sold, where to write sales and sale lines, and the column
- * names for each piece of data.
+ * NOTE: configuration is normally done VISUALLY from the CMS (the ⚙ button in the
+ * POS screen, superadmin only) and stored in the `pos_settings` table — no file
+ * editing needed. This file is an OPTIONAL fallback used only when no settings
+ * row exists yet. Copy it to `config.php` (kept local, gitignored) if you prefer
+ * a file. The DB settings take precedence over this file.
+ *
+ * The plugin is generic: it only needs to know which table holds the products
+ * being sold, where to write sales and sale lines, and the column names.
  *
  * SECURITY: every `table` and column name below is interpolated into SQL, so it
  * MUST be a bare SQL identifier (matching ^[a-zA-Z0-9_]+$). The plugin refuses to
@@ -35,10 +39,11 @@ return [
         'total'   => 'total_venta',
         'payment' => 'metodo_pago_venta',
         'status'  => 'estado_venta',
-        'date'    => 'date_created_venta',    // optional (set to NOW() on sale)
+        'date'    => 'date_created_venta',     // optional (set to NOW() on sale)
+        'discount' => 'descuento_venta',       // optional — enables sale discounts
     ],
 
-    // The sale line table (one row per product in a sale).
+    // The sale line table (one row per item in a sale).
     'sale_item' => [
         'table'      => 'detalle_venta',
         'id'         => 'id_detalle',
@@ -47,6 +52,7 @@ return [
         'qty'        => 'cantidad_detalle',
         'unit_price' => 'precio_unitario_detalle',
         'subtotal'   => 'subtotal_detalle',
+        'name'       => 'nombre_detalle',          // optional — enables manual line items
     ],
 
     // Admin roles allowed to operate the register.
@@ -57,4 +63,13 @@ return [
 
     // Status written to a completed sale.
     'completed_status' => 'completed',
+
+    // Optional per-cashier permissions (managed from the ⚙ settings screen).
+    //   discount: admin ids allowed to apply a discount (absent = everyone).
+    //   payments: admin id => payment methods that cashier may use (absent = all).
+    // Superadmins always bypass these.
+    // 'permissions' => [
+    //     'discount' => ['2'],
+    //     'payments' => ['3' => ['efectivo']],
+    // ],
 ];

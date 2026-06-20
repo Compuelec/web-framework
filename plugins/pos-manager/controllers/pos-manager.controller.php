@@ -122,6 +122,12 @@ class PosManagerController {
         if (!empty($cfg['sale']['date']) && !$this->isIdentifier($cfg['sale']['date'])) {
             return 'Identificador inválido en sale.date.';
         }
+        if (!empty($cfg['sale']['discount']) && !$this->isIdentifier($cfg['sale']['discount'])) {
+            return 'Identificador inválido en sale.discount.';
+        }
+        if (!empty($cfg['sale_item']['name']) && !$this->isIdentifier($cfg['sale_item']['name'])) {
+            return 'Identificador inválido en sale_item.name.';
+        }
         return null;
     }
 
@@ -134,6 +140,57 @@ class PosManagerController {
     public function configError()    { return $this->configError; }
     public function rolesAllowed()   { return ($this->config['roles_allowed']   ?? ['superadmin', 'admin', 'cashier']); }
     public function paymentMethods() { return ($this->config['payment_methods'] ?? ['efectivo', 'tarjeta']); }
+
+    /** Manual (free) line items need a name column on the sale-item table. */
+    public function supportsManualItems() { return $this->isConfigured() && !empty($this->config['sale_item']['name']); }
+    /** Sale-level discount needs a discount column on the sale table. */
+    public function supportsDiscount()    { return $this->isConfigured() && !empty($this->config['sale']['discount']); }
+
+    /**
+     * Whether a cashier (admin id) may apply a discount. Superadmins always can.
+     * If permissions.discount is not configured, everyone may; once configured,
+     * only the listed cashier ids may.
+     */
+    public function canDiscount($cashierId, $role = '') {
+        if ($role === 'superadmin') { return true; }
+        if (!isset($this->config['permissions']['discount'])) { return true; }
+        return in_array((string) $cashierId, array_map('strval', (array) $this->config['permissions']['discount']), true);
+    }
+
+    /**
+     * Payment methods a cashier (admin id) may use. Superadmins may use all.
+     * If permissions.payments[id] is not configured, the cashier may use all;
+     * otherwise only the listed subset.
+     */
+    public function allowedPaymentMethodsForCashier($cashierId, $role = '') {
+        $all = $this->paymentMethods();
+        if ($role === 'superadmin') { return $all; }
+        $perm = $this->config['permissions']['payments'][(string) $cashierId] ?? null;
+        if ($perm === null) { return $all; }
+        return array_values(array_intersect($all, (array) $perm));
+    }
+
+    /** The cashiers (admins whose role can operate the POS) for the settings UI. */
+    public function getCashiers() {
+        $roles = $this->rolesAllowed();
+        if (empty($roles)) { return []; }
+        try {
+            $place = implode(',', array_fill(0, count($roles), '?'));
+            $stmt = $this->link->prepare(
+                "SELECT id_admin, email_admin, title_admin, rol_admin FROM admins WHERE rol_admin IN ($place) ORDER BY title_admin, email_admin"
+            );
+            $stmt->execute(array_values($roles));
+            return array_map(function ($r) {
+                return [
+                    'id'   => (int) $r->id_admin,
+                    'name' => ($r->title_admin !== null && $r->title_admin !== '') ? $r->title_admin : ($r->email_admin ?? ('#' . $r->id_admin)),
+                    'role' => $r->rol_admin,
+                ];
+            }, $stmt->fetchAll(PDO::FETCH_OBJ));
+        } catch (Exception $e) {
+            return [];
+        }
+    }
 
     /* ============================================================
        Settings API (for the visual configuration screen)
@@ -153,6 +210,7 @@ class PosManagerController {
             'success'  => true,
             'config'   => is_array($cfg) ? $cfg : null,
             'tables'   => $this->getTables(),
+            'cashiers' => $this->getCashiers(),
         ];
     }
 
@@ -172,6 +230,22 @@ class PosManagerController {
         $cfg['payment_methods']  = $pm;
         $cfg['roles_allowed']    = $cfg['roles_allowed']    ?? ['superadmin', 'admin', 'cashier'];
         $cfg['completed_status'] = $cfg['completed_status'] ?? 'completed';
+
+        // Normalize role permissions (arrays of strings; payment methods kept to
+        // the known set). Stored only when the screen sends them.
+        if (isset($cfg['permissions']) && is_array($cfg['permissions'])) {
+            $perm = [];
+            if (isset($cfg['permissions']['discount'])) {
+                $perm['discount'] = array_values(array_filter(array_map('strval', (array) $cfg['permissions']['discount']), 'strlen'));
+            }
+            if (isset($cfg['permissions']['payments']) && is_array($cfg['permissions']['payments'])) {
+                $perm['payments'] = [];
+                foreach ($cfg['permissions']['payments'] as $r => $methods) {
+                    $perm['payments'][(string) $r] = array_values(array_intersect($pm, array_map('strval', (array) $methods)));
+                }
+            }
+            $cfg['permissions'] = $perm;
+        }
 
         try {
             $json = json_encode($cfg, JSON_UNESCAPED_UNICODE);
@@ -262,7 +336,7 @@ class PosManagerController {
        Create sale (atomic, race-safe stock decrement)
        ============================================================ */
 
-    public function createSale($items, $payment, $cashierId) {
+    public function createSale($items, $payment, $cashierId, $discount = 0, $role = '') {
         if (!$this->isConfigured()) {
             return ['success' => false, 'error' => $this->configError];
         }
@@ -272,66 +346,117 @@ class PosManagerController {
         if (!in_array($payment, $this->paymentMethods(), true)) {
             return ['success' => false, 'error' => 'Método de pago inválido.'];
         }
+        // Permission: this cashier must be allowed to use this payment method.
+        if (!in_array($payment, $this->allowedPaymentMethodsForCashier($cashierId, $role), true)) {
+            return ['success' => false, 'error' => 'payment_not_allowed'];
+        }
 
-        $cart = [];
+        // Split into product lines (merged by id) and manual lines.
+        $cart = [];   // product_id => qty
+        $manual = []; // [ ['name','price','qty'] ]
         foreach ($items as $it) {
-            $pid = (int) ($it['product_id'] ?? 0);
-            $qty = (int) ($it['qty'] ?? 0);
-            if ($pid <= 0 || $qty < 1) {
-                return ['success' => false, 'error' => 'Hay una línea inválida en el carrito.'];
+            if (!empty($it['manual'])) {
+                if (!$this->supportsManualItems()) {
+                    return ['success' => false, 'error' => 'Los ítems manuales no están habilitados (mapea una columna de nombre en el detalle).'];
+                }
+                $name  = trim((string) ($it['name'] ?? ''));
+                $price = isset($it['price']) ? (float) $it['price'] : -1;
+                $qty   = (int) ($it['qty'] ?? 0);
+                if ($name === '' || $price < 0 || $qty < 1) {
+                    return ['success' => false, 'error' => 'Hay un ítem manual inválido.'];
+                }
+                $manual[] = ['name' => $name, 'price' => $price, 'qty' => $qty];
+            } else {
+                $pid = (int) ($it['product_id'] ?? 0);
+                $qty = (int) ($it['qty'] ?? 0);
+                if ($pid <= 0 || $qty < 1) {
+                    return ['success' => false, 'error' => 'Hay una línea inválida en el carrito.'];
+                }
+                $cart[$pid] = ($cart[$pid] ?? 0) + $qty;
             }
-            $cart[$pid] = ($cart[$pid] ?? 0) + $qty;
+        }
+        if (!$cart && !$manual) {
+            return ['success' => false, 'error' => 'El carrito está vacío.'];
+        }
+
+        $discount = max(0.0, (float) $discount);
+        if ($discount > 0 && !$this->supportsDiscount()) {
+            return ['success' => false, 'error' => 'Los descuentos no están habilitados (mapea una columna de descuento en ventas).'];
+        }
+        if ($discount > 0 && !$this->canDiscount($cashierId, $role)) {
+            return ['success' => false, 'error' => 'discount_not_allowed'];
         }
 
         $p = $this->config['product'];
         $s = $this->config['sale'];
         $d = $this->config['sale_item'];
         $activeCond = !empty($p['active']) ? " AND `{$p['active']}` = 1" : '';
+        $hasName    = !empty($d['name']);
+        $hasDisc    = !empty($s['discount']);
+
+        // Line-insert SQL (optionally storing a name snapshot / manual name).
+        $lineCols = "`{$d['sale']}`, `{$d['product']}`, `{$d['qty']}`, `{$d['unit_price']}`, `{$d['subtotal']}`";
+        $linePh   = "?, ?, ?, ?, ?";
+        if ($hasName) { $lineCols .= ", `{$d['name']}`"; $linePh .= ", ?"; }
+        $lineSql = "INSERT INTO `{$d['table']}` ({$lineCols}) VALUES ({$linePh})";
 
         try {
             $this->link->beginTransaction();
 
+            // Header (total/discount finalized after pricing the lines).
             $hCols  = ["`{$s['cashier']}`", "`{$s['total']}`", "`{$s['payment']}`", "`{$s['status']}`"];
             $hPlace = ['?', '?', '?', '?'];
             $hVals  = [(int) $cashierId, 0, $payment, $this->config['completed_status']];
+            if ($hasDisc) { $hCols[] = "`{$s['discount']}`"; $hPlace[] = '?'; $hVals[] = 0; }
             if (!empty($s['date'])) { $hCols[] = "`{$s['date']}`"; $hPlace[] = 'NOW()'; }
             $hSql = "INSERT INTO `{$s['table']}` (" . implode(', ', $hCols) . ") VALUES (" . implode(', ', $hPlace) . ")";
             $this->link->prepare($hSql)->execute($hVals);
             $saleId = (int) $this->link->lastInsertId();
 
-            $decSql = "UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` - ? "
-                    . "WHERE `{$p['id']}` = ? AND `{$p['stock']}` >= ?" . $activeCond;
-            $priceSql = "SELECT `{$p['name']}` AS name, `{$p['price']}` AS price "
-                      . "FROM `{$p['table']}` WHERE `{$p['id']}` = ?";
-            $lineSql = "INSERT INTO `{$d['table']}` "
-                     . "(`{$d['sale']}`, `{$d['product']}`, `{$d['qty']}`, `{$d['unit_price']}`, `{$d['subtotal']}`) "
-                     . "VALUES (?, ?, ?, ?, ?)";
+            $decSql   = "UPDATE `{$p['table']}` SET `{$p['stock']}` = `{$p['stock']}` - ? "
+                      . "WHERE `{$p['id']}` = ? AND `{$p['stock']}` >= ?" . $activeCond;
+            $priceSql = "SELECT `{$p['name']}` AS name, `{$p['price']}` AS price FROM `{$p['table']}` WHERE `{$p['id']}` = ?";
 
-            $total = 0.0;
+            $subtotal = 0.0;
+
+            // Product lines — atomic, race-safe stock decrement.
             foreach ($cart as $pid => $qty) {
                 $dec = $this->link->prepare($decSql);
                 $dec->execute([$qty, $pid, $qty]);
                 if ($dec->rowCount() !== 1) {
                     $this->link->rollBack();
-                    return [
-                        'success' => false,
-                        'error'   => 'insufficient_stock',
-                        'product' => $this->productBrief($pid),
-                    ];
+                    return ['success' => false, 'error' => 'insufficient_stock', 'product' => $this->productBrief($pid)];
                 }
-
                 $ps = $this->link->prepare($priceSql);
                 $ps->execute([$pid]);
                 $prod = $ps->fetch(PDO::FETCH_OBJ);
                 $unit = (float) ($prod->price ?? 0);
                 $sub  = $unit * $qty;
-                $total += $sub;
-
-                $this->link->prepare($lineSql)->execute([$saleId, $pid, $qty, $unit, $sub]);
+                $subtotal += $sub;
+                $vals = [$saleId, $pid, $qty, $unit, $sub];
+                if ($hasName) { $vals[] = (string) ($prod->name ?? ''); }
+                $this->link->prepare($lineSql)->execute($vals);
             }
 
-            $this->link->prepare("UPDATE `{$s['table']}` SET `{$s['total']}` = ? WHERE `{$s['id']}` = ?")
-                       ->execute([$total, $saleId]);
+            // Manual lines — no product, no stock.
+            foreach ($manual as $m) {
+                $sub = $m['price'] * $m['qty'];
+                $subtotal += $sub;
+                $vals = [$saleId, 0, $m['qty'], $m['price'], $sub];
+                if ($hasName) { $vals[] = $m['name']; }
+                $this->link->prepare($lineSql)->execute($vals);
+            }
+
+            // Clamp the discount to the subtotal and finalize the header.
+            $discount = min($discount, $subtotal);
+            $total = $subtotal - $discount;
+            if ($hasDisc) {
+                $this->link->prepare("UPDATE `{$s['table']}` SET `{$s['total']}` = ?, `{$s['discount']}` = ? WHERE `{$s['id']}` = ?")
+                           ->execute([$total, $discount, $saleId]);
+            } else {
+                $this->link->prepare("UPDATE `{$s['table']}` SET `{$s['total']}` = ? WHERE `{$s['id']}` = ?")
+                           ->execute([$total, $saleId]);
+            }
 
             $this->link->commit();
             return ['success' => true, 'sale' => $this->getReceiptData($saleId)];
@@ -371,15 +496,22 @@ class PosManagerController {
         $s = $this->config['sale'];
         $d = $this->config['sale_item'];
         $p = $this->config['product'];
+        $hasName = !empty($d['name']);
+        $hasDisc = !empty($s['discount']);
 
         $hs = $this->link->prepare("SELECT * FROM `{$s['table']}` WHERE `{$s['id']}` = ?");
         $hs->execute([(int) $saleId]);
         $h = $hs->fetch(PDO::FETCH_ASSOC);
         if (!$h) { return null; }
 
+        // Prefer the stored line name (covers manual items + price/name snapshot);
+        // fall back to the joined product name.
+        $nameExpr = $hasName
+            ? "COALESCE(NULLIF(di.`{$d['name']}`, ''), pr.`{$p['name']}`)"
+            : "pr.`{$p['name']}`";
         $ls = $this->link->prepare(
             "SELECT di.`{$d['qty']}` AS qty, di.`{$d['unit_price']}` AS unit_price, di.`{$d['subtotal']}` AS subtotal, "
-            . "pr.`{$p['name']}` AS name "
+            . "{$nameExpr} AS name "
             . "FROM `{$d['table']}` di "
             . "LEFT JOIN `{$p['table']}` pr ON di.`{$d['product']}` = pr.`{$p['id']}` "
             . "WHERE di.`{$d['sale']}` = ?"
@@ -387,13 +519,18 @@ class PosManagerController {
         $ls->execute([(int) $saleId]);
         $lines = $ls->fetchAll(PDO::FETCH_OBJ);
 
+        $total    = (float) $h[$s['total']];
+        $discount = ($hasDisc && isset($h[$s['discount']])) ? (float) $h[$s['discount']] : 0.0;
+
         return [
-            'id'      => (int) $h[$s['id']],
-            'total'   => (float) $h[$s['total']],
-            'payment' => $h[$s['payment']] ?? '',
-            'status'  => $h[$s['status']] ?? '',
-            'date'    => (!empty($s['date']) && isset($h[$s['date']])) ? $h[$s['date']] : '',
-            'items'   => array_map(function ($l) {
+            'id'       => (int) $h[$s['id']],
+            'subtotal' => $total + $discount,
+            'discount' => $discount,
+            'total'    => $total,
+            'payment'  => $h[$s['payment']] ?? '',
+            'status'   => $h[$s['status']] ?? '',
+            'date'     => (!empty($s['date']) && isset($h[$s['date']])) ? $h[$s['date']] : '',
+            'items'    => array_map(function ($l) {
                 return [
                     'name'       => $l->name,
                     'qty'        => (int) $l->qty,

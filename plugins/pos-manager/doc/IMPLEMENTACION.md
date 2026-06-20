@@ -35,8 +35,25 @@ plugins/plugins-registry.php                          # registers 'pos-manager'
 
 ## Configuration
 
-See `config.example.php`. Groups: `product`, `sale`, `sale_item` (table + column
-names), plus `roles_allowed`, `payment_methods`, `completed_status`.
+Configuration is normally **visual**: a superadmin opens the ⚙ button in the POS
+screen and maps tables/columns from dropdowns, manages payment methods, and sets
+per-cashier permissions. It is stored in a `pos_settings` table the plugin
+creates lazily. `config.example.php` documents the same shape as an optional file
+fallback (the DB settings take precedence).
+
+Groups: `product`, `sale`, `sale_item` (table + column names), plus
+`roles_allowed`, `payment_methods`, `completed_status`.
+
+### Optional capabilities
+
+- **Manual line items**: map `sale_item.name` (a name column on the line table)
+  to let cashiers add free items (name + price) that don't touch stock.
+- **Discounts**: map `sale.discount` to allow a per-sale discount (clamped to the
+  subtotal; total = subtotal − discount).
+- **Per-cashier permissions** (`permissions`): `discount` is the list of admin ids
+  allowed to apply discounts; `payments[id]` restricts a cashier to a subset of
+  payment methods. Absent = unrestricted. Superadmins always bypass. Enforced
+  server-side in `createSale` and reflected in the cashier UI.
 
 ## How the atomic stock decrement works
 

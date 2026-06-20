@@ -82,8 +82,9 @@ switch ($action) {
     case 'create_sale':
         $items     = json_decode($_POST['items'] ?? '[]', true) ?: [];
         $payment   = trim($_POST['payment'] ?? '');
+        $discount  = (float) ($_POST['discount'] ?? 0);
         $cashierId = (int) ($_SESSION['admin']->id_admin ?? 0);
-        $result    = $controller->createSale($items, $payment, $cashierId);
+        $result    = $controller->createSale($items, $payment, $cashierId, $discount, $role);
         if (!empty($result['success']) && !empty($result['sale']['id'])) {
             require_once __DIR__ . '/../../core/activity_log.php';
             logActivity('create', 'sale', $result['sale']['id']);

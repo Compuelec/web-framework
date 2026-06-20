@@ -72,24 +72,33 @@ create_sale request automatically.
         renderCart();
     });
 
+    function getDiscount() {
+        var $d = $('#pos-discount');
+        if (!$d.length) { return 0; }
+        var v = parseFloat($d.val());
+        return (isNaN(v) || v < 0) ? 0 : v;
+    }
+
     function renderCart() {
         var $c = $('#pos-cart');
         var ids = Object.keys(cart).filter(function (k) { return cart[k].qty > 0; });
         if (!ids.length) {
             $c.html('<p class="text-muted small mb-0">Agrega productos para vender.</p>');
+            $('#pos-subtotal').text('$0');
             $('#pos-total').text('$0');
             $('#pos-confirm').prop('disabled', true);
             return;
         }
-        var total = 0, rows = '';
+        var subtotal = 0, rows = '';
         ids.forEach(function (id) {
             var it = cart[id];
             var sub = it.price * it.qty;
-            total += sub;
+            subtotal += sub;
+            var badge = it.manual ? ' <span class="badge bg-light text-secondary border" style="font-size:9px">manual</span>' : '';
             rows +=
-                '<div class="d-flex align-items-center justify-content-between mb-2 pos-line" data-id="' + id + '">' +
+                '<div class="d-flex align-items-center justify-content-between mb-2 pos-line" data-id="' + esc(id) + '">' +
                     '<div class="me-2 flex-grow-1">' +
-                        '<div class="small fw-semibold text-truncate">' + esc(it.name) + '</div>' +
+                        '<div class="small fw-semibold text-truncate">' + esc(it.name) + badge + '</div>' +
                         '<div class="text-muted" style="font-size:11px">' + money(it.price) + ' c/u</div>' +
                     '</div>' +
                     '<div class="btn-group btn-group-sm me-2">' +
@@ -102,13 +111,16 @@ create_sale request automatically.
                 '</div>';
         });
         $c.html(rows);
-        $('#pos-total').text(money(total));
+        var discount = Math.min(getDiscount(), subtotal);
+        $('#pos-subtotal').text(money(subtotal));
+        $('#pos-total').text(money(subtotal - discount));
         $('#pos-confirm').prop('disabled', false);
     }
 
     $('#pos-cart').on('click', '.pos-inc', function () {
         var id = $(this).closest('.pos-line').data('id');
-        if (cart[id].qty < cart[id].stock) { cart[id].qty++; } else { fncToastr('warning', 'Sin más stock disponible.'); }
+        var it = cart[id];
+        if (it.manual || it.qty < it.stock) { it.qty++; } else { fncToastr('warning', 'Sin más stock disponible.'); }
         renderCart();
     });
     $('#pos-cart').on('click', '.pos-dec', function () {
@@ -122,21 +134,43 @@ create_sale request automatically.
         renderCart();
     });
 
+    /* ---------- manual items + discount ---------- */
+    var manualSeq = 0;
+    $('#pos-manual-btn').on('click', function () {
+        $('#pos-manual-name').val(''); $('#pos-manual-price').val(0); $('#pos-manual-qty').val(1);
+        new bootstrap.Modal(document.getElementById('pos-manual-modal')).show();
+    });
+    $('#pos-manual-add').on('click', function () {
+        var name = $('#pos-manual-name').val().trim();
+        var price = parseFloat($('#pos-manual-price').val());
+        var qty = parseInt($('#pos-manual-qty').val(), 10);
+        if (!name || isNaN(price) || price < 0 || isNaN(qty) || qty < 1) { fncToastr('warning', 'Completa nombre, precio y cantidad válidos.'); return; }
+        cart['m' + (++manualSeq)] = { manual: true, name: name, price: price, qty: qty };
+        renderCart();
+        bootstrap.Modal.getInstance(document.getElementById('pos-manual-modal')).hide();
+    });
+    $('#pos-app').on('input', '#pos-discount', function () { renderCart(); });
+
     /* ---------- confirm sale ---------- */
     $('#pos-confirm').on('click', function () {
-        var items = Object.keys(cart).filter(function (k) { return cart[k].qty > 0; })
-            .map(function (id) { return { product_id: parseInt(id, 10), qty: cart[id].qty }; });
+        var items = Object.keys(cart).filter(function (k) { return cart[k].qty > 0; }).map(function (id) {
+            var it = cart[id];
+            return it.manual
+                ? { manual: true, name: it.name, price: it.price, qty: it.qty }
+                : { product_id: parseInt(id, 10), qty: it.qty };
+        });
         if (!items.length) { return; }
 
         var $btn = $(this);
         $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Procesando…');
 
-        post({ ajax_action: 'create_sale', items: JSON.stringify(items), payment: $('#pos-payment').val() })
+        post({ ajax_action: 'create_sale', items: JSON.stringify(items), payment: $('#pos-payment').val(), discount: getDiscount() })
             .done(function (res) {
                 $btn.prop('disabled', false).html('<i class="bi bi-check2-circle me-1"></i>Confirmar venta');
                 if (res && res.success) {
                     showReceipt(res.sale);
                     cart = {};
+                    if ($('#pos-discount').length) { $('#pos-discount').val(0); }
                     renderCart();
                     runSearch();
                     fncToastr('success', 'Venta registrada');
@@ -146,6 +180,14 @@ create_sale request automatically.
                     var prod = res.product || {};
                     fncSweetAlert('error', 'Sin stock suficiente de "' + (prod.name || '') + '" (disponible: ' + (prod.available || 0) + ').', '');
                     runSearch();
+                    return;
+                }
+                if (res && res.error === 'discount_not_allowed') {
+                    fncSweetAlert('error', 'Tu rol no tiene permiso para aplicar descuentos.', '');
+                    return;
+                }
+                if (res && res.error === 'payment_not_allowed') {
+                    fncSweetAlert('error', 'Tu rol no puede usar ese método de pago.', '');
                     return;
                 }
                 fncSweetAlert('error', (res && res.error) || 'No se pudo registrar la venta.', '');
@@ -160,9 +202,16 @@ create_sale request automatically.
         var rows = sale.items.map(function (i) {
             return '<tr><td>' + esc(i.name) + '</td><td class="text-center">' + i.qty + '</td><td class="text-end">' + money(i.subtotal) + '</td></tr>';
         }).join('');
+        var totals = '';
+        if (sale.discount && sale.discount > 0) {
+            totals =
+                '<div class="d-flex justify-content-between small"><span>Subtotal</span><span>' + money(sale.subtotal) + '</span></div>' +
+                '<div class="d-flex justify-content-between small text-success"><span>Descuento</span><span>-' + money(sale.discount) + '</span></div>';
+        }
         $('#pos-receipt-body').html(
             '<div class="small text-muted mb-2">Venta #' + sale.id + (sale.date ? (' · ' + esc(sale.date)) : '') + '<br>Pago: ' + esc(sale.payment) + '</div>' +
-            '<table class="table table-sm mb-2"><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-end">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+            '<table class="table table-sm mb-2"><thead><tr><th>Ítem</th><th class="text-center">Cant</th><th class="text-end">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+            totals +
             '<div class="d-flex justify-content-between fw-bold"><span>Total</span><span>' + money(sale.total) + '</span></div>'
         );
         new bootstrap.Modal(document.getElementById('pos-receipt-modal')).show();
@@ -174,12 +223,14 @@ create_sale request automatically.
             ['id', 'ID (clave primaria)', true], ['name', 'Nombre', true], ['price', 'Precio', true], ['stock', 'Stock', true],
             ['image', 'Imagen', false], ['active', 'Activo (1/0)', false], ['category', 'Categoría', false] ] },
         sale:      { title: 'Ventas (cabecera)', fields: [
-            ['id', 'ID', true], ['cashier', 'Cajero (id admin)', true], ['total', 'Total', true], ['payment', 'Método de pago', true], ['status', 'Estado', true], ['date', 'Fecha', false] ] },
+            ['id', 'ID', true], ['cashier', 'Cajero (id admin)', true], ['total', 'Total', true], ['payment', 'Método de pago', true], ['status', 'Estado', true], ['date', 'Fecha', false], ['discount', 'Descuento', false] ] },
         sale_item: { title: 'Detalle de venta', fields: [
-            ['id', 'ID', true], ['sale', 'Venta (FK)', true], ['product', 'Producto (FK)', true], ['qty', 'Cantidad', true], ['unit_price', 'Precio unitario', true], ['subtotal', 'Subtotal', true] ] }
+            ['id', 'ID', true], ['sale', 'Venta (FK)', true], ['product', 'Producto (FK)', true], ['qty', 'Cantidad', true], ['unit_price', 'Precio unitario', true], ['subtotal', 'Subtotal', true], ['name', 'Nombre del ítem (ítems manuales)', false] ] }
     };
     var cfgTables = [];
     var cfgPayments = [];
+    var cfgCashiers = [];    // [{ id, name, role }]
+    var cfgPermissions = {}; // { discount: [ids], payments: { id: [methods] } }
 
     function colSelect(group, key, label, required) {
         var req = required ? ' <span class="text-danger">*</span>' : ' <span class="text-muted">(opcional)</span>';
@@ -229,6 +280,55 @@ create_sale request automatically.
         });
     }
 
+    /* ---------- permissions (per cashier: discount + payment matrix) ---------- */
+    function cashierCanDiscount(id) {
+        if (!cfgPermissions.discount) { return true; }            // not configured = all
+        return cfgPermissions.discount.map(String).indexOf(String(id)) !== -1;
+    }
+    function cashierAllowsPayment(id, m) {
+        var pm = cfgPermissions.payments && cfgPermissions.payments[String(id)];
+        if (!pm) { return true; }                                 // not restricted = all
+        return pm.indexOf(m) !== -1;
+    }
+
+    function renderPermissions() {
+        if (!cfgCashiers.length) {
+            $('#pos-cfg-permissions').html('<span class="text-muted small">No hay cajeros (admins con un rol permitido) para configurar.</span>');
+            return;
+        }
+        var html = '<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr>' +
+            '<th class="small">Cajero</th><th class="small text-center">Descuento</th>';
+        cfgPayments.forEach(function (m) { html += '<th class="small text-center">' + esc(m) + '</th>'; });
+        html += '</tr></thead><tbody>';
+        cfgCashiers.forEach(function (c) {
+            html += '<tr><td class="small fw-semibold">' + esc(c.name) + ' <span class="text-muted fw-normal">(' + esc(c.role) + ')</span></td>' +
+                '<td class="text-center"><input type="checkbox" class="form-check-input perm-disc" data-id="' + c.id + '"' + (cashierCanDiscount(c.id) ? ' checked' : '') + '></td>';
+            cfgPayments.forEach(function (m) {
+                html += '<td class="text-center"><input type="checkbox" class="form-check-input perm-pay" data-id="' + c.id + '" data-method="' + esc(m) + '"' + (cashierAllowsPayment(c.id, m) ? ' checked' : '') + '></td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        $('#pos-cfg-permissions').html(html);
+    }
+
+    // Read the current permission checkboxes back into cfgPermissions (so toggling
+    // payment methods can re-render the matrix without losing in-progress edits).
+    function syncPermissionsFromUI() {
+        if (!$('#pos-cfg-permissions .perm-disc').length) { return; }
+        cfgPermissions.discount = cfgCashiers.filter(function (c) {
+            return $('.perm-disc[data-id="' + c.id + '"]').is(':checked');
+        }).map(function (c) { return String(c.id); });
+        cfgPermissions.payments = {};
+        cfgCashiers.forEach(function (c) {
+            var allowed = cfgPayments.filter(function (m) {
+                var $cb = $('.perm-pay[data-id="' + c.id + '"][data-method="' + m + '"]');
+                return $cb.length ? $cb.is(':checked') : true; // a brand-new method defaults to allowed
+            });
+            if (allowed.length !== cfgPayments.length) { cfgPermissions.payments[String(c.id)] = allowed; }
+        });
+    }
+
     function openSettings() {
         $('#pos-cfg-msg').html('');
         buildGroup('product'); buildGroup('sale'); buildGroup('sale_item');
@@ -238,7 +338,10 @@ create_sale request automatically.
             var cfg = res.config || {};
             fillTableOptions(cfg);
             cfgPayments = (cfg.payment_methods && cfg.payment_methods.length) ? cfg.payment_methods.slice() : ['efectivo', 'tarjeta'];
+            cfgCashiers = res.cashiers || [];
+            cfgPermissions = (cfg.permissions && typeof cfg.permissions === 'object') ? cfg.permissions : {};
             renderPayments();
+            renderPermissions();
             ['product', 'sale', 'sale_item'].forEach(function (group) {
                 var t = (cfg[group] || {}).table || '';
                 if (t) { loadColumns(group, t, cfg[group]); }
@@ -253,11 +356,17 @@ create_sale request automatically.
     });
     $('#pos-cfg-pay-add').on('click', function () {
         var v = $('#pos-cfg-pay-new').val().trim().toLowerCase();
-        if (v && cfgPayments.indexOf(v) === -1) { cfgPayments.push(v); renderPayments(); }
+        if (v && cfgPayments.indexOf(v) === -1) {
+            syncPermissionsFromUI();
+            cfgPayments.push(v);
+            renderPayments(); renderPermissions();
+        }
         $('#pos-cfg-pay-new').val('');
     });
     $('#pos-cfg-payments').on('click', '.pos-cfg-pay-rm', function () {
-        cfgPayments.splice($(this).data('i'), 1); renderPayments();
+        syncPermissionsFromUI();
+        cfgPayments.splice($(this).data('i'), 1);
+        renderPayments(); renderPermissions();
     });
 
     $('#pos-cfg-save').on('click', function () {
@@ -272,6 +381,8 @@ create_sale request automatically.
             });
         });
         if (missing.length) { $('#pos-cfg-msg').html('<span class="text-danger">Faltan campos obligatorios — ' + esc(missing.join(', ')) + '</span>'); return; }
+        syncPermissionsFromUI();
+        cfg.permissions = cfgPermissions;
         var $b = $(this);
         $b.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Guardando…');
         post({ ajax_action: 'save_settings', config: JSON.stringify(cfg) }).done(function (res) {
