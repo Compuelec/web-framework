@@ -21,7 +21,7 @@
 		class="form-control rounded"
 		id="<?php echo $module->columns[$i]->title_column ?>"
 		name="<?php echo $module->columns[$i]->title_column ?>"
-		value="<?php if (!empty($data)): ?><?php echo urldecode($data[$module->columns[$i]->title_column]) ?><?php endif ?>">
+		value="<?php echo htmlspecialchars(urldecode((string)($data[$module->columns[$i]->title_column] ?? '')), ENT_QUOTES) ?>">
 
 		<?php if (!empty($measureUnit) && !$siblingUnit): ?>
 			<span class="input-group-text"><?php echo htmlspecialchars($measureUnit) ?></span>

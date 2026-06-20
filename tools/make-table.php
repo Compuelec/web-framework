@@ -40,7 +40,7 @@ function mt_sqlType($t) {
         case 'json': case 'multiimage':return "TEXT NULL DEFAULT '[]'";
         case 'int': case 'relations': case 'order': return "INT NULL DEFAULT '0'";
         case 'boolean':                return "INT NULL DEFAULT '1'";
-        case 'double': case 'money':   return "DOUBLE NULL DEFAULT '0'";
+        case 'double': case 'money': case 'measure': return "DOUBLE NULL DEFAULT '0'";
         case 'date':                   return "DATE NULL DEFAULT NULL";
         case 'time':                   return "TIME NULL DEFAULT NULL";
         default:                       return "TEXT NULL DEFAULT NULL"; // text, email, image, select, …

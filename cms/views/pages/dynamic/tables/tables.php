@@ -555,7 +555,7 @@ Load table module
 												echo '';
 											}else{
 												// Trim insignificant decimals: 15.00 -> 15, 2.50 -> 2.5
-												$measureNum = rtrim(rtrim(number_format((float)$measureRaw, 2, '.', ''), '0'), '.');
+												$measureNum = (float) $measureRaw; // keep full precision; trailing zeros drop
 												echo htmlspecialchars(trim($measureNum.' '.$measureUnit));
 											}
 
