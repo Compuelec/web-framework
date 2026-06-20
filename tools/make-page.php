@@ -75,10 +75,22 @@ if ($table !== '' && pb_isIdentifier($table)) {
                  WHERE table_schema = :db AND table_name = :t ORDER BY ORDINAL_POSITION"
             );
             $stmt->execute([':db' => $db, ':t' => $table]);
+            $firstCol = null; $bestFallback = null;
+            $expectedId = 'id_' . pb_deriveSuffix($table);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $c) {
                 $config['columns'][] = $c['name'];
+                if ($firstCol === null) { $firstCol = $c['name']; }
                 if ($c['k'] === 'PRI') { $config['idColumn'] = $c['name']; }
+                // Heuristic id for views (no PRIMARY KEY): id / id_<suffix>, then id_* / *_id.
+                $lower = strtolower($c['name']);
+                if ($lower === 'id' || $lower === strtolower($expectedId)) {
+                    $bestFallback = $c['name'];
+                } elseif ($bestFallback === null && (substr($lower, 0, 3) === 'id_' || substr($lower, -3) === '_id')) {
+                    $bestFallback = $c['name'];
+                }
             }
+            // Views have no PRIMARY KEY; fall back to a likely id column, else the first.
+            if (empty($config['idColumn'])) { $config['idColumn'] = $bestFallback ?? $firstCol; }
         }
     } catch (Throwable $e) {
         fwrite(STDERR, "! Warning: could not read columns for table '{$table}' ({$e->getMessage()}). Continuing.\n");

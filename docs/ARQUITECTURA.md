@@ -14,7 +14,7 @@ principales + sistema de plugins.
 - **Frontend público** (`/web/`) — el sitio público; sirve las páginas generadas
   por el [Generador de Páginas](GENERADOR-PAGINAS.md).
 - **Plugins** (`/plugins/`) — funcionalidades autocontenidas (pagos, workflows,
-  dashboard…).
+  dashboard, POS de cajero…).
 
 ## Estructura del proyecto
 

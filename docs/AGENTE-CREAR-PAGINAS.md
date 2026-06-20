@@ -69,8 +69,13 @@ A cada campo le añade el sufijo de la tabla (`precio` → `precio_producto`).
 
 ### Tipos de campo (`type`)
 
-`text`, `textarea`, `int`, `double`, `money`, `boolean`, `date`, `time`, `email`,
-`link`, `color`, `select`, `image`, `multiimage`, `file`, `json`, `object`.
+`text`, `textarea`, `int`, `double`, `money`, `measure` (número + unidad),
+`boolean`, `date`, `time`, `email`, `link`, `color`, `select`, `image`,
+`multiimage`, `file`, `json`, `object`.
+
+> `measure` muestra un número con su unidad en una sola celda y se guarda como
+> `DOUBLE`. La unidad sale del *matrix* de la columna: una unidad literal (`kg`) o
+> el nombre de una columna hermana con la unidad por fila (`unidad_insumo`).
 
 Tras crearla, la sección aparece en el **menú del CMS** y el usuario puede cargar
 registros (o cárgalos tú vía la API REST: `POST /api/<tabla>`).
@@ -131,7 +136,7 @@ si faltan, y dejar la página lista.
 | `template` | string | Tu **HTML** (admite las etiquetas de abajo). |
 | `customCss` | string | CSS que se inyecta en la página. |
 | `customJs` | string | JavaScript que se inyecta en la página. |
-| `table` | string | Tabla de datos a vincular. **Opcional**: si la omites, es una página **estática** (sin datos). |
+| `table` | string | Tabla **o vista (VIEW)** de datos a vincular. **Opcional**: si la omites, es una página **estática** (sin datos). Vincular una vista permite páginas basadas en datos curados/filtrados (p. ej. "solo productos activos"). |
 | `metaTitle`, `metaDesc` | string | SEO (título y descripción para buscadores). |
 | `ogTitle`, `ogType`, `ogDesc`, `ogImage` | string | Open Graph (al compartir en redes). |
 | `private` | bool | Requiere login para verla (default `false`). |
