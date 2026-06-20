@@ -273,7 +273,15 @@ var ExportData = {
                 } catch (e) { resolve(null); }
             };
             img.onerror = function () { resolve(null); };
-            img.src = url;
+
+            // Resolve relative paths against the project root, not the current
+            // admin page URL (which would 404). Absolute URLs are left untouched.
+            var resolvedUrl = url;
+            if (url && !/^(https?:)?\/\//i.test(url) && url.indexOf('/') !== 0) {
+                var projectBase = (window.CMS_BASE_PATH || '').replace(/\/cms$/, '');
+                resolvedUrl = projectBase + '/' + url;
+            }
+            img.src = resolvedUrl;
         });
     },
 

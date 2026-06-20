@@ -33,7 +33,7 @@ try {
     // TABLE module with a real suffix — grabbing results[0] blindly can land on
     // the breadcrumbs row (empty suffix), which builds an invalid "id_" order
     // column and makes the API return 404 (surfacing here as a silent 500).
-    $urlModule = "modules?linkTo=title_module&equalTo=" . $module . "&select=id_module,suffix_module,type_module";
+    $urlModule = "modules?linkTo=title_module&equalTo=" . urlencode($module) . "&select=id_module,suffix_module,type_module";
     $method = "GET";
     $fields = array();
 
