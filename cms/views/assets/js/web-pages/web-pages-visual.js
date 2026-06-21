@@ -174,34 +174,38 @@ External dependencies (loaded by web-pages.php):
         }
     }
 
-    function renderCanvas($canvas) {
-        $canvas.innerHTML = "";
-        // The sortable list always exists, even when empty — Sortable needs
-        // a real DOM target, and the empty-state copy lives inside it as a
-        // child so it shrinks/disappears as soon as blocks are dropped.
-        var $list = el("div", {
-            className: "wpb-canvas-list",
-            id: "wpb-canvas-list"
-        });
+    function renderCanvas($canvasList) {
+        // Updates the contents of the sortable list IN PLACE — does NOT
+        // replace the list element itself, because SortableJS holds a
+        // reference to it and would lose its handlers if we swap it out.
+        // Same reason for re-using the same #wpb-canvas-list across calls.
+        $canvasList.innerHTML = "";
         if (!state.tree.blocks.length) {
             // Empty-state lives INSIDE the sortable list so the drop zone
-            // visually covers it. `data-sortable-ignore` tells our config
-            // to skip it when computing the new index of a drop, and
-            // pointer-events:none lets the underlying list catch the drop.
-            $list.appendChild(el("div", {
+            // visually covers it. pointer-events:none lets the underlying
+            // list catch the drop, and `data-sortable-skip` keeps Sortable
+            // from including it in its draggable items (via the `filter`
+            // option on the Sortable config below).
+            $canvasList.appendChild(el("div", {
                 className: "text-center text-muted small py-5 wpb-canvas-empty",
-                "data-sortable-ignore": "1",
+                "data-sortable-skip": "1",
                 style: "pointer-events:none",
                 html: '<i class="bi bi-arrow-down-square d-block fs-1 mb-2"></i>' +
                       'Arrastrá un bloque desde la paleta para empezar'
             }));
         } else {
-            state.tree.blocks.forEach(function (b) { $list.appendChild(renderBlock(b)); });
+            state.tree.blocks.forEach(function (b) {
+                $canvasList.appendChild(renderBlock(b));
+            });
         }
-        $canvas.appendChild($list);
     }
 
     /* ---------- sortable wiring ---------- */
+
+    // SortableJS holds DOM references; destroying/recreating instances on
+    // every state change is what made the second drop after the first one
+    // fail. We create one palette+canvas pair when the modal mounts and
+    // keep them alive until unmount.
 
     function teardownSortables() {
         state.sortables.forEach(function (s) {
@@ -210,16 +214,13 @@ External dependencies (loaded by web-pages.php):
         state.sortables = [];
     }
 
-    function wireSortables() {
-        teardownSortables();
+    function ensureSortables() {
+        if (state.sortables.length) { return; }
         if (!window.Sortable) {
             console.warn("[wpb-visual] SortableJS not loaded");
             return;
         }
 
-        // Palette → canvas: clone mode so palette items stay put. Drops on
-        // the canvas trigger onAdd, where we replace the cloned DOM with a
-        // real block-card backed by state.tree.
         var $palette = document.getElementById("wpb-palette-list");
         if ($palette) {
             state.sortables.push(window.Sortable.create($palette, {
@@ -229,13 +230,13 @@ External dependencies (loaded by web-pages.php):
             }));
         }
 
-        // Canvas root list — accepts palette drops and intra-canvas reorder.
         var $canvasList = document.getElementById("wpb-canvas-list");
         if ($canvasList) {
             state.sortables.push(window.Sortable.create($canvasList, {
                 group: { name: "wpb-blocks", pull: false, put: true },
                 handle: ".wpb-block-handle",
                 draggable: ".wpb-block",
+                filter: "[data-sortable-skip]",
                 animation: 150,
                 onAdd: onPaletteDrop,
                 onUpdate: onCanvasReorder
@@ -245,8 +246,9 @@ External dependencies (loaded by web-pages.php):
 
     function onPaletteDrop(evt) {
         // Sortable's clone (the dropped DOM node) carries the type via
-        // dataset.paletteType. Replace it with a freshly-built block in
-        // state.tree, then re-render so the DOM mirrors the source of truth.
+        // dataset.paletteType. We add the block to state.tree and refresh
+        // the canvas list's CONTENT in place — the list element itself
+        // (which Sortable is still wired to) is NOT recreated.
         var $node = evt.item;
         var type = $node && $node.dataset && $node.dataset.paletteType;
         if (!type) { return; }
@@ -258,11 +260,17 @@ External dependencies (loaded by web-pages.php):
         };
         var idx = evt.newIndex == null ? state.tree.blocks.length : evt.newIndex;
         state.tree.blocks.splice(idx, 0, newBlock);
-        // Throw away SortableJS's clone — we re-render from state.tree.
-        if ($node.parentNode) { $node.parentNode.removeChild($node); }
-        // Select the new block so the future props panel jumps to it.
         state.selectedId = newBlock.id;
-        rerender();
+
+        // Refresh the canvas list contents from state.tree. The cloned
+        // palette item is removed in the process. Doing this AFTER
+        // SortableJS has finished processing the drop avoids the
+        // teardown-mid-drag bug that left the second drop unresponsive.
+        var $canvasList = document.getElementById("wpb-canvas-list");
+        if ($canvasList) {
+            renderCanvas($canvasList);
+            applySelectionClass();
+        }
     }
 
     function onCanvasReorder(evt) {
@@ -271,9 +279,9 @@ External dependencies (loaded by web-pages.php):
         if (oldIdx == null || newIdx == null || oldIdx === newIdx) { return; }
         var moved = state.tree.blocks.splice(oldIdx, 1)[0];
         state.tree.blocks.splice(newIdx, 0, moved);
-        // SortableJS already moved the DOM. Re-render anyway to stay
-        // defensively in sync with state.tree.
-        rerender();
+        // SortableJS already moved the DOM, and the indexes match
+        // state.tree, so no re-render is needed — the next time we render
+        // from state.tree (delete/new block/etc) order stays consistent.
     }
 
     /* ---------- canvas events (delete, select) ---------- */
@@ -303,28 +311,51 @@ External dependencies (loaded by web-pages.php):
         if (idx === -1) { return; }
         state.tree.blocks.splice(idx, 1);
         if (state.selectedId === id) { state.selectedId = null; }
-        rerender();
+        var $canvasList = document.getElementById("wpb-canvas-list");
+        if ($canvasList) {
+            renderCanvas($canvasList);
+            applySelectionClass();
+        }
     }
 
     function selectBlock(id) {
         state.selectedId = id;
-        document.querySelectorAll("#wpb-canvas .wpb-block").forEach(function ($el) {
-            $el.classList.toggle("is-selected", $el.dataset.blockId === id);
+        applySelectionClass();
+        // Props panel update comes in the next commit (props panel).
+    }
+
+    function applySelectionClass() {
+        var id = state.selectedId;
+        document.querySelectorAll("#wpb-canvas-list .wpb-block").forEach(function ($el) {
+            $el.classList.toggle("is-selected", id != null && $el.dataset.blockId === id);
         });
-        // Props panel update comes in commit 5/N.
     }
 
     /* ---------- top-level render ---------- */
 
-    function rerender() {
+    // Full render — only called when the host containers are missing
+    // (first mount, or after the modal was torn down). Subsequent
+    // mutations call renderCanvas($canvasList) directly to avoid
+    // recreating the Sortable host nodes.
+    function fullRender() {
         var $palette = document.getElementById("wpb-palette");
         var $canvas  = document.getElementById("wpb-canvas");
         if (!$palette || !$canvas) { return; }
+
         renderPalette($palette);
-        renderCanvas($canvas);
-        wireSortables();
+
+        // Create the canvas list ONCE; mutations only refresh its contents.
+        $canvas.innerHTML = "";
+        var $canvasList = el("div", {
+            className: "wpb-canvas-list",
+            id: "wpb-canvas-list"
+        });
+        $canvas.appendChild($canvasList);
+        renderCanvas($canvasList);
+
         wireCanvasEvents();
-        if (state.selectedId) { selectBlock(state.selectedId); }
+        ensureSortables();
+        applySelectionClass();
     }
 
     /* ---------- public API ---------- */
@@ -337,12 +368,16 @@ External dependencies (loaded by web-pages.php):
     function mount() {
         if (state.mounted) { return; }
         state.mounted = true;
-        rerender();
+        fullRender();
     }
 
     function unmount() {
         state.mounted = false;
         teardownSortables();
+        // Clear wired flag so the next mount re-wires events on the
+        // (possibly new) canvas DOM.
+        var $canvas = document.getElementById("wpb-canvas");
+        if ($canvas) { delete $canvas.dataset.wpbWired; }
         // Keep state.tree intact — re-opening the modal should restore the
         // user's work without a round-trip to the server.
     }
@@ -358,7 +393,15 @@ External dependencies (loaded by web-pages.php):
         } else {
             state.tree = emptyTree();
         }
-        if (state.mounted) { rerender(); }
+        if (state.mounted) {
+            var $canvasList = document.getElementById("wpb-canvas-list");
+            if ($canvasList) {
+                renderCanvas($canvasList);
+                applySelectionClass();
+            } else {
+                fullRender();
+            }
+        }
     }
 
     function getTree() {
