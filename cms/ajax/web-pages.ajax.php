@@ -289,6 +289,19 @@ if ($action !== 'generate') {
     exit;
 }
 
+// `blocks` arrives as JSON (the visual builder serializes its state.tree
+// to a string in the POST so the value survives the form encoding without
+// us having to flatten its nested structure). Decode it before handing
+// the config to pb_normalizeConfig, which expects an array (or null).
+$blocksRaw = $_POST['blocks'] ?? '';
+$blocks    = null;
+if (is_string($blocksRaw) && $blocksRaw !== '') {
+    $decoded = json_decode($blocksRaw, true);
+    if (is_array($decoded)) {
+        $blocks = $decoded;
+    }
+}
+
 $config = [
     'table'     => $_POST['table']     ?? '',
     'fileName'  => $_POST['name']      ?? '',
@@ -306,6 +319,9 @@ $config = [
     'ogType'      => $_POST['ogType']    ?? 'website',
     'ogDesc'      => $_POST['ogDesc']    ?? '',
     'ogImage'     => $_POST['ogImage']   ?? '',
+    // Visual builder round-trip — see pb_normalizeConfig for the contract.
+    'builderMode' => $_POST['builderMode'] ?? 'code',
+    'blocks'      => $blocks,
 ];
 
 // Look up the table's REAL primary-key column (so ordering/lookups work for

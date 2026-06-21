@@ -376,6 +376,11 @@ Web Pages builder (template + live preview)
             // Static page (no table): switch to blank-page mode.
             enterStaticMode();
         }
+        // Notify the visual builder so it can hydrate from c.blocks when
+        // the page was originally saved in visual mode. The visual JS is
+        // loaded by the host view; if it isn't on the page (older
+        // installs), this is a no-op event with no listeners.
+        document.dispatchEvent(new CustomEvent("wpb:config-loaded", { detail: c }));
     }
 
     function loadForEdit(file) {
@@ -560,5 +565,9 @@ Web Pages builder (template + live preview)
         loadMeta();
         loadPages();
         setPreview('<p style="color:#888;font-family:sans-serif">Elige una tabla para ver la vista previa.</p>', 0);
+
+        // The visual builder fires this when it saves a page; refresh the
+        // list so the new file shows up without a hard reload.
+        document.addEventListener("wpb:pages-changed", loadPages);
     });
 })();

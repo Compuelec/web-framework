@@ -277,6 +277,16 @@ function pb_normalizeConfig(array $raw) {
         }
     }
 
+    // Visual builder fields. `builderMode` records which surface the page
+    // was last saved from ("code" or "visual"); `blocks` is the JSON tree
+    // the visual builder serializes (only meaningful when builderMode is
+    // "visual"). Both are preserved in the embedded config so the page
+    // can be re-opened in its original mode. Pages created before this
+    // commit have neither and open in code mode by default.
+    $builderMode = (string)($raw['builderMode'] ?? 'code');
+    if ($builderMode !== 'visual') { $builderMode = 'code'; }
+    $blocks = (is_array($raw['blocks'] ?? null)) ? $raw['blocks'] : null;
+
     return [
         'table'       => $table,
         'suffix'      => $suffix,
@@ -303,6 +313,9 @@ function pb_normalizeConfig(array $raw) {
         'ogType'      => (string)($raw['ogType'] ?? 'website'),
         'ogDesc'      => (string)($raw['ogDesc'] ?? ''),
         'ogImage'     => (string)($raw['ogImage'] ?? ''),
+        // Visual builder round-trip data — see comment above.
+        'builderMode' => $builderMode,
+        'blocks'      => $blocks,
     ];
 }
 

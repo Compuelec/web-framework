@@ -621,6 +621,7 @@ External dependencies (loaded by web-pages.php):
         }
         // The new block is auto-selected — jump the props panel to it.
         renderProps();
+        updateSaveButtonState();
         schedulePreviewRefresh();
     }
 
@@ -669,6 +670,7 @@ External dependencies (loaded by web-pages.php):
             applySelectionClass();
         }
         renderProps();
+        updateSaveButtonState();
         schedulePreviewRefresh();
     }
 
@@ -710,17 +712,41 @@ External dependencies (loaded by web-pages.php):
         wireCanvasEvents();
         wirePropsEvents();
         wireViewToggle();
+        wireSaveButton();
         ensureSortables();
         applySelectionClass();
         renderProps();
         setView(state.view);
+        updateSaveButtonState();
     }
 
     /* ---------- public API ---------- */
 
     function init(/* opts */) {
         // Idempotent — the modal lifecycle script calls us on every mount.
+        if (state.inited) { return; }
         state.inited = true;
+
+        // When the host (code-mode editor) loads a page, hydrate the
+        // visual tree from its config so reopening the modal shows what
+        // the user saved. The opposite (Save) is wired in saveBlocks().
+        document.addEventListener("wpb:config-loaded", function (evt) {
+            var c = evt.detail || {};
+            if (c.builderMode === "visual" && Array.isArray(c.blocks && c.blocks.blocks)) {
+                // The saved tree has shape { version, table, blocks: [...] };
+                // loadTree validates and renders if the modal is open.
+                loadTree(c.blocks);
+            } else if (c.builderMode === "visual" && c.blocks && typeof c.blocks === "object") {
+                // Defensive: also accept the case where blocks itself is the
+                // tree (older shapes / hand-edited configs).
+                loadTree(c.blocks);
+            } else {
+                // Page was saved from code mode — clear any in-memory tree
+                // so the visual modal starts empty rather than showing
+                // stale state from a previous edit.
+                loadTree(null);
+            }
+        });
     }
 
     function mount() {
@@ -783,6 +809,190 @@ External dependencies (loaded by web-pages.php):
         state.columns = Array.isArray(list) ? list.slice() : [];
         // Once the palette gets table-aware chips (commit 4/N) this will
         // trigger a re-render of the palette.
+    }
+
+    /* ---------- persistence (save / load) ---------- */
+
+    // Saves the current tree as a real page via
+    // cms/ajax/web-pages.ajax.php?action=generate. The visual builder
+    // owns the template + customCss + builderMode + blocks; the rest of
+    // the page metadata (name, table, heading, SEO, visibility, etc.)
+    // comes from the code-mode form fields in the host view — that way
+    // we don't duplicate UI for fields that are identical between modes.
+    //
+    // The result handler updates the page list (so the new page appears
+    // immediately) and surfaces success / errors to the user.
+
+    function ajaxUrl() {
+        var base = window.CMS_AJAX_PATH || "/ajax";
+        return base + "/web-pages.ajax.php";
+    }
+
+    function readHostField(id, fallback) {
+        var $el = document.getElementById(id);
+        if (!$el) { return fallback == null ? "" : fallback; }
+        if ($el.type === "checkbox") { return $el.checked ? 1 : 0; }
+        return $el.value == null ? (fallback == null ? "" : fallback) : $el.value;
+    }
+
+    function readCheckedValue(name) {
+        var $el = document.querySelector('input[name="' + name + '"]:checked');
+        return $el ? $el.value : "";
+    }
+
+    function readCheckedValues(selector) {
+        var out = [];
+        document.querySelectorAll(selector).forEach(function ($el) { out.push($el.value); });
+        return out;
+    }
+
+    // Reads the page metadata from the existing code-mode form. The
+    // visual builder doesn't have its own copies of these fields because
+    // they apply identically to both modes (name, SEO, visibility, …).
+    function readHostConfig() {
+        return {
+            name:      String(readHostField("wpb-name", "")).trim(),
+            heading:   readHostField("wpb-heading", ""),
+            metaTitle: readHostField("wpb-meta-title", ""),
+            metaDesc:  readHostField("wpb-meta-desc", ""),
+            ogTitle:   readHostField("wpb-og-title", ""),
+            ogType:    readHostField("wpb-og-type", "website"),
+            ogDesc:    readHostField("wpb-og-desc", ""),
+            ogImage:   readHostField("wpb-og-image", ""),
+            // Page is private if the host visibility radios say so; the
+            // visual builder mirrors that choice without its own UI.
+            "private": readCheckedValue("wpb-visibility") === "private" ? 1 : 0,
+            isHome:    readHostField("wpb-home", 0),
+            "accessRoles[]": readCheckedValues(".wpb-role:checked"),
+            "accessUsers[]": readCheckedValues(".wpb-user:checked"),
+            // The host's "Tipo de página" radio chooses table vs. static.
+            // Static = no table binding (the compiler will still produce
+            // valid HTML with literal text), table = bind to whatever the
+            // user picked in the host's <select>.
+            table: readCheckedValue("wpb-mode") === "static"
+                ? ""
+                : readHostField("wpb-table", "")
+        };
+    }
+
+    function updateSaveButtonState() {
+        var $save = document.getElementById("wpb-visual-save");
+        if (!$save) { return; }
+        // Enabled when there's at least one block and a non-empty name.
+        // The host's name field is auto-filled from the table picker in
+        // code mode; we rely on that here too.
+        var name = String(readHostField("wpb-name", "")).trim();
+        $save.disabled = !state.tree.blocks.length || name === "";
+    }
+
+    function showSaveFeedback(kind, message) {
+        // Toastr is loaded globally by the CMS (`fncToastr`); fall back to
+        // a console log if it isn't.
+        if (typeof window.fncToastr === "function") {
+            window.fncToastr(kind, message);
+            return;
+        }
+        console.log("[wpb-visual]", kind, message);
+    }
+
+    function saveBlocks() {
+        if (!state.tree.blocks.length) {
+            showSaveFeedback("warning", "Agregá al menos un bloque antes de guardar.");
+            return;
+        }
+        var host = readHostConfig();
+        if (!host.name) {
+            showSaveFeedback("warning", "Escribí un nombre de archivo en el editor (campo \"Nombre del archivo\") antes de guardar.");
+            return;
+        }
+
+        // Sync the tree's table with what the host picked so the saved
+        // config is consistent. Without this a user could pick a table in
+        // the host but the saved blocks tree would still hold the previous
+        // table identifier.
+        state.tree.table = host.table || "";
+
+        var compiled = compileForPreview();
+        if (compiled.warnings && compiled.warnings.length) {
+            // Non-fatal: log the warnings but proceed. The compiler is
+            // strict enough that any real error would have thrown.
+            console.warn("[wpb-visual] compile warnings:", compiled.warnings);
+        }
+
+        var payload = Object.assign({}, host, {
+            action:      "generate",
+            template:    compiled.template,
+            customCss:   compiled.customCss,
+            customJs:    "", // v1: visual builder doesn't carry inline JS
+            builderMode: "visual",
+            blocks:      JSON.stringify(state.tree)
+        });
+
+        var $save = document.getElementById("wpb-visual-save");
+        if ($save) { $save.disabled = true; }
+
+        // Use jQuery if available (it's bundled by the CMS); otherwise fall
+        // back to fetch with URL-encoded form data.
+        function done(res) {
+            if (!res || !res.success) {
+                showSaveFeedback("error", (res && res.error) || "No se pudo guardar la página.");
+                updateSaveButtonState();
+                return;
+            }
+            if (res.written) {
+                showSaveFeedback("success", "Página guardada en web/pages/" + host.name + ".php");
+            } else {
+                showSaveFeedback("warning", res.reason || "La página se generó pero no se pudo escribir en disco.");
+            }
+            updateSaveButtonState();
+            // Refresh the host's pages list so the new file appears (the
+            // code-mode editor renders the list via web-pages.js — it
+            // re-fetches when we trigger this custom event).
+            document.dispatchEvent(new CustomEvent("wpb:pages-changed"));
+        }
+        function fail() {
+            showSaveFeedback("error", "Falló la conexión con el servidor.");
+            updateSaveButtonState();
+        }
+
+        if (window.jQuery) {
+            window.jQuery.ajax({
+                url: ajaxUrl(), method: "POST", dataType: "json", data: payload
+            }).done(done).fail(fail);
+        } else {
+            var body = new URLSearchParams();
+            Object.keys(payload).forEach(function (k) {
+                var v = payload[k];
+                if (Array.isArray(v)) {
+                    v.forEach(function (item) { body.append(k, item); });
+                } else {
+                    body.append(k, v == null ? "" : v);
+                }
+            });
+            fetch(ajaxUrl(), {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: body.toString()
+            }).then(function (r) { return r.json(); }).then(done).catch(fail);
+        }
+    }
+
+    function wireSaveButton() {
+        var $save = document.getElementById("wpb-visual-save");
+        if (!$save || $save.dataset.wpbWired === "1") { return; }
+        $save.dataset.wpbWired = "1";
+        $save.addEventListener("click", saveBlocks);
+
+        // The page name lives in the host (code-mode editor); when it
+        // changes we may need to enable/disable Save. The listener is
+        // bound once per session and uses delegation so it survives
+        // re-mounts.
+        var $name = document.getElementById("wpb-name");
+        if ($name && $name.dataset.wpbWired !== "1") {
+            $name.dataset.wpbWired = "1";
+            $name.addEventListener("input", updateSaveButtonState);
+        }
     }
 
     /* ---------- export ---------- */
