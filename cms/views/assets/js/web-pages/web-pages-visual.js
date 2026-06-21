@@ -713,6 +713,7 @@ External dependencies (loaded by web-pages.php):
         wirePropsEvents();
         wireViewToggle();
         wireSaveButton();
+        wireNameSync();
         ensureSortables();
         applySelectionClass();
         renderProps();
@@ -746,6 +747,13 @@ External dependencies (loaded by web-pages.php):
                 // stale state from a previous edit.
                 loadTree(null);
             }
+            // Mirror the loaded file name into the modal's input so the
+            // user sees what they're editing without opening the host
+            // editor. If the modal hasn't been mounted yet, the seed in
+            // wireNameSync() will catch it on first mount.
+            var $visual = document.getElementById("wpb-visual-name");
+            if ($visual) { $visual.value = c.fileName || ""; }
+            updateSaveButtonState();
         });
     }
 
@@ -848,10 +856,15 @@ External dependencies (loaded by web-pages.php):
 
     // Reads the page metadata from the existing code-mode form. The
     // visual builder doesn't have its own copies of these fields because
-    // they apply identically to both modes (name, SEO, visibility, …).
+    // they apply identically to both modes (heading, SEO, visibility, …).
+    // The file-name input is the exception: the visual modal carries its
+    // own copy (#wpb-visual-name) so the user doesn't need to close it to
+    // pick a name. Both inputs are kept in sync by wireNameSync().
     function readHostConfig() {
+        var visualName = String(readHostField("wpb-visual-name", "")).trim();
+        var hostName   = String(readHostField("wpb-name", "")).trim();
         return {
-            name:      String(readHostField("wpb-name", "")).trim(),
+            name:      visualName || hostName,
             heading:   readHostField("wpb-heading", ""),
             metaTitle: readHostField("wpb-meta-title", ""),
             metaDesc:  readHostField("wpb-meta-desc", ""),
@@ -879,9 +892,12 @@ External dependencies (loaded by web-pages.php):
         var $save = document.getElementById("wpb-visual-save");
         if (!$save) { return; }
         // Enabled when there's at least one block and a non-empty name.
-        // The host's name field is auto-filled from the table picker in
-        // code mode; we rely on that here too.
-        var name = String(readHostField("wpb-name", "")).trim();
+        // We read both the inline modal input AND the host's #wpb-name
+        // (whichever is set) so the button stays in sync regardless of
+        // where the user typed.
+        var visualName = String(readHostField("wpb-visual-name", "")).trim();
+        var hostName   = String(readHostField("wpb-name", "")).trim();
+        var name = visualName || hostName;
         $save.disabled = !state.tree.blocks.length || name === "";
     }
 
@@ -983,15 +999,41 @@ External dependencies (loaded by web-pages.php):
         if (!$save || $save.dataset.wpbWired === "1") { return; }
         $save.dataset.wpbWired = "1";
         $save.addEventListener("click", saveBlocks);
+    }
 
-        // The page name lives in the host (code-mode editor); when it
-        // changes we may need to enable/disable Save. The listener is
-        // bound once per session and uses delegation so it survives
-        // re-mounts.
-        var $name = document.getElementById("wpb-name");
-        if ($name && $name.dataset.wpbWired !== "1") {
-            $name.dataset.wpbWired = "1";
-            $name.addEventListener("input", updateSaveButtonState);
+    // Keeps the modal's inline file-name input (#wpb-visual-name) and the
+    // host's hidden one (#wpb-name) in lockstep so the user can type in
+    // either place. Also refreshes the save-button state on every
+    // keystroke.
+    function wireNameSync() {
+        var $host   = document.getElementById("wpb-name");
+        var $visual = document.getElementById("wpb-visual-name");
+        if ($host && $host.dataset.wpbWired !== "1") {
+            $host.dataset.wpbWired = "1";
+            $host.addEventListener("input", function () {
+                if ($visual && $visual.value !== $host.value) {
+                    $visual.value = $host.value;
+                }
+                updateSaveButtonState();
+            });
+        }
+        if ($visual && $visual.dataset.wpbWired !== "1") {
+            $visual.dataset.wpbWired = "1";
+            $visual.addEventListener("input", function () {
+                if ($host && $host.value !== $visual.value) {
+                    $host.value = $visual.value;
+                    // Some host listeners react to "change" rather than
+                    // "input"; fire both so the code editor stays current.
+                    $host.dispatchEvent(new Event("input",  { bubbles: true }));
+                    $host.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+                updateSaveButtonState();
+            });
+        }
+        // Seed the visual input with the host's current value (handles
+        // the "open modal after editing a page in code mode" case).
+        if ($host && $visual && !$visual.value) {
+            $visual.value = $host.value || "";
         }
     }
 

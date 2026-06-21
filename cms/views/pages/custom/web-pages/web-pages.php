@@ -238,6 +238,16 @@ button that closes the modal without changes (data flows commit 7/N).
                     <small class="text-muted ms-2" id="wpb-visual-modal-subtitle"></small>
                 </h5>
                 <div class="d-flex gap-2 align-items-center">
+                    <!-- Inline file-name input — mirrors the code-mode
+                         #wpb-name field in both directions so the user
+                         doesn't have to close the modal to set the file
+                         name before saving. -->
+                    <div class="input-group input-group-sm" style="width:230px">
+                        <span class="input-group-text"><i class="bi bi-file-earmark"></i></span>
+                        <input type="text" class="form-control" id="wpb-visual-name"
+                               placeholder="nombre-del-archivo" aria-label="Nombre del archivo">
+                        <span class="input-group-text">.php</span>
+                    </div>
                     <!-- Editor vs. Preview toggle. Replaces the canvas with
                          an iframe that renders the compiled HTML so the
                          user can see how the final page will look without
