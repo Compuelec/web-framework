@@ -48,7 +48,12 @@ External dependencies (loaded by web-pages.php):
         { type: "image",     label: "Imagen",         icon: "bi-image" },
         { type: "button",    label: "Botón",          icon: "bi-square" },
         { type: "divider",   label: "Separador",      icon: "bi-dash-lg" },
-        { type: "rawHtml",   label: "HTML libre",     icon: "bi-code" }
+        { type: "rawHtml",   label: "HTML libre",     icon: "bi-code" },
+        // Container blocks — accept other blocks inside their sub-canvas.
+        // Compile to {{#cada}}…{{/cada}} and {{#form}}…{{submit}}{{/form}}
+        // respectively (see web-pages-compile.js).
+        { type: "list",      label: "Lista de registros", icon: "bi-list-ul" },
+        { type: "form",      label: "Formulario",         icon: "bi-ui-checks" }
     ];
 
     // Default props for a freshly-dragged block. Kept separate so the
@@ -66,8 +71,17 @@ External dependencies (loaded by web-pages.php):
             case "field":        return { column: column || "", tag: "span" };
             case "fieldImage":   return { column: column || "", width: "100%" };
             case "fieldGallery": return { column: column || "", itemWidth: 80 };
+            // Containers: empty `children` array gets populated when the
+            // user drops blocks into the rendered sub-canvas. The render
+            // path always normalises a missing children to [].
+            case "list":         return { wrapper: "div", wrapperClass: "" };
+            case "form":         return { submitText: "Enviar" };
             default:             return {};
         }
+    }
+
+    function isContainer(type) {
+        return type === "list" || type === "form";
     }
 
     /* ---------- state ---------- */
@@ -236,12 +250,38 @@ External dependencies (loaded by web-pages.php):
 
     /* ---------- canvas render ---------- */
 
-    function renderBlock(block) {
+    // Path helpers — see the comment at the top of the file. A path is
+    // the "/"-joined list of indexes that lead from the root tree to a
+    // container's children array. Root is the empty string.
+
+    function getBlocksAtPath(path) {
+        if (!path) { return state.tree.blocks; }
+        var parts = path.split("/");
+        var node = state.tree.blocks;
+        for (var i = 0; i < parts.length; i++) {
+            var idx = parseInt(parts[i], 10);
+            if (!Array.isArray(node) || !node[idx]) { return null; }
+            // Containers normalise their children to an array.
+            if (!Array.isArray(node[idx].children)) { node[idx].children = []; }
+            node = node[idx].children;
+        }
+        return node;
+    }
+
+    function childPath(parentPath, idx) {
+        return parentPath ? (parentPath + "/" + idx) : String(idx);
+    }
+
+    // Each rendered card holds:
+    //   - its blockId (for selection / deletion)
+    //   - its full path to itself, so an edit can locate the exact node
+    //     without searching the whole tree (search still works, but we
+    //     prefer paths because they survive duplicate ids defensively).
+    function renderBlock(block, parentPath, indexInParent) {
         var info = describeBlock(block);
-        return el("div", {
-            className: "wpb-block",
-            dataset: { blockId: block.id }
-        }, [
+        var path = childPath(parentPath, indexInParent);
+
+        var $children = [
             el("div", { className: "d-flex justify-content-between align-items-center" }, [
                 el("div", { className: "d-flex align-items-center" }, [
                     el("i", {
@@ -259,7 +299,41 @@ External dependencies (loaded by web-pages.php):
                 }, [ el("i", { className: "bi bi-trash" }) ])
             ]),
             el("div", { className: "small text-muted mt-1", text: info.summary })
-        ]);
+        ];
+
+        // Container blocks (list, form) host a sub-canvas that accepts
+        // its own SortableJS drops. The sub-canvas carries the path to
+        // the children array so onPaletteDrop / onCanvasReorder can
+        // mutate the right slice of state.tree.
+        if (isContainer(block.type)) {
+            // Normalise on render so children is always an array.
+            if (!Array.isArray(block.children)) { block.children = []; }
+            var subPath = path + "/children";
+            var $sub = el("div", {
+                className: "wpb-subcanvas",
+                dataset: { blockPath: subPath, containerType: block.type }
+            });
+            if (!block.children.length) {
+                $sub.appendChild(el("div", {
+                    className: "wpb-subcanvas-empty text-center text-muted small py-3",
+                    "data-sortable-skip": "1",
+                    style: "pointer-events:none",
+                    text: block.type === "list"
+                        ? "Arrastrá aquí los bloques que se repetirán por cada registro"
+                        : "Arrastrá aquí los campos del formulario"
+                }));
+            } else {
+                block.children.forEach(function (child, i) {
+                    $sub.appendChild(renderBlock(child, subPath, i));
+                });
+            }
+            $children.push($sub);
+        }
+
+        return el("div", {
+            className: "wpb-block" + (isContainer(block.type) ? " wpb-block-container" : ""),
+            dataset: { blockId: block.id, blockPath: path }
+        }, $children);
     }
 
     function describeBlock(block) {
@@ -274,6 +348,8 @@ External dependencies (loaded by web-pages.php):
             case "field":        return { title: "Campo: " + (p.column || "?"), summary: "<" + (p.tag || "span") + ">{{" + (p.column || "") + "}}</" + (p.tag || "span") + ">" };
             case "fieldImage":   return { title: "Imagen de campo: " + (p.column || "?"), summary: "<img src=\"{{" + (p.column || "") + "}}\"> · " + (p.width || "100%") };
             case "fieldGallery": return { title: "Galería de imágenes: " + (p.column || "?"), summary: "Recorre " + (p.column || "?") + " · " + (p.itemWidth || 80) + "px por imagen" };
+            case "list":         return { title: "Lista de registros", summary: "{{#cada}} … {{/cada}} · contiene " + ((block.children || []).length) + " bloque(s)" };
+            case "form":         return { title: "Formulario", summary: "{{#form}} … {{submit " + (p.submitText || "Enviar") + "}}{{/form}} · contiene " + ((block.children || []).length) + " bloque(s)" };
             default:             return { title: block.type,    summary: "" };
         }
     }
@@ -356,6 +432,21 @@ External dependencies (loaded by web-pages.php):
             { key: "column",    kind: "column", label: "Columna multi-imagen" },
             { key: "itemWidth", kind: "number", label: "Ancho de cada imagen (px)",
               min: 16, max: 800, step: 1, coerce: "int" }
+        ],
+        list: [
+            { key: "wrapper", kind: "select", label: "Etiqueta envolvente",
+              options: [
+                  { value: "div",     label: "<div>" },
+                  { value: "ul",      label: "<ul> (lista)" },
+                  { value: "ol",      label: "<ol> (lista numerada)" },
+                  { value: "section", label: "<section>" }
+              ] },
+            { key: "wrapperClass", kind: "text", label: "Clase CSS del envolvente",
+              placeholder: "row, products-grid, …" }
+        ],
+        form: [
+            { key: "submitText", kind: "text", label: "Texto del botón enviar",
+              placeholder: "Enviar" }
         ]
     };
 
@@ -490,19 +581,52 @@ External dependencies (loaded by web-pages.php):
         }) || null;
     }
 
+    // Walks the block tree (including children of containers) and yields
+    // each { block, parentArray, index, path } so callers can locate the
+    // node without searching by id every time.
+    function findBlockById(blockId) {
+        function recurse(arr, parentPath) {
+            for (var i = 0; i < arr.length; i++) {
+                var b = arr[i];
+                var path = childPath(parentPath, i);
+                if (b.id === blockId) {
+                    return { block: b, parentArray: arr, index: i, path: path };
+                }
+                if (Array.isArray(b.children)) {
+                    var hit = recurse(b.children, path + "/children");
+                    if (hit) { return hit; }
+                }
+            }
+            return null;
+        }
+        return recurse(state.tree.blocks, "");
+    }
+
     // Refresh just the editable card of a single block — used after a
     // props edit so the summary in the canvas updates without touching
-    // SortableJS bookkeeping.
+    // SortableJS bookkeeping. Walks the tree so it works for blocks
+    // nested inside containers.
     function refreshBlockCard(blockId) {
-        var block = state.tree.blocks.find(function (b) { return b.id === blockId; });
-        if (!block) { return; }
+        var hit = findBlockById(blockId);
+        if (!hit) { return; }
         var $old = document.querySelector(
             '#wpb-canvas-list .wpb-block[data-block-id="' + cssEscape(blockId) + '"]'
         );
         if (!$old) { return; }
-        var $new = renderBlock(block);
+        // Compute the parent path + index from the located node.
+        // hit.path = "0/children/2"; the index is the last segment, the
+        // parent path is everything before "/children/<idx>".
+        var parts = hit.path.split("/");
+        var indexInParent = parseInt(parts.pop(), 10);
+        var parentPath = parts.join("/");
+        var $new = renderBlock(hit.block, parentPath, indexInParent);
         if (state.selectedId === blockId) { $new.classList.add("is-selected"); }
         $old.parentNode.replaceChild($new, $old);
+        // The replaced card may contain new sub-canvases that need their
+        // own SortableJS instances; also drop any instances tied to the
+        // sub-canvases we just discarded.
+        pruneSortables();
+        ensureSortables();
     }
 
     // Minimal CSS.escape polyfill for the few cases where SortableJS
@@ -695,8 +819,8 @@ External dependencies (loaded by web-pages.php):
                       'Arrastrá un bloque desde la paleta para empezar'
             }));
         } else {
-            state.tree.blocks.forEach(function (b) {
-                $canvasList.appendChild(renderBlock(b));
+            state.tree.blocks.forEach(function (b, i) {
+                $canvasList.appendChild(renderBlock(b, "", i));
             });
         }
     }
@@ -716,34 +840,28 @@ External dependencies (loaded by web-pages.php):
     }
 
     function ensureSortables() {
-        if (state.sortables.length) { return; }
         if (!window.Sortable) {
             console.warn("[wpb-visual] SortableJS not loaded");
             return;
         }
+        // Idempotent: each container/list carries data-sortable-wired
+        // once we've attached SortableJS so subsequent calls only wire
+        // newly-added sub-canvases.
 
-        var $palette = document.getElementById("wpb-palette-list");
-        if ($palette) {
-            state.sortables.push(window.Sortable.create($palette, {
-                group: { name: "wpb-blocks", pull: "clone", put: false },
-                sort: false,
-                animation: 150
-            }));
-        }
-        // Column-chips list — same group so drops land on the canvas.
-        // sort:false because the chips order is the table column order.
-        var $chips = document.getElementById("wpb-column-chips-list");
-        if ($chips) {
-            state.sortables.push(window.Sortable.create($chips, {
+        function wireSourceList(el) {
+            if (!el || el.dataset.sortableWired === "1") { return; }
+            el.dataset.sortableWired = "1";
+            state.sortables.push(window.Sortable.create(el, {
                 group: { name: "wpb-blocks", pull: "clone", put: false },
                 sort: false,
                 animation: 150
             }));
         }
 
-        var $canvasList = document.getElementById("wpb-canvas-list");
-        if ($canvasList) {
-            state.sortables.push(window.Sortable.create($canvasList, {
+        function wireDropList(el) {
+            if (!el || el.dataset.sortableWired === "1") { return; }
+            el.dataset.sortableWired = "1";
+            state.sortables.push(window.Sortable.create(el, {
                 group: { name: "wpb-blocks", pull: false, put: true },
                 handle: ".wpb-block-handle",
                 draggable: ".wpb-block",
@@ -753,52 +871,115 @@ External dependencies (loaded by web-pages.php):
                 onUpdate: onCanvasReorder
             }));
         }
+
+        // Source lists (palette + column chips) — sortableJS clone mode.
+        wireSourceList(document.getElementById("wpb-palette-list"));
+        wireSourceList(document.getElementById("wpb-column-chips-list"));
+
+        // Drop lists: root canvas + every sub-canvas currently rendered.
+        // Any new sub-canvas added by renderBlock will be wired on the
+        // next ensureSortables() call (which we run after every render
+        // that may have created one).
+        wireDropList(document.getElementById("wpb-canvas-list"));
+        document.querySelectorAll("#wpb-canvas-list .wpb-subcanvas")
+            .forEach(wireDropList);
+    }
+
+    // Tears down only the SortableJS instances whose host elements are
+    // no longer in the DOM. Called after we re-render a parent list (the
+    // sub-canvases inside get replaced; their old instances should die).
+    function pruneSortables() {
+        state.sortables = state.sortables.filter(function (s) {
+            var alive = s && s.el && document.body.contains(s.el);
+            if (!alive) {
+                try { s.destroy(); } catch (e) { /* ignore */ }
+            }
+            return alive;
+        });
+    }
+
+    // Reads the path of the SortableJS target list. For the root canvas
+    // it's "" (the empty string), for any sub-canvas it's whatever its
+    // data-block-path attribute says ("0/children", "0/children/1/children", …).
+    function pathOfList(el) {
+        if (!el) { return ""; }
+        var p = el.dataset && el.dataset.blockPath;
+        // Empty-string path is meaningful (= root), so check for undefined.
+        return p == null ? "" : p;
     }
 
     function onPaletteDrop(evt) {
         // Sortable's clone (the dropped DOM node) carries the type via
         // dataset.paletteType and, for column chips, the column name via
-        // dataset.paletteColumn. We add the block to state.tree and
-        // refresh the canvas list's CONTENT in place — the list element
-        // itself (which Sortable is still wired to) is NOT recreated.
+        // dataset.paletteColumn. We add the block to state.tree (at the
+        // right sub-array per evt.to.dataset.blockPath) and re-render
+        // the affected list IN PLACE.
         var $node = evt.item;
         var type   = $node && $node.dataset && $node.dataset.paletteType;
         var column = $node && $node.dataset && $node.dataset.paletteColumn;
         if (!type) { return; }
+
+        var path = pathOfList(evt.to);
+        var target = getBlocksAtPath(path);
+        if (!target) { return; }
 
         var newBlock = {
             id:    nonce(),
             type:  type,
             props: defaultProps(type, column)
         };
-        var idx = evt.newIndex == null ? state.tree.blocks.length : evt.newIndex;
-        state.tree.blocks.splice(idx, 0, newBlock);
+        if (isContainer(type)) { newBlock.children = []; }
+
+        var idx = evt.newIndex == null ? target.length : evt.newIndex;
+        target.splice(idx, 0, newBlock);
         state.selectedId = newBlock.id;
 
-        // Refresh the canvas list contents from state.tree. The cloned
-        // palette item is removed in the process. Doing this AFTER
-        // SortableJS has finished processing the drop avoids the
-        // teardown-mid-drag bug that left the second drop unresponsive.
+        // Re-render the affected list (root or sub-canvas) plus everything
+        // below it. We can't avoid re-rendering the parent block-card if
+        // the drop landed in a sub-canvas (the card's summary counts
+        // children), so we always re-render from the root canvas down —
+        // SortableJS bookkeeping for the root is preserved because the
+        // root list element itself stays put.
         var $canvasList = document.getElementById("wpb-canvas-list");
         if ($canvasList) {
             renderCanvas($canvasList);
+            pruneSortables();
+            ensureSortables();
             applySelectionClass();
         }
-        // The new block is auto-selected — jump the props panel to it.
         renderProps();
         updateSaveButtonState();
         schedulePreviewRefresh();
     }
 
     function onCanvasReorder(evt) {
-        var oldIdx = evt.oldIndex;
-        var newIdx = evt.newIndex;
-        if (oldIdx == null || newIdx == null || oldIdx === newIdx) { return; }
-        var moved = state.tree.blocks.splice(oldIdx, 1)[0];
-        state.tree.blocks.splice(newIdx, 0, moved);
-        // SortableJS already moved the DOM, and the indexes match
-        // state.tree, so no re-render is needed — the next time we render
-        // from state.tree (delete/new block/etc) order stays consistent.
+        var fromPath = pathOfList(evt.from);
+        var toPath   = pathOfList(evt.to);
+        var oldIdx = evt.oldIndex, newIdx = evt.newIndex;
+        if (oldIdx == null || newIdx == null) { return; }
+
+        var fromArr = getBlocksAtPath(fromPath);
+        var toArr   = getBlocksAtPath(toPath);
+        if (!fromArr || !toArr) { return; }
+
+        // Same list, no movement: nothing to do.
+        if (fromPath === toPath && oldIdx === newIdx) { return; }
+
+        var moved = fromArr.splice(oldIdx, 1)[0];
+        if (!moved) { return; }
+        toArr.splice(newIdx, 0, moved);
+
+        // Drag-between-lists: SortableJS already moved the DOM but block
+        // path attributes on the moved card are now stale. Re-render the
+        // whole canvas to refresh paths + container summaries; if the
+        // move was within a single list, that's still cheap enough.
+        var $canvasList = document.getElementById("wpb-canvas-list");
+        if ($canvasList) {
+            renderCanvas($canvasList);
+            pruneSortables();
+            ensureSortables();
+            applySelectionClass();
+        }
         schedulePreviewRefresh();
     }
 
@@ -825,13 +1006,15 @@ External dependencies (loaded by web-pages.php):
     }
 
     function deleteBlock(id) {
-        var idx = state.tree.blocks.findIndex(function (b) { return b.id === id; });
-        if (idx === -1) { return; }
-        state.tree.blocks.splice(idx, 1);
+        var hit = findBlockById(id);
+        if (!hit) { return; }
+        hit.parentArray.splice(hit.index, 1);
         if (state.selectedId === id) { state.selectedId = null; }
         var $canvasList = document.getElementById("wpb-canvas-list");
         if ($canvasList) {
             renderCanvas($canvasList);
+            pruneSortables();
+            ensureSortables();
             applySelectionClass();
         }
         renderProps();
@@ -869,7 +1052,10 @@ External dependencies (loaded by web-pages.php):
         $canvas.innerHTML = "";
         var $canvasList = el("div", {
             className: "wpb-canvas-list",
-            id: "wpb-canvas-list"
+            id: "wpb-canvas-list",
+            // Path "" = root. Sub-canvas inside containers carry their
+            // own "0/children/1/children" etc.
+            dataset: { blockPath: "" }
         });
         $canvas.appendChild($canvasList);
         renderCanvas($canvasList);

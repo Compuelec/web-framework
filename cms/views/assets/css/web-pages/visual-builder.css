@@ -162,6 +162,26 @@ user sees a faithful preview without us re-creating styles here.
     opacity: .35;
 }
 
+/* ---------- container blocks (list / form) ---------- */
+
+.wpb-block-container {
+    background: #fafbff;
+}
+.wpb-subcanvas {
+    margin: .6rem 0 .2rem;
+    padding: .5rem;
+    background: #fff;
+    border: 1px dashed var(--wpb-border);
+    border-radius: var(--wpb-radius);
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+.wpb-subcanvas-empty {
+    color: var(--wpb-text-muted);
+}
+
 /* ---------- column chips (table-aware section of the palette) ---------- */
 
 .wpb-palette-item.wpb-palette-column {
