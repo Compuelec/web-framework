@@ -58,14 +58,25 @@ user sees a faithful preview without us re-creating styles here.
     padding: 1.5rem 2rem;
 }
 
-/* The canvas inner list holds the rendered block cards — keeps the
-   drop zone consistent whether empty or populated. */
+/* The canvas inner list holds the rendered block cards. flex:1 lets it
+   fill the canvas vertically so the empty area below the last block is
+   still a valid SortableJS drop zone — otherwise drops on canvas
+   padding silently snap back. */
 .wpb-canvas-list {
     display: flex;
     flex-direction: column;
     gap: .5rem;
+    width: 100%;
     max-width: 880px;
-    margin: 0 auto;
+    flex: 1 1 auto;
+}
+
+/* The canvas uses flex so the inner list can fill it vertically.
+   align-items:center keeps the list centered horizontally as before. */
+.wpb-visual-canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* Drop zones get an inset dashed border while a drag is hovering so the
