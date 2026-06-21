@@ -2,16 +2,20 @@
 Visual page builder — styles
 
 Scoped to `.wpb-visual` so it doesn't bleed into the rest of the CMS.
-Layout (subsequent commits flesh this out):
 
+Hosted inside a Bootstrap 5 .modal-fullscreen, so the grid is sized
+against the modal body (which already covers the viewport). The three
+columns each scroll independently — the canvas is the only one with
+lots of content most of the time.
+
+Layout:
   .wpb-visual
-    .wpb-visual-palette    left rail (block library + column chips)
-    .wpb-visual-canvas     center — drop zone, scrollable
-    .wpb-visual-props      right rail — props panel of selected block
+    .wpb-visual-palette   left rail (block library + column chips)
+    .wpb-visual-canvas    center — drop zone, scrollable
+    .wpb-visual-props     right rail — props panel of selected block
 
-The actual rendered blocks inside the canvas use the brand-CSS already
-loaded by the public site (Bootstrap), so the user sees a faithful
-preview without us re-creating styles here.
+Blocks rendered inside the canvas use the public-site Bootstrap so the
+user sees a faithful preview without us re-creating styles here.
 =============================================*/
 
 .wpb-visual {
@@ -19,36 +23,117 @@ preview without us re-creating styles here.
     --wpb-accent-soft: #eef0ff;
     --wpb-border: #e2e8f0;
     --wpb-bg-canvas: #f8fafc;
+    --wpb-bg-palette: #ffffff;
+    --wpb-bg-props: #ffffff;
     --wpb-bg-block-hover: #f1f5f9;
     --wpb-text-muted: #64748b;
     --wpb-radius: 6px;
 
     display: grid;
-    grid-template-columns: 240px 1fr 280px;
-    gap: 1rem;
-    min-height: 480px;
+    grid-template-columns: 260px 1fr 320px;
+    /* Modal body has padding 0 — fill it. The modal-header takes ~46px so
+       100% of the modal-body is fine; height auto-cascades from the
+       fullscreen modal-content via flex. */
+    height: 100%;
+    min-height: calc(100vh - 56px);  /* fallback for browsers without the modal flex chain */
+    background: var(--wpb-bg-canvas);
+}
+
+.wpb-visual-palette,
+.wpb-visual-props {
+    background: var(--wpb-bg-palette);
+    border-right: 1px solid var(--wpb-border);
+    overflow-y: auto;
+    padding: 1rem .75rem;
+}
+.wpb-visual-props {
+    border-right: 0;
+    border-left: 1px solid var(--wpb-border);
+    background: var(--wpb-bg-props);
+}
+
+.wpb-visual-canvas {
+    background: var(--wpb-bg-canvas);
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+}
+
+/* The canvas inner list holds the rendered block cards — keeps the
+   drop zone consistent whether empty or populated. */
+.wpb-canvas-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    max-width: 880px;
+    margin: 0 auto;
 }
 
 /* Drop zones get an inset dashed border while a drag is hovering so the
-   user sees where the block will land. Real DnD wiring lands in the next
-   commit; the class is reserved here so styles don't churn later. */
+   user sees where the block will land. The class is reserved here so
+   future SortableJS wiring can toggle it without CSS churn. */
 .wpb-drop-active {
     background: var(--wpb-accent-soft);
     outline: 2px dashed var(--wpb-accent);
     outline-offset: -2px;
 }
 
+/* ---------- palette items ---------- */
+
+.wpb-palette-list {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+.wpb-palette-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .65rem;
+    background: #fff;
+    border: 1px solid var(--wpb-border);
+    border-radius: var(--wpb-radius);
+    cursor: grab;
+    user-select: none;
+    font-size: .9rem;
+    transition: background .12s, border-color .12s;
+}
+.wpb-palette-item:hover {
+    background: var(--wpb-accent-soft);
+    border-color: var(--wpb-accent);
+}
+.wpb-palette-item:active { cursor: grabbing; }
+.wpb-palette-item.sortable-chosen {
+    background: var(--wpb-accent-soft);
+    border-color: var(--wpb-accent);
+}
+
+/* ---------- block cards in the canvas ---------- */
+
 .wpb-block {
     position: relative;
-    padding: .5rem;
-    border: 1px solid transparent;
+    padding: .55rem .75rem;
+    background: #fff;
+    border: 1px solid var(--wpb-border);
     border-radius: var(--wpb-radius);
+    transition: background .12s, border-color .12s, box-shadow .12s;
 }
 .wpb-block:hover {
     background: var(--wpb-bg-block-hover);
-    border-color: var(--wpb-border);
 }
 .wpb-block.is-selected {
     border-color: var(--wpb-accent);
     background: var(--wpb-accent-soft);
+    box-shadow: 0 0 0 2px var(--wpb-accent-soft);
+}
+.wpb-block-handle {
+    cursor: grab;
+}
+.wpb-block-handle:active {
+    cursor: grabbing;
+}
+
+/* Sortable's ghost class — keep the dragged card visible but dim. */
+.wpb-block.sortable-ghost,
+.wpb-palette-item.sortable-ghost {
+    opacity: .35;
 }

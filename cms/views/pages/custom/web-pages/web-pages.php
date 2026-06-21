@@ -19,6 +19,16 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
 <script src="<?php echo $cmsBasePath ?>/views/assets/plugins/codemirror5/codemirror5.js"></script>
 <script>window.WPB_CM = window.CodeMirror; window.CodeMirror = window.WPB_CM_PREV;</script>
 
+<!--=============================================
+Visual page builder (DnD) — loaded only on this view. The compiler is a
+pure module; visual.js wires the modal-fullscreen builder. CSS scoped to
+.wpb-visual so it doesn't bleed.
+===============================================-->
+<link rel="stylesheet" href="<?php echo $cmsBasePath ?>/views/assets/css/web-pages/visual-builder.css?v=<?php echo @filemtime(__DIR__ . '/../../../assets/css/web-pages/visual-builder.css') ?>">
+<script src="<?php echo $cmsBasePath ?>/views/assets/plugins/sortablejs/Sortable.min.js"></script>
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages-compile.js?v=<?php echo @filemtime(__DIR__ . '/../../../assets/js/web-pages/web-pages-compile.js') ?>"></script>
+<script src="<?php echo $cmsBasePath ?>/views/assets/js/web-pages/web-pages-visual.js?v=<?php echo @filemtime(__DIR__ . '/../../../assets/js/web-pages/web-pages-visual.js') ?>"></script>
+
 <div class="container-fluid py-4 px-4" id="web-pages-builder">
 
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -28,7 +38,13 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
             </h4>
             <small class="text-muted">Escribe tu HTML e inserta los datos de tu tabla donde quieras</small>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-primary" id="wpb-open-visual" type="button"
+                    data-bs-toggle="modal" data-bs-target="#wpb-visual-modal">
+                <i class="bi bi-grid-3x3-gap me-1"></i>Editar visual (arrastrar bloques)
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="wpb-new"><i class="bi bi-plus-lg me-1"></i>Nueva página</button>
+        </div>
     </div>
 
     <div class="row g-3">
@@ -202,3 +218,84 @@ WPB_CM, and restore the original global CodeMirror — keeping the two isolated.
         </div>
     </div>
 </div>
+
+<!--=============================================
+Visual builder — fullscreen modal
+
+Bootstrap 5 `.modal-fullscreen`. The visual surface lives here so it gets
+the whole viewport for the palette / canvas / props panels.
+
+Saving and the rest of the persistence wiring land in a future commit;
+for now the modal hosts the DnD playground and a "Volver al código"
+button that closes the modal without changes (data flows commit 7/N).
+===============================================-->
+<div class="modal fade" id="wpb-visual-modal" tabindex="-1" aria-labelledby="wpb-visual-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title fw-semibold" id="wpb-visual-modal-title">
+                    <i class="bi bi-grid-3x3-gap me-2 text-primary"></i>Editor visual de páginas
+                    <small class="text-muted ms-2" id="wpb-visual-modal-subtitle"></small>
+                </h5>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Cerrar
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" id="wpb-visual-save" disabled>
+                        <i class="bi bi-check2 me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <div class="wpb-visual" id="wpb-visual-surface">
+                    <aside class="wpb-visual-palette" id="wpb-palette">
+                        <div class="small text-muted text-center py-4 px-2">
+                            <i class="bi bi-three-dots-vertical d-block fs-2 mb-2"></i>
+                            Paleta de bloques<br>
+                            <em>(próximo commit)</em>
+                        </div>
+                    </aside>
+                    <main class="wpb-visual-canvas" id="wpb-canvas">
+                        <div class="text-center text-muted small py-5">
+                            <i class="bi bi-arrow-down-square d-block fs-1 mb-2"></i>
+                            Arrastrá un bloque desde la paleta para empezar<br>
+                            <em>(canvas listo, DnD viene en el próximo commit)</em>
+                        </div>
+                    </main>
+                    <aside class="wpb-visual-props" id="wpb-props">
+                        <div class="small text-muted text-center py-4 px-2">
+                            <i class="bi bi-sliders d-block fs-2 mb-2"></i>
+                            Propiedades del bloque<br>
+                            <em>(próximo commit)</em>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--=============================================
+Wire the "Editar visual" button to delegate mount/unmount of the visual
+surface to web-pages-visual.js. Kept inline because it's view-local.
+===============================================-->
+<script>
+(function () {
+    "use strict";
+    var $modal = document.getElementById("wpb-visual-modal");
+    if (!$modal) { return; }
+    // Bootstrap fires show.bs.modal before the modal becomes visible, and
+    // shown.bs.modal once it is fully in the DOM. Mount on `shown` so
+    // SortableJS measures real container sizes.
+    $modal.addEventListener("shown.bs.modal", function () {
+        if (window.WebPagesVisual && typeof window.WebPagesVisual.mount === "function") {
+            window.WebPagesVisual.mount();
+        }
+    });
+    $modal.addEventListener("hidden.bs.modal", function () {
+        if (window.WebPagesVisual && typeof window.WebPagesVisual.unmount === "function") {
+            window.WebPagesVisual.unmount();
+        }
+    });
+})();
+</script>
