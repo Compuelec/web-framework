@@ -86,6 +86,31 @@ try {
             echo json_encode($result);
             break;
             
+        case 'restore':
+            // Restore the platform from an uploaded package .zip (DESTRUCTIVE:
+            // overwrites the current database). Superadmin only.
+            if (($_SESSION['admin']->rol_admin ?? '') !== 'superadmin') {
+                echo json_encode(['success' => false, 'message' => 'Solo un superadmin puede restaurar la plataforma.']);
+                break;
+            }
+            $err = $_FILES['package']['error'] ?? UPLOAD_ERR_NO_FILE;
+            if (!isset($_FILES['package']) || $err !== UPLOAD_ERR_OK) {
+                $msg = ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE)
+                    ? 'El paquete supera el tamaño máximo de subida del servidor (ajusta upload_max_filesize / post_max_size en php.ini).'
+                    : 'No se recibió el archivo de paquete (.zip).';
+                echo json_encode(['success' => false, 'message' => $msg]);
+                break;
+            }
+            if (!is_uploaded_file($_FILES['package']['tmp_name'])) {
+                echo json_encode(['success' => false, 'message' => 'Subida inválida.']);
+                break;
+            }
+            require_once __DIR__ . '/../controllers/package-install.controller.php';
+            $includeFiles = !isset($_POST['include_files']) || in_array($_POST['include_files'], ['1', 'true', 'on'], true);
+            $result = PackageInstallController::restoreFromZip($_FILES['package']['tmp_name'], $includeFiles);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            break;
+
         default:
             echo json_encode([
                 'success' => false,

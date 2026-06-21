@@ -29,10 +29,178 @@ class PackageInstallController {
      * @param array $dbConfig Database configuration
      * @return array Result with success status and message
      */
-    public static function restoreDatabase($dbConfig) {
+    /**
+     * Locate a usable `mysql` client binary, or null if none is found.
+     */
+    private static function findMysqlBinary() {
+        $candidates = [
+            '/Applications/XAMPP/bin/mysql', '/opt/lampp/bin/mysql',
+            '/usr/bin/mysql', '/usr/local/bin/mysql', '/usr/local/mysql/bin/mysql',
+        ];
+        foreach ($candidates as $c) {
+            if (@is_file($c) && @is_executable($c)) { return $c; }
+        }
+        if (function_exists('shell_exec')) {
+            $which = @shell_exec('command -v mysql 2>/dev/null');
+            $which = is_string($which) ? trim($which) : '';
+            if ($which !== '' && @is_executable($which)) { return $which; }
+        }
+        return null;
+    }
+
+    /**
+     * Import a dump with the mysql client (streamed, memory-safe). Returns the
+     * result array on success, or null when the client/shell isn't available or
+     * the import failed — so the caller can fall back to the PHP parser.
+     */
+    private static function restoreViaMysqlCli($dbConfig, $dbFile) {
+        if (!function_exists('proc_open')) { return null; }
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (in_array('proc_open', $disabled, true)) { return null; }
+
+        $bin = self::findMysqlBinary();
+        if ($bin === null) { return null; }
+
+        $cmd = escapeshellarg($bin)
+             . ' --host=' . escapeshellarg($dbConfig['host'])
+             . ' --user=' . escapeshellarg($dbConfig['user'])
+             . ' --default-character-set=utf8mb4 '
+             . escapeshellarg($dbConfig['name']);
+
+        $descriptors = [
+            0 => ['file', $dbFile, 'r'],   // stdin ← the dump (streamed)
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        // Pass the password via the environment, never on the command line.
+        $env = array_merge($_ENV ?: [], ['MYSQL_PWD' => (string) $dbConfig['pass']]);
+        $proc = @proc_open($cmd, $descriptors, $pipes, null, $env);
+        if (!is_resource($proc)) { return null; }
+
+        $stderr = is_resource($pipes[2]) ? stream_get_contents($pipes[2]) : '';
+        foreach ($pipes as $p) { if (is_resource($p)) { fclose($p); } }
+        $code = proc_close($proc);
+
+        if ($code === 0) {
+            return ['success' => true, 'message' => 'Base de datos restaurada con el cliente mysql.', 'method' => 'cli'];
+        }
+        error_log('Restore via mysql CLI failed (code ' . $code . '): ' . substr((string) $stderr, 0, 300));
+        return null; // fall back to the PHP parser
+    }
+
+    /* ---- recursive fs helpers (used by the upload restore) ---- */
+    private static function locateInTree($dir, $name) {
+        $direct = $dir . '/' . $name;
+        if (is_file($direct)) { return $direct; }
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $f) { if ($f->isFile() && $f->getFilename() === $name) { return $f->getPathname(); } }
+        return null;
+    }
+    private static function copyTree($src, $dst) {
+        if (!is_dir($dst)) { @mkdir($dst, 0775, true); }
+        $count = 0;
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+        foreach ($it as $item) {
+            $target = $dst . '/' . $it->getSubPathName();
+            if ($item->isDir()) { if (!is_dir($target)) { @mkdir($target, 0775, true); } }
+            elseif (@copy($item->getPathname(), $target)) { $count++; }
+        }
+        return $count;
+    }
+    private static function rrmdir($dir) {
+        if (!is_dir($dir)) { return; }
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($it as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
+        @rmdir($dir);
+    }
+
+    /** True only for a well-formed http(s) base URL with a real host. Guards the
+     *  URL rewrite against bogus domains (e.g. when not in a real web request). */
+    private static function isSaneBaseUrl($url) {
+        if (!is_string($url) || $url === '') { return false; }
+        $p = parse_url($url);
+        if (empty($p['scheme']) || empty($p['host'])) { return false; }
+        if (!in_array(strtolower($p['scheme']), ['http', 'https'], true)) { return false; }
+        if (isset($p['path']) && strpos($p['path'], '/.') !== false) { return false; }
+        return true;
+    }
+
+    /**
+     * Restore the platform from an uploaded package .zip: extract it, import its
+     * database.sql, (optionally) copy back the uploaded files, and rewrite the
+     * stored URLs to this server's domain. Does NOT overwrite the running code.
+     */
+    public static function restoreFromZip($zipPath, $includeFiles = true) {
+        if (!class_exists('ZipArchive')) { return ['success' => false, 'message' => 'ZipArchive no está disponible en el servidor.']; }
+        if (!is_file($zipPath)) { return ['success' => false, 'message' => 'Archivo de paquete no encontrado.']; }
+
         $rootDir = dirname(dirname(__DIR__));
-        $dbFile = $rootDir . '/database.sql';
-        
+        $tmp = rtrim(sys_get_temp_dir(), '/') . '/pkg_restore_' . bin2hex(random_bytes(6));
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) { return ['success' => false, 'message' => 'No se pudo abrir el ZIP (¿archivo válido?).']; }
+        if (!@mkdir($tmp, 0775, true)) { $zip->close(); return ['success' => false, 'message' => 'No se pudo crear el directorio temporal.']; }
+        if (!$zip->extractTo($tmp)) { $zip->close(); self::rrmdir($tmp); return ['success' => false, 'message' => 'No se pudo extraer el ZIP.']; }
+        $zip->close();
+
+        $dbFile = self::locateInTree($tmp, 'database.sql');
+        if ($dbFile === null) { self::rrmdir($tmp); return ['success' => false, 'message' => 'El paquete no contiene database.sql.']; }
+        $packageRoot = dirname($dbFile);
+
+        require_once __DIR__ . '/install.controller.php';
+        require_once __DIR__ . '/path-updater.controller.php';
+        $config = InstallController::getConfig();
+        $dbConfig = $config['database'] ?? [];
+        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+            self::rrmdir($tmp); return ['success' => false, 'message' => 'La base de datos no está configurada en cms/config.php.'];
+        }
+
+        // 1) restore the database from the package dump (overwrites current data)
+        $restore = self::restoreDatabase($dbConfig, $dbFile);
+        if (!$restore['success']) { self::rrmdir($tmp); return ['success' => false, 'message' => 'Restauración de BD: ' . $restore['message']]; }
+
+        // 2) bring back the uploaded files so images/logos resolve
+        $filesCopied = 0;
+        if ($includeFiles) {
+            $srcFiles = $packageRoot . '/cms/views/assets/files';
+            if (is_dir($srcFiles)) { $filesCopied = self::copyTree($srcFiles, $rootDir . '/cms/views/assets/files'); }
+        }
+
+        // 3) rewrite stored URLs to this server's domain (config + database).
+        // Only when the detected domain is a sane http(s) URL — otherwise (e.g. run
+        // outside a normal web request) skip it so we never corrupt stored URLs.
+        $domainInfo = PathUpdaterController::detectDomain();
+        $newDomain  = $domainInfo['base_url'] ?? '';
+        $oldDomain  = PathUpdaterController::detectOldDomainFromDatabase($dbConfig);
+        $urlsUpdated = 0;
+        if (self::isSaneBaseUrl($newDomain)) {
+            PathUpdaterController::updateCmsConfigUrlsOnly($domainInfo);
+            PathUpdaterController::updateApiConfigUrlsOnly($domainInfo);
+            PathUpdaterController::updateWebConfigUrlsOnly($domainInfo);
+            if ($oldDomain && $oldDomain !== $newDomain) {
+                $up = PathUpdaterController::updateDatabaseUrls($oldDomain, $newDomain, $dbConfig);
+                $urlsUpdated = $up['updated_count'] ?? 0;
+            }
+        } else {
+            error_log('restoreFromZip: skipped URL rewrite — unsafe detected domain: ' . $newDomain);
+        }
+
+        self::rrmdir($tmp);
+        return [
+            'success'      => true,
+            'message'      => 'Restauración completada.',
+            'method'       => $restore['method'] ?? 'pdo',
+            'files_copied' => $filesCopied,
+            'urls_updated' => $urlsUpdated,
+            'old_domain'   => $oldDomain,
+            'new_domain'   => $newDomain,
+        ];
+    }
+
+    public static function restoreDatabase($dbConfig, $dbFile = null) {
+        $rootDir = dirname(dirname(__DIR__));
+        if ($dbFile === null) { $dbFile = $rootDir . '/database.sql'; }
+
         if (!file_exists($dbFile)) {
             return [
                 'success' => false,
@@ -60,7 +228,14 @@ class PackageInstallController {
             
             // Create database if it doesn't exist
             $link->exec("CREATE DATABASE IF NOT EXISTS `" . $dbConfig['name'] . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            
+
+            // Fast path: import with the mysql client when available — it streams
+            // the dump instead of loading it into PHP memory, so large databases
+            // restore without timeouts/OOM. Falls through to the PDO parser below
+            // when the binary or shell exec isn't available.
+            $cli = self::restoreViaMysqlCli($dbConfig, $dbFile);
+            if ($cli !== null) { return $cli; }
+
             // Read SQL file
             $sqlContent = file_get_contents($dbFile);
             
