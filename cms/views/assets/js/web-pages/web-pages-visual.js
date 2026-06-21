@@ -56,6 +56,18 @@ External dependencies (loaded by web-pages.php):
         { type: "form",      label: "Formulario",         icon: "bi-ui-checks" }
     ];
 
+    // Form-only blocks. Live in their own palette section because they
+    // only make sense inside a `form` container (the {{input campo}} etc.
+    // template tags are stripped by the framework when used outside a
+    // {{#form}}…{{/form}}). The user can still drop them anywhere; the
+    // compiler doesn't validate the parent, but the v1 UX nudges them
+    // toward a form by showing the section header.
+    var FORM_INPUTS = [
+        { type: "formInput",    label: "Campo de texto",  icon: "bi-input-cursor-text" },
+        { type: "formTextarea", label: "Área de texto",   icon: "bi-textarea-resize" },
+        { type: "formFile",     label: "Subir archivo",   icon: "bi-cloud-upload" }
+    ];
+
     // Default props for a freshly-dragged block. Kept separate so the
     // catalogue (above) stays declarative. `column` (optional) is the
     // table column carried by a column-chip drop — used to seed the
@@ -76,6 +88,12 @@ External dependencies (loaded by web-pages.php):
             // path always normalises a missing children to [].
             case "list":         return { wrapper: "div", wrapperClass: "" };
             case "form":         return { submitText: "Enviar" };
+            // Form inputs — seeded with the column the chip was carrying
+            // (when dragged from a column chip). The label defaults to
+            // the column name so the rendered <label> isn't empty.
+            case "formInput":    return { column: column || "", label: column || "" };
+            case "formTextarea": return { column: column || "", label: column || "" };
+            case "formFile":     return { column: column || "", label: column || "" };
             default:             return {};
         }
     }
@@ -141,7 +159,9 @@ External dependencies (loaded by web-pages.php):
     // drags land on the canvas the same way (commit 7b drops chips as
     // field/fieldImage/fieldGallery blocks, see onPaletteDrop).
     function renderPalette($palette) {
-        // First-time render: scaffold both list containers.
+        // First-time render: scaffold the static sections. The dynamic
+        // contents (column chips, form-inputs section visibility) are
+        // refreshed afterwards by the helpers below.
         if ($palette.dataset.wpbBuilt !== "1") {
             $palette.innerHTML = "";
             $palette.appendChild(el("div", {
@@ -174,6 +194,31 @@ External dependencies (loaded by web-pages.php):
                 className: "wpb-palette-list wpb-column-chips-list",
                 id: "wpb-column-chips-list"
             }));
+
+            // Form-input chips section. The chips themselves are static
+            // (their labels and types don't depend on a table) but a
+            // column chip dragged INTO a form also produces an input.
+            $palette.appendChild(el("div", {
+                className: "small text-muted fw-semibold mb-2 mt-3 px-1",
+                id: "wpb-form-inputs-title",
+                text: "Inputs de formulario"
+            }));
+            var $formInputs = el("div", {
+                className: "wpb-palette-list wpb-form-inputs-list",
+                id: "wpb-form-inputs-list"
+            });
+            FORM_INPUTS.forEach(function (item) {
+                $formInputs.appendChild(el("div", {
+                    className: "wpb-palette-item wpb-palette-form-input",
+                    dataset: { paletteType: item.type },
+                    title: "Arrastra dentro de un Formulario"
+                }, [
+                    el("i", { className: "bi " + item.icon }),
+                    el("span", { text: item.label })
+                ]));
+            });
+            $palette.appendChild($formInputs);
+
             $palette.dataset.wpbBuilt = "1";
         }
         renderColumnChips();
@@ -272,6 +317,28 @@ External dependencies (loaded by web-pages.php):
         return parentPath ? (parentPath + "/" + idx) : String(idx);
     }
 
+    // Returns the type of the nearest ancestor container for a given
+    // path, or "" if the path is the root canvas. Used to pick the right
+    // block type when a column chip is dropped inside a form (an input
+    // tag) vs. anywhere else (a plain {{field}} tag).
+    function ancestorContainerType(path) {
+        if (!path) { return ""; }
+        // path = "0/children" or "0/children/1/children" … strip the
+        // trailing "/children" and look up that node's type.
+        var parts = path.split("/");
+        if (parts[parts.length - 1] !== "children") { return ""; }
+        parts.pop();
+        var node = state.tree.blocks;
+        var last = null;
+        for (var i = 0; i < parts.length; i++) {
+            var idx = parseInt(parts[i], 10);
+            if (!Array.isArray(node) || !node[idx]) { return ""; }
+            last = node[idx];
+            node = Array.isArray(node[idx].children) ? node[idx].children : [];
+        }
+        return last ? last.type : "";
+    }
+
     // Each rendered card holds:
     //   - its blockId (for selection / deletion)
     //   - its full path to itself, so an edit can locate the exact node
@@ -350,6 +417,9 @@ External dependencies (loaded by web-pages.php):
             case "fieldGallery": return { title: "Galería de imágenes: " + (p.column || "?"), summary: "Recorre " + (p.column || "?") + " · " + (p.itemWidth || 80) + "px por imagen" };
             case "list":         return { title: "Lista de registros", summary: "{{#cada}} … {{/cada}} · contiene " + ((block.children || []).length) + " bloque(s)" };
             case "form":         return { title: "Formulario", summary: "{{#form}} … {{submit " + (p.submitText || "Enviar") + "}}{{/form}} · contiene " + ((block.children || []).length) + " bloque(s)" };
+            case "formInput":    return { title: "Campo de texto",  summary: (p.label || p.column || "?") + " → {{input " + (p.column || "") + "}}" };
+            case "formTextarea": return { title: "Área de texto",   summary: (p.label || p.column || "?") + " → {{textarea " + (p.column || "") + "}}" };
+            case "formFile":     return { title: "Subir archivo",   summary: (p.label || p.column || "?") + " → {{file " + (p.column || "") + "}}" };
             default:             return { title: block.type,    summary: "" };
         }
     }
@@ -447,6 +517,21 @@ External dependencies (loaded by web-pages.php):
         form: [
             { key: "submitText", kind: "text", label: "Texto del botón enviar",
               placeholder: "Enviar" }
+        ],
+        formInput: [
+            { key: "column", kind: "column", label: "Columna donde se guarda" },
+            { key: "label",  kind: "text",   label: "Etiqueta visible",
+              placeholder: "Nombre" }
+        ],
+        formTextarea: [
+            { key: "column", kind: "column", label: "Columna donde se guarda" },
+            { key: "label",  kind: "text",   label: "Etiqueta visible",
+              placeholder: "Mensaje" }
+        ],
+        formFile: [
+            { key: "column", kind: "column", label: "Columna donde se guarda" },
+            { key: "label",  kind: "text",   label: "Etiqueta visible",
+              placeholder: "Adjuntar archivo" }
         ]
     };
 
@@ -872,9 +957,10 @@ External dependencies (loaded by web-pages.php):
             }));
         }
 
-        // Source lists (palette + column chips) — sortableJS clone mode.
+        // Source lists (palette + column chips + form-inputs) — clone mode.
         wireSourceList(document.getElementById("wpb-palette-list"));
         wireSourceList(document.getElementById("wpb-column-chips-list"));
+        wireSourceList(document.getElementById("wpb-form-inputs-list"));
 
         // Drop lists: root canvas + every sub-canvas currently rendered.
         // Any new sub-canvas added by renderBlock will be wired on the
@@ -922,6 +1008,21 @@ External dependencies (loaded by web-pages.php):
         var path = pathOfList(evt.to);
         var target = getBlocksAtPath(path);
         if (!target) { return; }
+
+        // Smart conversion: a column chip dropped inside a {{#form}}
+        // becomes a form input (the {{input col}} tag) instead of a
+        // plain {{col}} read tag. The framework template engine treats
+        // them differently and only {{input}}/{{textarea}}/{{file}}
+        // produce editable controls.
+        if (column && (type === "field" || type === "fieldImage" || type === "fieldGallery")) {
+            if (ancestorContainerType(path) === "form") {
+                // For image/multiimage columns inside a form we still want
+                // a file picker rather than a textarea.
+                type = (type === "fieldImage" || type === "fieldGallery")
+                    ? "formFile"
+                    : "formInput";
+            }
+        }
 
         var newBlock = {
             id:    nonce(),

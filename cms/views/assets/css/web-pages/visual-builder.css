@@ -191,6 +191,17 @@ user sees a faithful preview without us re-creating styles here.
     background: var(--wpb-accent-soft);
 }
 
+/* ---------- form-input chips ---------- */
+
+.wpb-palette-item.wpb-palette-form-input {
+    background: #f0fdf4; /* subtle green tint to signal "form-only" */
+    border-color: #d1fae5;
+}
+.wpb-palette-item.wpb-palette-form-input:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
 /* ---------- props panel form ---------- */
 
 .wpb-props-form .form-label {
