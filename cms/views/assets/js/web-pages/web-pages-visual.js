@@ -52,16 +52,21 @@ External dependencies (loaded by web-pages.php):
     ];
 
     // Default props for a freshly-dragged block. Kept separate so the
-    // catalogue (above) stays declarative.
-    function defaultProps(type) {
+    // catalogue (above) stays declarative. `column` (optional) is the
+    // table column carried by a column-chip drop — used to seed the
+    // field/fieldImage/fieldGallery blocks with the right binding.
+    function defaultProps(type, column) {
         switch (type) {
-            case "heading":   return { level: 1, text: "Encabezado" };
-            case "paragraph": return { text: "Escribe un párrafo aquí." };
-            case "image":     return { src: "", alt: "", width: "100%" };
-            case "button":    return { text: "Botón", href: "#", style: "primary" };
-            case "divider":   return { height: 24 };
-            case "rawHtml":   return { html: "<div>tu HTML</div>" };
-            default:          return {};
+            case "heading":      return { level: 1, text: "Encabezado" };
+            case "paragraph":    return { text: "Escribe un párrafo aquí." };
+            case "image":        return { src: "", alt: "", width: "100%" };
+            case "button":       return { text: "Botón", href: "#", style: "primary" };
+            case "divider":      return { height: 24 };
+            case "rawHtml":      return { html: "<div>tu HTML</div>" };
+            case "field":        return { column: column || "", tag: "span" };
+            case "fieldImage":   return { column: column || "", width: "100%" };
+            case "fieldGallery": return { column: column || "", itemWidth: 80 };
+            default:             return {};
         }
     }
 
@@ -112,27 +117,121 @@ External dependencies (loaded by web-pages.php):
 
     /* ---------- palette render ---------- */
 
+    // The palette has two stacked sections:
+    //   1. Static block library (#wpb-palette-list) — same identity
+    //      across re-renders so SortableJS keeps its hooks.
+    //   2. Column chips (#wpb-column-chips-list) — only present when a
+    //      table is selected; contents refresh whenever state.columns
+    //      changes, the host element itself persists.
+    // Both lists belong to the same SortableJS group "wpb-blocks" so
+    // drags land on the canvas the same way (commit 7b drops chips as
+    // field/fieldImage/fieldGallery blocks, see onPaletteDrop).
     function renderPalette($palette) {
-        $palette.innerHTML = "";
-        $palette.appendChild(el("div", {
-            className: "small text-muted fw-semibold mb-2 px-1",
-            text: "Bloques"
-        }));
-        var $list = el("div", {
-            className: "wpb-palette-list",
-            id: "wpb-palette-list"
-        });
-        PALETTE.forEach(function (item) {
+        // First-time render: scaffold both list containers.
+        if ($palette.dataset.wpbBuilt !== "1") {
+            $palette.innerHTML = "";
+            $palette.appendChild(el("div", {
+                className: "small text-muted fw-semibold mb-2 px-1",
+                text: "Bloques"
+            }));
+            var $list = el("div", {
+                className: "wpb-palette-list",
+                id: "wpb-palette-list"
+            });
+            PALETTE.forEach(function (item) {
+                $list.appendChild(el("div", {
+                    className: "wpb-palette-item",
+                    dataset: { paletteType: item.type },
+                    title: "Arrastra al canvas"
+                }, [
+                    el("i", { className: "bi " + item.icon }),
+                    el("span", { text: item.label })
+                ]));
+            });
+            $palette.appendChild($list);
+
+            // Column-chips section. Title + container both live across
+            // renders; only the children of the list refresh below.
+            $palette.appendChild(el("div", {
+                className: "small text-muted fw-semibold mb-2 mt-3 px-1",
+                id: "wpb-column-chips-title"
+            }));
+            $palette.appendChild(el("div", {
+                className: "wpb-palette-list wpb-column-chips-list",
+                id: "wpb-column-chips-list"
+            }));
+            $palette.dataset.wpbBuilt = "1";
+        }
+        renderColumnChips();
+    }
+
+    // Translates the framework's column type to the right block type the
+    // chip should produce when dropped. Falls back to a plain {{field}}
+    // tag for anything we don't recognise.
+    function blockTypeForColumnType(t) {
+        if (t === "image" || t === "img")  { return "fieldImage"; }
+        if (t === "multiimage")            { return "fieldGallery"; }
+        return "field";
+    }
+
+    // Bootstrap icon to display next to each column chip — purely visual.
+    function iconForColumnType(t) {
+        switch (t) {
+            case "image":      return "bi-image";
+            case "multiimage": return "bi-images";
+            case "file":       return "bi-paperclip";
+            case "video":      return "bi-camera-video";
+            case "textarea":   return "bi-card-text";
+            case "boolean":    return "bi-check2-square";
+            case "date":       return "bi-calendar3";
+            case "time":       return "bi-clock";
+            case "email":      return "bi-envelope";
+            case "link":       return "bi-link-45deg";
+            case "color":      return "bi-palette";
+            case "money":
+            case "double":
+            case "int":        return "bi-123";
+            default:           return "bi-tag";
+        }
+    }
+
+    function renderColumnChips() {
+        var $title = document.getElementById("wpb-column-chips-title");
+        var $list  = document.getElementById("wpb-column-chips-list");
+        if (!$title || !$list) { return; }
+
+        var cols  = state.columns || [];
+        var types = (columnsCache[state.tree.table] && columnsCache[state.tree.table].types) || {};
+
+        if (!state.tree.table || !cols.length) {
+            // No table picked (or no columns yet) — collapse the section.
+            $title.textContent = "";
+            $title.style.display = "none";
+            $list.innerHTML = "";
+            $list.style.display = "none";
+            return;
+        }
+
+        $title.textContent = "Campos de " + state.tree.table;
+        $title.style.display = "";
+        $list.style.display = "";
+        $list.innerHTML = "";
+
+        cols.forEach(function (col) {
+            var fwType = types[col] || "";
+            var blockType = blockTypeForColumnType(fwType);
             $list.appendChild(el("div", {
-                className: "wpb-palette-item",
-                dataset: { paletteType: item.type },
-                title: "Arrastra al canvas"
+                className: "wpb-palette-item wpb-palette-column",
+                dataset: {
+                    paletteType:   blockType,
+                    paletteColumn: col
+                },
+                title: "Arrastra al canvas (campo " + col + ")"
             }, [
-                el("i", { className: "bi " + item.icon }),
-                el("span", { text: item.label })
+                el("i", { className: "bi " + iconForColumnType(fwType) }),
+                el("span", { text: col })
             ]));
         });
-        $palette.appendChild($list);
     }
 
     /* ---------- canvas render ---------- */
@@ -166,13 +265,16 @@ External dependencies (loaded by web-pages.php):
     function describeBlock(block) {
         var p = block.props || {};
         switch (block.type) {
-            case "heading":   return { title: "Encabezado H" + p.level, summary: p.text || "(sin texto)" };
-            case "paragraph": return { title: "Párrafo",     summary: (p.text || "").slice(0, 80) || "(vacío)" };
-            case "image":     return { title: "Imagen",      summary: p.src || "(sin URL)" };
-            case "button":    return { title: "Botón",       summary: (p.text || "") + " → " + (p.href || "#") };
-            case "divider":   return { title: "Separador",   summary: p.height + " px" };
-            case "rawHtml":   return { title: "HTML libre",  summary: (p.html || "").slice(0, 80) };
-            default:          return { title: block.type,    summary: "" };
+            case "heading":      return { title: "Encabezado H" + p.level, summary: p.text || "(sin texto)" };
+            case "paragraph":    return { title: "Párrafo",     summary: (p.text || "").slice(0, 80) || "(vacío)" };
+            case "image":        return { title: "Imagen",      summary: p.src || "(sin URL)" };
+            case "button":       return { title: "Botón",       summary: (p.text || "") + " → " + (p.href || "#") };
+            case "divider":      return { title: "Separador",   summary: p.height + " px" };
+            case "rawHtml":      return { title: "HTML libre",  summary: (p.html || "").slice(0, 80) };
+            case "field":        return { title: "Campo: " + (p.column || "?"), summary: "<" + (p.tag || "span") + ">{{" + (p.column || "") + "}}</" + (p.tag || "span") + ">" };
+            case "fieldImage":   return { title: "Imagen de campo: " + (p.column || "?"), summary: "<img src=\"{{" + (p.column || "") + "}}\"> · " + (p.width || "100%") };
+            case "fieldGallery": return { title: "Galería de imágenes: " + (p.column || "?"), summary: "Recorre " + (p.column || "?") + " · " + (p.itemWidth || 80) + "px por imagen" };
+            default:             return { title: block.type,    summary: "" };
         }
     }
 
@@ -229,6 +331,31 @@ External dependencies (loaded by web-pages.php):
         rawHtml: [
             { key: "html", kind: "code", label: "HTML / CSS / JS inline",
               rows: 10, placeholder: "<div class=\"mi-bloque\">…</div>" }
+        ],
+        field: [
+            { key: "column", kind: "column", label: "Columna de la tabla" },
+            { key: "tag",    kind: "select", label: "Etiqueta HTML",
+              options: [
+                  { value: "span",   label: "<span> (inline)" },
+                  { value: "div",    label: "<div> (bloque)" },
+                  { value: "strong", label: "<strong> (negrita)" },
+                  { value: "em",     label: "<em> (itálica)" },
+                  { value: "small",  label: "<small> (texto chico)" },
+                  { value: "h1",     label: "H1" },
+                  { value: "h2",     label: "H2" },
+                  { value: "h3",     label: "H3" },
+                  { value: "h4",     label: "H4" }
+              ] }
+        ],
+        fieldImage: [
+            { key: "column", kind: "column", label: "Columna de la imagen" },
+            { key: "width",  kind: "text",   label: "Ancho",
+              placeholder: "100% · 320px · auto" }
+        ],
+        fieldGallery: [
+            { key: "column",    kind: "column", label: "Columna multi-imagen" },
+            { key: "itemWidth", kind: "number", label: "Ancho de cada imagen (px)",
+              min: 16, max: 800, step: 1, coerce: "int" }
         ]
     };
 
@@ -288,6 +415,32 @@ External dependencies (loaded by web-pages.php):
                     if (String(value) === String(opt.value)) { $opt.selected = true; }
                     $input.appendChild($opt);
                 });
+                break;
+            case "column":
+                // Dynamic select: options come from state.columns (the
+                // currently picked table). When the user hasn't picked a
+                // table, the chip should still be editable so they can
+                // type a literal column name — render an input fallback.
+                if (state.columns && state.columns.length) {
+                    $input = el("select", { className: "form-select form-select-sm wpb-prop-input" });
+                    if (!value || state.columns.indexOf(value) === -1) {
+                        var $empty = el("option", { value: "", text: "(elegí una columna)" });
+                        if (!value) { $empty.selected = true; }
+                        $input.appendChild($empty);
+                    }
+                    state.columns.forEach(function (col) {
+                        var $opt = el("option", { value: col, text: col });
+                        if (col === value) { $opt.selected = true; }
+                        $input.appendChild($opt);
+                    });
+                } else {
+                    $input = el("input", {
+                        type: "text",
+                        className: "form-control form-control-sm wpb-prop-input",
+                        placeholder: "Nombre de columna (sin tabla cargada)"
+                    });
+                    $input.value = value == null ? "" : value;
+                }
                 break;
             case "textarea":
             case "code":
@@ -577,6 +730,16 @@ External dependencies (loaded by web-pages.php):
                 animation: 150
             }));
         }
+        // Column-chips list — same group so drops land on the canvas.
+        // sort:false because the chips order is the table column order.
+        var $chips = document.getElementById("wpb-column-chips-list");
+        if ($chips) {
+            state.sortables.push(window.Sortable.create($chips, {
+                group: { name: "wpb-blocks", pull: "clone", put: false },
+                sort: false,
+                animation: 150
+            }));
+        }
 
         var $canvasList = document.getElementById("wpb-canvas-list");
         if ($canvasList) {
@@ -594,17 +757,19 @@ External dependencies (loaded by web-pages.php):
 
     function onPaletteDrop(evt) {
         // Sortable's clone (the dropped DOM node) carries the type via
-        // dataset.paletteType. We add the block to state.tree and refresh
-        // the canvas list's CONTENT in place — the list element itself
-        // (which Sortable is still wired to) is NOT recreated.
+        // dataset.paletteType and, for column chips, the column name via
+        // dataset.paletteColumn. We add the block to state.tree and
+        // refresh the canvas list's CONTENT in place — the list element
+        // itself (which Sortable is still wired to) is NOT recreated.
         var $node = evt.item;
-        var type = $node && $node.dataset && $node.dataset.paletteType;
+        var type   = $node && $node.dataset && $node.dataset.paletteType;
+        var column = $node && $node.dataset && $node.dataset.paletteColumn;
         if (!type) { return; }
 
         var newBlock = {
             id:    nonce(),
             type:  type,
-            props: defaultProps(type)
+            props: defaultProps(type, column)
         };
         var idx = evt.newIndex == null ? state.tree.blocks.length : evt.newIndex;
         state.tree.blocks.splice(idx, 0, newBlock);

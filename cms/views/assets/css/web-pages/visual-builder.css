@@ -162,6 +162,15 @@ user sees a faithful preview without us re-creating styles here.
     opacity: .35;
 }
 
+/* ---------- column chips (table-aware section of the palette) ---------- */
+
+.wpb-palette-item.wpb-palette-column {
+    background: #f8fafc;
+}
+.wpb-palette-item.wpb-palette-column:hover {
+    background: var(--wpb-accent-soft);
+}
+
 /* ---------- props panel form ---------- */
 
 .wpb-props-form .form-label {
