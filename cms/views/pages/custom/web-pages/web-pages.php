@@ -248,6 +248,17 @@ button that closes the modal without changes (data flows commit 7/N).
                                placeholder="nombre-del-archivo" aria-label="Nombre del archivo">
                         <span class="input-group-text">.php</span>
                     </div>
+
+                    <!-- Data-source picker. "" = static page (no table);
+                         everything else binds the page to that table so
+                         column chips and the list/form blocks show up in
+                         the palette. Updates state.tree.table when changed. -->
+                    <div class="input-group input-group-sm" style="width:240px">
+                        <span class="input-group-text"><i class="bi bi-table"></i></span>
+                        <select class="form-select" id="wpb-visual-table" aria-label="Tabla de datos">
+                            <option value="">Página en blanco (sin tabla)</option>
+                        </select>
+                    </div>
                     <!-- Editor vs. Preview toggle. Replaces the canvas with
                          an iframe that renders the compiled HTML so the
                          user can see how the final page will look without

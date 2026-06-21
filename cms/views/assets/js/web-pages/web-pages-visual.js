@@ -714,11 +714,20 @@ External dependencies (loaded by web-pages.php):
         wireViewToggle();
         wireSaveButton();
         wireNameSync();
+        wireTablePicker();
         ensureSortables();
         applySelectionClass();
         renderProps();
         setView(state.view);
         updateSaveButtonState();
+
+        // Populate the table picker the first time the modal mounts; on
+        // subsequent opens the cached list is reused, so this is a no-op.
+        populateTableSelect().then(function () {
+            // Refresh the column cache for the currently selected table
+            // so column chips (commit 7b) have data to render.
+            if (state.tree.table) { applyTableChange(state.tree.table); }
+        });
     }
 
     /* ---------- public API ---------- */
@@ -747,12 +756,22 @@ External dependencies (loaded by web-pages.php):
                 // stale state from a previous edit.
                 loadTree(null);
             }
-            // Mirror the loaded file name into the modal's input so the
+            // Mirror the loaded file name + table into the modal so the
             // user sees what they're editing without opening the host
             // editor. If the modal hasn't been mounted yet, the seed in
-            // wireNameSync() will catch it on first mount.
-            var $visual = document.getElementById("wpb-visual-name");
-            if ($visual) { $visual.value = c.fileName || ""; }
+            // wireNameSync() / populateTableSelect() catches it on first
+            // mount.
+            var $visualName  = document.getElementById("wpb-visual-name");
+            var $visualTable = document.getElementById("wpb-visual-table");
+            if ($visualName)  { $visualName.value  = c.fileName || ""; }
+            if ($visualTable) { $visualTable.value = c.table    || ""; }
+            // Also reflect into the in-memory tree so saveBlocks doesn't
+            // drop the table binding when the user opens Visual right
+            // after loading a page.
+            state.tree.table = c.table || "";
+            // Refresh the column cache so chips show up if the loaded
+            // page already has a table picked.
+            if (state.tree.table) { applyTableChange(state.tree.table); }
             updateSaveButtonState();
         });
     }
@@ -815,8 +834,103 @@ External dependencies (loaded by web-pages.php):
 
     function setColumns(list) {
         state.columns = Array.isArray(list) ? list.slice() : [];
-        // Once the palette gets table-aware chips (commit 4/N) this will
-        // trigger a re-render of the palette.
+        // The palette uses state.columns to render column chips. Re-render
+        // it whenever the column list changes so the chips reflect the
+        // currently selected table.
+        var $palette = document.getElementById("wpb-palette");
+        if ($palette) { renderPalette($palette); }
+    }
+
+    /* ---------- data-source picker (table selection) ---------- */
+
+    // Lazy cache so the table list isn't fetched again every time the
+    // modal opens. Invalidated on demand if a future commit adds a way
+    // to create tables from inside the modal.
+    var tablesCache = null;
+    var columnsCache = {}; // table → { columns, types }
+
+    function ajaxFormFetch(payload) {
+        // Bootstraps a POST with URL-encoded form data, same shape the
+        // legacy code-mode editor uses, so the CSRF interceptor jQuery
+        // sets up on the host still applies (we re-use jQuery when present).
+        if (window.jQuery) {
+            return new Promise(function (resolve, reject) {
+                window.jQuery.ajax({
+                    url: ajaxUrl(), method: "POST", dataType: "json", data: payload
+                }).done(resolve).fail(reject);
+            });
+        }
+        var body = new URLSearchParams();
+        Object.keys(payload).forEach(function (k) { body.append(k, payload[k] == null ? "" : payload[k]); });
+        return fetch(ajaxUrl(), {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString()
+        }).then(function (r) { return r.json(); });
+    }
+
+    function loadTables() {
+        if (tablesCache) { return Promise.resolve(tablesCache); }
+        return ajaxFormFetch({ action: "tables" }).then(function (res) {
+            tablesCache = (res && res.success && Array.isArray(res.tables)) ? res.tables : [];
+            return tablesCache;
+        }).catch(function () { return []; });
+    }
+
+    function loadColumns(table) {
+        if (!table) { return Promise.resolve({ columns: [], types: {} }); }
+        if (columnsCache[table]) { return Promise.resolve(columnsCache[table]); }
+        return ajaxFormFetch({ action: "columns", table: table }).then(function (res) {
+            var out = (res && res.success)
+                ? { columns: res.columns || [], types: res.types || {} }
+                : { columns: [], types: {} };
+            columnsCache[table] = out;
+            return out;
+        }).catch(function () { return { columns: [], types: {} }; });
+    }
+
+    function populateTableSelect() {
+        var $sel = document.getElementById("wpb-visual-table");
+        if (!$sel) { return Promise.resolve(); }
+        // Don't refetch if we already populated it during this session.
+        if ($sel.dataset.wpbPopulated === "1") { return Promise.resolve(); }
+        return loadTables().then(function (tables) {
+            // Keep the static-page sentinel as option[value=""].
+            $sel.querySelectorAll('option[value]:not([value=""])').forEach(function (o) { o.remove(); });
+            tables.forEach(function (t) {
+                var $o = document.createElement("option");
+                $o.value = t;
+                $o.textContent = t;
+                $sel.appendChild($o);
+            });
+            $sel.dataset.wpbPopulated = "1";
+            // Sync the value with the current tree (which may carry a
+            // table from a freshly-loaded page).
+            if (state.tree.table) { $sel.value = state.tree.table; }
+        });
+    }
+
+    function applyTableChange(newTable) {
+        // Block-types that depend on a table column become invalid when
+        // the table changes. We don't delete them — the user might be
+        // moving between two tables with overlapping column names — but
+        // any chip-driven field/list/form created later will pick up the
+        // new column set.
+        state.tree.table = newTable || "";
+        loadColumns(newTable).then(function (info) {
+            setColumns(info.columns || []);
+        });
+    }
+
+    function wireTablePicker() {
+        var $sel = document.getElementById("wpb-visual-table");
+        if (!$sel || $sel.dataset.wpbWired === "1") { return; }
+        $sel.dataset.wpbWired = "1";
+        $sel.addEventListener("change", function () {
+            applyTableChange(this.value);
+            schedulePreviewRefresh();
+        });
     }
 
     /* ---------- persistence (save / load) ---------- */
@@ -878,13 +992,13 @@ External dependencies (loaded by web-pages.php):
             isHome:    readHostField("wpb-home", 0),
             "accessRoles[]": readCheckedValues(".wpb-role:checked"),
             "accessUsers[]": readCheckedValues(".wpb-user:checked"),
-            // The host's "Tipo de página" radio chooses table vs. static.
-            // Static = no table binding (the compiler will still produce
-            // valid HTML with literal text), table = bind to whatever the
-            // user picked in the host's <select>.
-            table: readCheckedValue("wpb-mode") === "static"
-                ? ""
-                : readHostField("wpb-table", "")
+            // The visual modal carries its own table picker that we use
+            // as the source of truth — the host's radio + <select> are
+            // only consulted as a fallback for the legacy code-mode flow.
+            table: readHostField("wpb-visual-table",
+                readCheckedValue("wpb-mode") === "static"
+                    ? ""
+                    : readHostField("wpb-table", ""))
         };
     }
 
