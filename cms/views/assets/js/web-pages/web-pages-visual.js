@@ -174,6 +174,233 @@ External dependencies (loaded by web-pages.php):
         }
     }
 
+    /* ---------- props panel ---------- */
+
+    // Per-type schema. Each entry is the list of editable props for a
+    // block type, with the input kind to render. Keeping this declarative
+    // means adding a new prop is one line — no new DOM-building code.
+    //
+    // Supported kinds:
+    //   text        single-line text input
+    //   textarea    multi-line text input (small)
+    //   code        multi-line monospace input (bigger, for rawHtml)
+    //   url         like text but with type="url"
+    //   number      numeric input with optional min/max/step
+    //   select      <select> from a list of { value, label } options
+    var PROPS_SCHEMA = {
+        heading: [
+            { key: "text",  kind: "text",   label: "Texto" },
+            { key: "level", kind: "select", label: "Nivel",
+              options: [
+                  { value: 1, label: "H1 (más grande)" },
+                  { value: 2, label: "H2" },
+                  { value: 3, label: "H3" },
+                  { value: 4, label: "H4" },
+                  { value: 5, label: "H5" },
+                  { value: 6, label: "H6 (más chico)" }
+              ], coerce: "int" }
+        ],
+        paragraph: [
+            { key: "text", kind: "textarea", label: "Texto", rows: 4 }
+        ],
+        image: [
+            { key: "src",   kind: "url",  label: "URL de la imagen",
+              placeholder: "https://… o /uploads/foo.jpg" },
+            { key: "alt",   kind: "text", label: "Texto alternativo (alt)",
+              placeholder: "Descripción para lectores de pantalla" },
+            { key: "width", kind: "text", label: "Ancho",
+              placeholder: "100% · 320px · auto" }
+        ],
+        button: [
+            { key: "text",  kind: "text", label: "Texto del botón" },
+            { key: "href",  kind: "url",  label: "Enlace (URL)" },
+            { key: "style", kind: "select", label: "Estilo",
+              options: [
+                  { value: "primary",   label: "Primario (azul)" },
+                  { value: "secondary", label: "Secundario (gris)" }
+              ] }
+        ],
+        divider: [
+            { key: "height", kind: "number", label: "Altura (píxeles)",
+              min: 1, max: 400, step: 1, coerce: "int" }
+        ],
+        rawHtml: [
+            { key: "html", kind: "code", label: "HTML / CSS / JS inline",
+              rows: 10, placeholder: "<div class=\"mi-bloque\">…</div>" }
+        ]
+    };
+
+    function renderProps() {
+        var $props = document.getElementById("wpb-props");
+        if (!$props) { return; }
+        $props.innerHTML = "";
+
+        var block = currentBlock();
+        if (!block) {
+            $props.appendChild(el("div", {
+                className: "small text-muted text-center py-4 px-2",
+                html: '<i class="bi bi-sliders d-block fs-2 mb-2"></i>' +
+                      'Seleccioná un bloque<br>para editar sus propiedades'
+            }));
+            return;
+        }
+
+        $props.appendChild(el("div", {
+            className: "small text-muted fw-semibold mb-2 px-1",
+            text: describeBlock(block).title
+        }));
+
+        var schema = PROPS_SCHEMA[block.type] || [];
+        var $form = el("form", {
+            className: "wpb-props-form",
+            id: "wpb-props-form",
+            dataset: { blockId: block.id },
+            // `autocomplete="off"` because the inputs are content, not
+            // user credentials, and we don't want browser autofill to mess
+            // with placeholders.
+            autocomplete: "off"
+        });
+
+        schema.forEach(function (field) {
+            $form.appendChild(renderField(field, block));
+        });
+
+        $props.appendChild($form);
+    }
+
+    function renderField(field, block) {
+        var value = block.props ? block.props[field.key] : "";
+        var $wrap = el("div", { className: "mb-3 wpb-field",
+            dataset: { propKey: field.key, propCoerce: field.coerce || "" } });
+        $wrap.appendChild(el("label", {
+            className: "form-label small fw-semibold mb-1",
+            text: field.label
+        }));
+
+        var $input;
+        switch (field.kind) {
+            case "select":
+                $input = el("select", { className: "form-select form-select-sm wpb-prop-input" });
+                (field.options || []).forEach(function (opt) {
+                    var $opt = el("option", { value: String(opt.value), text: opt.label });
+                    if (String(value) === String(opt.value)) { $opt.selected = true; }
+                    $input.appendChild($opt);
+                });
+                break;
+            case "textarea":
+            case "code":
+                $input = el("textarea", {
+                    className: "form-control form-control-sm wpb-prop-input" +
+                               (field.kind === "code" ? " font-monospace" : ""),
+                    rows: String(field.rows || 3),
+                    placeholder: field.placeholder || ""
+                });
+                $input.value = value == null ? "" : value;
+                break;
+            case "number":
+                $input = el("input", {
+                    type: "number",
+                    className: "form-control form-control-sm wpb-prop-input"
+                });
+                if (field.min  != null) { $input.min  = String(field.min); }
+                if (field.max  != null) { $input.max  = String(field.max); }
+                if (field.step != null) { $input.step = String(field.step); }
+                $input.value = value == null ? "" : value;
+                break;
+            case "url":
+                $input = el("input", {
+                    type: "url",
+                    className: "form-control form-control-sm wpb-prop-input",
+                    placeholder: field.placeholder || ""
+                });
+                $input.value = value == null ? "" : value;
+                break;
+            default: // text
+                $input = el("input", {
+                    type: "text",
+                    className: "form-control form-control-sm wpb-prop-input",
+                    placeholder: field.placeholder || ""
+                });
+                $input.value = value == null ? "" : value;
+        }
+
+        $wrap.appendChild($input);
+        return $wrap;
+    }
+
+    function currentBlock() {
+        if (!state.selectedId) { return null; }
+        return state.tree.blocks.find(function (b) {
+            return b.id === state.selectedId;
+        }) || null;
+    }
+
+    // Refresh just the editable card of a single block — used after a
+    // props edit so the summary in the canvas updates without touching
+    // SortableJS bookkeeping.
+    function refreshBlockCard(blockId) {
+        var block = state.tree.blocks.find(function (b) { return b.id === blockId; });
+        if (!block) { return; }
+        var $old = document.querySelector(
+            '#wpb-canvas-list .wpb-block[data-block-id="' + cssEscape(blockId) + '"]'
+        );
+        if (!$old) { return; }
+        var $new = renderBlock(block);
+        if (state.selectedId === blockId) { $new.classList.add("is-selected"); }
+        $old.parentNode.replaceChild($new, $old);
+    }
+
+    // Minimal CSS.escape polyfill for the few cases where SortableJS
+    // doesn't bring one. Our ids only contain [a-z0-9_], so this is enough.
+    function cssEscape(s) {
+        return String(s).replace(/([^\w-])/g, "\\$1");
+    }
+
+    function wirePropsEvents() {
+        var $props = document.getElementById("wpb-props");
+        if (!$props || $props.dataset.wpbWired === "1") { return; }
+        $props.dataset.wpbWired = "1";
+
+        // We use `input` on the props panel for live update — every
+        // keystroke updates state.tree and refreshes the block's card.
+        // `change` is also bound to catch select/number values when the
+        // user blurs the input.
+        function onAnyChange(e) {
+            var $input = e.target.closest(".wpb-prop-input");
+            if (!$input) { return; }
+            var $form = $input.closest("#wpb-props-form");
+            if (!$form) { return; }
+            var blockId = $form.dataset.blockId;
+            var $wrap = $input.closest(".wpb-field");
+            if (!$wrap) { return; }
+            var key    = $wrap.dataset.propKey;
+            var coerce = $wrap.dataset.propCoerce;
+
+            var raw = $input.value;
+            var value;
+            if (coerce === "int") {
+                var n = parseInt(raw, 10);
+                value = Number.isFinite(n) ? n : 0;
+            } else {
+                value = raw;
+            }
+
+            var block = state.tree.blocks.find(function (b) { return b.id === blockId; });
+            if (!block) { return; }
+            block.props = block.props || {};
+            block.props[key] = value;
+
+            refreshBlockCard(blockId);
+            // Re-render the props header (e.g. "Encabezado H2" reflects
+            // the new level immediately). The form itself doesn't need
+            // re-rendering because the input already has the new value.
+            var $header = $props.querySelector(".fw-semibold");
+            if ($header) { $header.textContent = describeBlock(block).title; }
+        }
+        $props.addEventListener("input",  onAnyChange);
+        $props.addEventListener("change", onAnyChange);
+    }
+
     function renderCanvas($canvasList) {
         // Updates the contents of the sortable list IN PLACE — does NOT
         // replace the list element itself, because SortableJS holds a
@@ -271,6 +498,8 @@ External dependencies (loaded by web-pages.php):
             renderCanvas($canvasList);
             applySelectionClass();
         }
+        // The new block is auto-selected — jump the props panel to it.
+        renderProps();
     }
 
     function onCanvasReorder(evt) {
@@ -316,12 +545,13 @@ External dependencies (loaded by web-pages.php):
             renderCanvas($canvasList);
             applySelectionClass();
         }
+        renderProps();
     }
 
     function selectBlock(id) {
         state.selectedId = id;
         applySelectionClass();
-        // Props panel update comes in the next commit (props panel).
+        renderProps();
     }
 
     function applySelectionClass() {
@@ -354,8 +584,10 @@ External dependencies (loaded by web-pages.php):
         renderCanvas($canvasList);
 
         wireCanvasEvents();
+        wirePropsEvents();
         ensureSortables();
         applySelectionClass();
+        renderProps();
     }
 
     /* ---------- public API ---------- */
@@ -374,10 +606,12 @@ External dependencies (loaded by web-pages.php):
     function unmount() {
         state.mounted = false;
         teardownSortables();
-        // Clear wired flag so the next mount re-wires events on the
-        // (possibly new) canvas DOM.
+        // Clear wired flags so the next mount re-wires events on the
+        // (possibly new) canvas / props DOM.
         var $canvas = document.getElementById("wpb-canvas");
+        var $props  = document.getElementById("wpb-props");
         if ($canvas) { delete $canvas.dataset.wpbWired; }
+        if ($props)  { delete $props.dataset.wpbWired; }
         // Keep state.tree intact — re-opening the modal should restore the
         // user's work without a round-trip to the server.
     }
@@ -398,6 +632,7 @@ External dependencies (loaded by web-pages.php):
             if ($canvasList) {
                 renderCanvas($canvasList);
                 applySelectionClass();
+                renderProps();
             } else {
                 fullRender();
             }

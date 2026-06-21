@@ -148,3 +148,17 @@ user sees a faithful preview without us re-creating styles here.
 .wpb-palette-item.sortable-ghost {
     opacity: .35;
 }
+
+/* ---------- props panel form ---------- */
+
+.wpb-props-form .form-label {
+    color: var(--wpb-text-muted);
+}
+.wpb-props-form .form-control,
+.wpb-props-form .form-select {
+    font-size: .85rem;
+}
+.wpb-props-form textarea.font-monospace {
+    font-size: .8rem;
+    line-height: 1.4;
+}
