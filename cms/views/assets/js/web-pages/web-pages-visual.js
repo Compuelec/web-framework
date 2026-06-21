@@ -73,7 +73,9 @@ External dependencies (loaded by web-pages.php):
         tree:         emptyTree(),
         columns:      [],          // current table's column suffixes
         selectedId:   null,        // id of currently selected block
-        sortables:    []           // SortableJS instances we created (for teardown)
+        sortables:    [],          // SortableJS instances we created (for teardown)
+        view:         "editor",    // "editor" | "preview"
+        previewTimer: null         // debounce handle for preview refresh
     };
 
     function emptyTree() {
@@ -396,9 +398,128 @@ External dependencies (loaded by web-pages.php):
             // re-rendering because the input already has the new value.
             var $header = $props.querySelector(".fw-semibold");
             if ($header) { $header.textContent = describeBlock(block).title; }
+            // If the preview is visible, schedule a refresh so the user
+            // sees their edit live.
+            schedulePreviewRefresh();
         }
         $props.addEventListener("input",  onAnyChange);
         $props.addEventListener("change", onAnyChange);
+    }
+
+    /* ---------- preview iframe ---------- */
+    // The preview is built from state.tree → WebPagesCompile.compileTree
+    // (the same compiler the save flow will use). We wrap the resulting
+    // template in a minimal HTML document that loads the CMS Bootstrap so
+    // .row / .col-md-* / .btn classes look like they will on the public
+    // site. CodeMirror-style live updates: while in preview view, edits
+    // re-render the iframe after a small debounce.
+
+    var PREVIEW_DEBOUNCE_MS = 200;
+
+    function schedulePreviewRefresh() {
+        if (state.view !== "preview") { return; }
+        if (state.previewTimer) {
+            clearTimeout(state.previewTimer);
+        }
+        state.previewTimer = setTimeout(function () {
+            state.previewTimer = null;
+            renderPreview();
+        }, PREVIEW_DEBOUNCE_MS);
+    }
+
+    function compileForPreview() {
+        if (!window.WebPagesCompile) {
+            return { template: "", customCss: "",
+                     warnings: ["WebPagesCompile no está cargado"] };
+        }
+        try {
+            return window.WebPagesCompile.compileTree(state.tree);
+        } catch (err) {
+            return { template:  '<pre style="color:#b91c1c;padding:1rem;">' +
+                                'Error de compilación:\n' +
+                                String(err && err.message || err) + '</pre>',
+                     customCss: "",
+                     warnings:  [String(err && err.message || err)] };
+        }
+    }
+
+    function buildPreviewDoc(compiled) {
+        var assets = window.CMS_ASSETS_PATH || "";
+        var bootstrap = assets + "/plugins/bootstrap5/bootstrap.min.css";
+        // Inline CSS user wrote in rawHtml + customCss compiled from blocks.
+        var css = compiled.customCss || "";
+
+        // Origin so the iframe can resolve the bootstrap path even though
+        // it has no base URL of its own (srcdoc documents resolve relative
+        // URLs against `about:srcdoc`, which is useless).
+        var origin = window.location.origin;
+        if (bootstrap && bootstrap.indexOf("//") === -1) {
+            bootstrap = origin + bootstrap;
+        }
+
+        // Minimal Bootstrap-host doc. `.wpb-preview-wrap` mimics a Bootstrap
+        // container so blocks look like they would in a real page body.
+        var emptyHint = state.tree.blocks.length ? "" :
+            '<div class="text-center text-muted py-5">' +
+            '<div style="font-size:2rem;margin-bottom:.5rem">👀</div>' +
+            'Tu página aparecerá acá cuando agregues bloques.' +
+            '</div>';
+
+        return '<!doctype html>' +
+            '<html lang="es"><head><meta charset="utf-8">' +
+            '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<link rel="stylesheet" href="' + escAttr(bootstrap) + '">' +
+            '<style>' +
+            'body{padding:1.5rem;background:#fff;}' +
+            css +
+            '</style>' +
+            '</head><body>' +
+            '<div class="container wpb-preview-wrap">' +
+            (compiled.template || emptyHint) +
+            '</div>' +
+            '</body></html>';
+    }
+
+    function escAttr(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function renderPreview() {
+        var $iframe = document.getElementById("wpb-preview-frame");
+        if (!$iframe) { return; }
+        var compiled = compileForPreview();
+        $iframe.srcdoc = buildPreviewDoc(compiled);
+    }
+
+    function setView(view) {
+        if (view !== "editor" && view !== "preview") { view = "editor"; }
+        state.view = view;
+        var $canvas  = document.getElementById("wpb-canvas");
+        var $iframe  = document.getElementById("wpb-preview-frame");
+        // The palette and props panel stay visible in both views — only
+        // the center cell swaps between editor and iframe.
+        if ($canvas) { $canvas.style.display = (view === "editor")  ? "" : "none"; }
+        if ($iframe) { $iframe.style.display = (view === "preview") ? "" : "none"; }
+        if (view === "preview") {
+            // Render immediately on enter, then debounce on edits.
+            renderPreview();
+        }
+        // Keep the radios in sync if setView was called from code.
+        var $radio = document.querySelector('input[name="wpb-view"][value="' + view + '"]');
+        if ($radio) { $radio.checked = true; }
+    }
+
+    function wireViewToggle() {
+        document.querySelectorAll('input[name="wpb-view"]').forEach(function (el) {
+            // Guard against rewiring on every fullRender.
+            if (el.dataset.wpbWired === "1") { return; }
+            el.dataset.wpbWired = "1";
+            el.addEventListener("change", function () {
+                setView(this.value);
+            });
+        });
     }
 
     function renderCanvas($canvasList) {
@@ -500,6 +621,7 @@ External dependencies (loaded by web-pages.php):
         }
         // The new block is auto-selected — jump the props panel to it.
         renderProps();
+        schedulePreviewRefresh();
     }
 
     function onCanvasReorder(evt) {
@@ -511,6 +633,7 @@ External dependencies (loaded by web-pages.php):
         // SortableJS already moved the DOM, and the indexes match
         // state.tree, so no re-render is needed — the next time we render
         // from state.tree (delete/new block/etc) order stays consistent.
+        schedulePreviewRefresh();
     }
 
     /* ---------- canvas events (delete, select) ---------- */
@@ -546,6 +669,7 @@ External dependencies (loaded by web-pages.php):
             applySelectionClass();
         }
         renderProps();
+        schedulePreviewRefresh();
     }
 
     function selectBlock(id) {
@@ -585,9 +709,11 @@ External dependencies (loaded by web-pages.php):
 
         wireCanvasEvents();
         wirePropsEvents();
+        wireViewToggle();
         ensureSortables();
         applySelectionClass();
         renderProps();
+        setView(state.view);
     }
 
     /* ---------- public API ---------- */
@@ -606,12 +732,22 @@ External dependencies (loaded by web-pages.php):
     function unmount() {
         state.mounted = false;
         teardownSortables();
+        // Cancel any pending debounced preview refresh.
+        if (state.previewTimer) {
+            clearTimeout(state.previewTimer);
+            state.previewTimer = null;
+        }
+        // Reset the view so a fresh mount lands on Editor again.
+        state.view = "editor";
         // Clear wired flags so the next mount re-wires events on the
-        // (possibly new) canvas / props DOM.
+        // (possibly new) canvas / props / toggle DOM.
         var $canvas = document.getElementById("wpb-canvas");
         var $props  = document.getElementById("wpb-props");
         if ($canvas) { delete $canvas.dataset.wpbWired; }
         if ($props)  { delete $props.dataset.wpbWired; }
+        document.querySelectorAll('input[name="wpb-view"]').forEach(function (el) {
+            delete el.dataset.wpbWired;
+        });
         // Keep state.tree intact — re-opening the modal should restore the
         // user's work without a round-trip to the server.
     }

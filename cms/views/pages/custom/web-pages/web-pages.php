@@ -238,6 +238,17 @@ button that closes the modal without changes (data flows commit 7/N).
                     <small class="text-muted ms-2" id="wpb-visual-modal-subtitle"></small>
                 </h5>
                 <div class="d-flex gap-2 align-items-center">
+                    <!-- Editor vs. Preview toggle. Replaces the canvas with
+                         an iframe that renders the compiled HTML so the
+                         user can see how the final page will look without
+                         leaving the modal. Palette and props panel are
+                         always visible. -->
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Modo visual" id="wpb-view-toggle">
+                        <input type="radio" class="btn-check" name="wpb-view" id="wpb-view-editor" value="editor" checked>
+                        <label class="btn btn-outline-secondary" for="wpb-view-editor"><i class="bi bi-pencil-square me-1"></i>Editor</label>
+                        <input type="radio" class="btn-check" name="wpb-view" id="wpb-view-preview" value="preview">
+                        <label class="btn btn-outline-secondary" for="wpb-view-preview"><i class="bi bi-eye me-1"></i>Vista previa</label>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i>Cerrar
                     </button>
@@ -262,6 +273,15 @@ button that closes the modal without changes (data flows commit 7/N).
                             <em>(canvas listo, DnD viene en el próximo commit)</em>
                         </div>
                     </main>
+                    <!-- Preview iframe — sandboxed for safety. Its srcdoc
+                         is rebuilt by web-pages-visual.js every time the
+                         user switches to Vista previa (and when the tree
+                         changes while in preview mode). -->
+                    <iframe class="wpb-visual-preview"
+                            id="wpb-preview-frame"
+                            title="Vista previa de la página"
+                            sandbox="allow-same-origin"
+                            style="display:none"></iframe>
                     <aside class="wpb-visual-props" id="wpb-props">
                         <div class="small text-muted text-center py-4 px-2">
                             <i class="bi bi-sliders d-block fs-2 mb-2"></i>
