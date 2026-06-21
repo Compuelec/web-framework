@@ -1,0 +1,54 @@
+/*=============================================
+Visual page builder — styles
+
+Scoped to `.wpb-visual` so it doesn't bleed into the rest of the CMS.
+Layout (subsequent commits flesh this out):
+
+  .wpb-visual
+    .wpb-visual-palette    left rail (block library + column chips)
+    .wpb-visual-canvas     center — drop zone, scrollable
+    .wpb-visual-props      right rail — props panel of selected block
+
+The actual rendered blocks inside the canvas use the brand-CSS already
+loaded by the public site (Bootstrap), so the user sees a faithful
+preview without us re-creating styles here.
+=============================================*/
+
+.wpb-visual {
+    --wpb-accent: #6c5ffc;
+    --wpb-accent-soft: #eef0ff;
+    --wpb-border: #e2e8f0;
+    --wpb-bg-canvas: #f8fafc;
+    --wpb-bg-block-hover: #f1f5f9;
+    --wpb-text-muted: #64748b;
+    --wpb-radius: 6px;
+
+    display: grid;
+    grid-template-columns: 240px 1fr 280px;
+    gap: 1rem;
+    min-height: 480px;
+}
+
+/* Drop zones get an inset dashed border while a drag is hovering so the
+   user sees where the block will land. Real DnD wiring lands in the next
+   commit; the class is reserved here so styles don't churn later. */
+.wpb-drop-active {
+    background: var(--wpb-accent-soft);
+    outline: 2px dashed var(--wpb-accent);
+    outline-offset: -2px;
+}
+
+.wpb-block {
+    position: relative;
+    padding: .5rem;
+    border: 1px solid transparent;
+    border-radius: var(--wpb-radius);
+}
+.wpb-block:hover {
+    background: var(--wpb-bg-block-hover);
+    border-color: var(--wpb-border);
+}
+.wpb-block.is-selected {
+    border-color: var(--wpb-accent);
+    background: var(--wpb-accent-soft);
+}
