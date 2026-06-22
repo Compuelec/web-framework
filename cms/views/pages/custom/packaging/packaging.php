@@ -218,40 +218,59 @@ document.addEventListener('DOMContentLoaded', function() {
 	if (restoreBtn) {
 		restoreBtn.addEventListener('click', function() {
 			const file = document.getElementById('restoreFile').files[0];
-			if (!file) { fncSweetAlert('error', 'Selecciona un archivo .zip del paquete.', ''); return; }
-			if (!confirm('Esto REEMPLAZARÁ la base de datos actual de este servidor por la del paquete. ¿Continuar?')) { return; }
+			if (!file) {
+				Swal.fire({ icon: 'warning', title: 'Falta el paquete', text: 'Selecciona un archivo .zip del paquete.' });
+				return;
+			}
+			Swal.fire({
+				title: '¿Restaurar / migrar plataforma?',
+				text: 'Esto REEMPLAZARÁ la base de datos actual de este servidor por la del paquete. Esta acción no se puede deshacer.',
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#d33',
+				cancelButtonColor: '#3085d6',
+				confirmButtonText: 'Sí, restaurar',
+				cancelButtonText: 'Cancelar'
+			}).then((result) => {
+				if (!result.isConfirmed) { return; }
 
-			const fd = new FormData();
-			fd.append('action', 'restore');
-			fd.append('package', file);
-			fd.append('include_files', document.getElementById('restoreIncludeFiles').checked ? '1' : '0');
+				const fd = new FormData();
+				fd.append('action', 'restore');
+				fd.append('package', file);
+				fd.append('include_files', document.getElementById('restoreIncludeFiles').checked ? '1' : '0');
 
-			document.getElementById('packagingModalMessage').textContent = 'Restaurando plataforma… (puede tardar varios minutos)';
-			packagingModal.show();
-			document.getElementById('restoreResult').innerHTML = '';
+				document.getElementById('packagingModalMessage').textContent = 'Restaurando plataforma… (puede tardar varios minutos)';
+				packagingModal.show();
+				document.getElementById('restoreResult').innerHTML = '';
 
-			fetch('ajax/packaging.ajax.php', { method: 'POST', body: fd })
-				.then(r => r.text())
-				.then(text => {
-					packagingModal.hide();
-					const box = document.getElementById('restoreResult');
-					let data; try { data = JSON.parse(text); } catch (e) { box.innerHTML = '<div class="alert alert-danger">Respuesta inválida del servidor.</div>'; return; }
-					if (data.success) {
-						let html = '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i><strong>Restauración completada.</strong><br>'
-							+ 'Método: ' + (data.method === 'cli' ? 'cliente mysql' : 'PHP') + ' · '
-							+ 'Imágenes copiadas: ' + (parseInt(data.files_copied, 10) || 0) + ' · '
-							+ 'URLs actualizadas: ' + (parseInt(data.urls_updated, 10) || 0);
-						if (data.old_domain && data.old_domain !== data.new_domain) {
-							html += '<br>Dominio: <code>' + escHtml(data.old_domain) + '</code> → <code>' + escHtml(data.new_domain) + '</code>';
+				fetch('ajax/packaging.ajax.php', { method: 'POST', body: fd })
+					.then(r => r.text())
+					.then(text => {
+						packagingModal.hide();
+						const box = document.getElementById('restoreResult');
+						let data; try { data = JSON.parse(text); } catch (e) { box.innerHTML = '<div class="alert alert-danger">Respuesta inválida del servidor.</div>'; return; }
+						if (data.success) {
+							let html = '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i><strong>Restauración completada.</strong><br>'
+								+ 'Método: ' + (data.method === 'cli' ? 'cliente mysql' : 'PHP') + ' · '
+								+ 'Imágenes copiadas: ' + (parseInt(data.files_copied, 10) || 0) + ' · '
+								+ 'URLs actualizadas: ' + (parseInt(data.urls_updated, 10) || 0);
+							if (data.old_domain && data.old_domain !== data.new_domain) {
+								html += '<br>Dominio: <code>' + escHtml(data.old_domain) + '</code> → <code>' + escHtml(data.new_domain) + '</code>';
+							}
+							html += '</div>';
+							box.innerHTML = html;
+							Swal.fire({ icon: 'success', title: 'Plataforma restaurada', showConfirmButton: false, timer: 1800 });
+						} else {
+							box.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.message || 'No se pudo restaurar.') + '</div>';
+							Swal.fire({ icon: 'error', title: 'No se pudo restaurar', text: data.message || '' });
 						}
-						html += '</div>';
-						box.innerHTML = html;
-						if (typeof fncToastr === 'function') { fncToastr('success', 'Plataforma restaurada'); }
-					} else {
-						box.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.message || 'No se pudo restaurar.') + '</div>';
-					}
-				})
-				.catch(() => { packagingModal.hide(); document.getElementById('restoreResult').innerHTML = '<div class="alert alert-danger">Error de conexión durante la restauración.</div>'; });
+					})
+					.catch(() => {
+						packagingModal.hide();
+						document.getElementById('restoreResult').innerHTML = '<div class="alert alert-danger">Error de conexión durante la restauración.</div>';
+						Swal.fire({ icon: 'error', title: 'Error de conexión', text: 'Ocurrió un error durante la restauración.' });
+					});
+			});
 		});
 	}
 
