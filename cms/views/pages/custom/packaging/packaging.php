@@ -77,6 +77,44 @@ if (empty($projectBasePath) || $projectBasePath === '.') {
 		</div>
 	</div>
 
+	<?php if (($_SESSION['admin']->rol_admin ?? '') === 'superadmin'): ?>
+	<!-- Restore / Migrate Card (superadmin only) -->
+	<div class="card mb-4 border-warning">
+		<div class="card-body">
+			<h5 class="card-title mb-2">
+				<i class="bi bi-arrow-counterclockwise"></i> Restaurar / Migrar desde un paquete
+			</h5>
+			<p class="text-muted small mb-3">
+				Sube un paquete <code>.zip</code> para restaurar esta plataforma con sus datos. Importa la base de datos del paquete,
+				recupera los archivos subidos (imágenes) y reescribe las URLs al dominio de este servidor.
+				<strong>No</strong> sobrescribe el código en ejecución.
+			</p>
+			<div class="alert alert-warning py-2 small mb-3">
+				<i class="bi bi-exclamation-triangle me-1"></i>
+				<strong>Atención:</strong> esto <strong>reemplaza la base de datos actual</strong> de este servidor por la del paquete.
+				Haz un respaldo antes si tienes datos que conservar.
+			</div>
+			<div class="row g-2 align-items-center">
+				<div class="col-md-6">
+					<input type="file" id="restoreFile" class="form-control" accept=".zip,application/zip">
+				</div>
+				<div class="col-md-3">
+					<div class="form-check">
+						<input class="form-check-input" type="checkbox" id="restoreIncludeFiles" checked>
+						<label class="form-check-label small" for="restoreIncludeFiles">Incluir imágenes subidas</label>
+					</div>
+				</div>
+				<div class="col-md-3 text-md-end">
+					<button class="btn btn-warning" id="restoreBtn">
+						<i class="bi bi-arrow-counterclockwise"></i> Restaurar
+					</button>
+				</div>
+			</div>
+			<div id="restoreResult" class="mt-3"></div>
+		</div>
+	</div>
+	<?php endif; ?>
+
 	<!-- Packages List -->
 	<div class="card">
 		<div class="card-header">
@@ -174,6 +212,88 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 	});
 	
+	// Restore / migrate from an uploaded package
+	function escHtml(s) { const d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+	const restoreBtn = document.getElementById('restoreBtn');
+	if (restoreBtn) {
+		restoreBtn.addEventListener('click', function() {
+			const file = document.getElementById('restoreFile').files[0];
+			if (!file) {
+				Swal.fire({ icon: 'warning', title: 'Falta el paquete', text: 'Selecciona un archivo .zip del paquete.' });
+				return;
+			}
+			Swal.fire({
+				title: '¿Restaurar / migrar plataforma?',
+				text: 'Esto REEMPLAZARÁ la base de datos actual de este servidor por la del paquete. Esta acción no se puede deshacer.',
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonColor: '#d33',
+				cancelButtonColor: '#3085d6',
+				confirmButtonText: 'Sí, restaurar',
+				cancelButtonText: 'Cancelar'
+			}).then((result) => {
+				if (!result.isConfirmed) { return; }
+
+				const fd = new FormData();
+				fd.append('action', 'restore');
+				fd.append('package', file);
+				fd.append('include_files', document.getElementById('restoreIncludeFiles').checked ? '1' : '0');
+
+				document.getElementById('packagingModalMessage').textContent = 'Restaurando plataforma… (puede tardar varios minutos)';
+				packagingModal.show();
+				document.getElementById('restoreResult').innerHTML = '';
+
+				fetch('ajax/packaging.ajax.php', { method: 'POST', body: fd })
+					.then(r => r.text())
+					.then(text => {
+						packagingModal.hide();
+						const box = document.getElementById('restoreResult');
+						let data; try { data = JSON.parse(text); } catch (e) { box.innerHTML = '<div class="alert alert-danger">Respuesta inválida del servidor.</div>'; return; }
+						if (data.success) {
+							let html = '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i><strong>Restauración completada.</strong><br>'
+								+ 'Método: ' + (data.method === 'cli' ? 'cliente mysql' : 'PHP') + ' · '
+								+ 'Imágenes copiadas: ' + (parseInt(data.files_copied, 10) || 0) + ' · '
+								+ 'URLs actualizadas: ' + (parseInt(data.urls_updated, 10) || 0);
+							if (data.old_domain && data.old_domain !== data.new_domain) {
+								html += '<br>Dominio: <code>' + escHtml(data.old_domain) + '</code> → <code>' + escHtml(data.new_domain) + '</code>';
+							}
+							html += '</div>';
+							box.innerHTML = html;
+							// Clear client caches and reload the platform so the restored
+							// data shows up. The admins table was replaced, so end the
+							// current session and land on login with a fresh state.
+							Swal.fire({
+								icon: 'success',
+								title: 'Plataforma restaurada',
+								text: 'Se limpiará el caché y se recargará la plataforma…',
+								timer: 2500,
+								timerProgressBar: true,
+								showConfirmButton: false,
+								allowOutsideClick: false
+							});
+							setTimeout(function () {
+								try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+								var go = function () { window.location.href = '<?php echo $cmsBasePath; ?>/logout?t=' + Date.now(); };
+								if (window.caches && caches.keys) {
+									caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).then(go).catch(go);
+								} else {
+									go();
+								}
+							}, 2500);
+						} else {
+							box.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.message || 'No se pudo restaurar.') + '</div>';
+							Swal.fire({ icon: 'error', title: 'No se pudo restaurar', text: data.message || '' });
+						}
+					})
+					.catch(() => {
+						packagingModal.hide();
+						document.getElementById('restoreResult').innerHTML = '<div class="alert alert-danger">Error de conexión durante la restauración.</div>';
+						Swal.fire({ icon: 'error', title: 'Error de conexión', text: 'Ocurrió un error durante la restauración.' });
+					});
+			});
+		});
+	}
+
 	function createPackage() {
 		document.getElementById('packagingModalMessage').textContent = 'Creando paquete...';
 		packagingModal.show();

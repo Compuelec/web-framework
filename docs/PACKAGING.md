@@ -47,6 +47,43 @@ Este script:
    - ✅ Crea las tablas de la base de datos
    - ✅ Crea el usuario administrador
 
+## 🔄 Restauración / Migración (llevar tu local a producción)
+
+El paquete **incluye un volcado completo de la base de datos** (`database.sql`), así
+que sirve de **respaldo** y permite **restaurar/migrar** toda la plataforma a otro
+servidor. La restauración hace lo mismo que una instalación respecto al dominio:
+**verifica el dominio actual y reescribe todas las URLs** (config y base de datos)
+para que las imágenes, logos y enlaces funcionen en el servidor nuevo. El usuario
+administrador y todos los datos vienen del paquete (entras con tus credenciales de
+local).
+
+> El volcado se importa con `FOREIGN_KEY_CHECKS=0` y `DROP TABLE IF EXISTS` por
+> tabla, por lo que también puedes **re-migrar** sobre un entorno existente.
+> Cuando el cliente `mysql` está disponible, la importación se hace por *streaming*
+> (sin cargar todo el dump en memoria), soportando bases de datos grandes; si no,
+> usa un importador en PHP como respaldo.
+
+### Opción A — Desde el instalador (`/cms/install`)
+
+1. Sube el ZIP al servidor y descomprímelo (queda `database.sql` en la raíz).
+2. Configura las credenciales de BD del servidor en `cms/config.php` (BD vacía).
+3. Entra a `http://tu-dominio/cms/install`. Al detectar `database.sql`, la pantalla
+   muestra **“Restaurar / Migrar plataforma”**.
+4. Confirma: se restaura la BD, se reescriben las URLs (config + BD) al dominio
+   detectado y **no** se crea un admin nuevo (usas el del paquete).
+
+### Opción B — Desde el CMS (subir el ZIP) — *solo superadmin*
+
+En **Empaquetado del Sistema** hay una tarjeta **“Restaurar / Migrar desde un
+paquete”**: subes el `.zip` y el sistema lo extrae, importa la BD, **recupera los
+archivos subidos** (imágenes en `cms/views/assets/files/`) y reescribe las URLs al
+dominio actual. **No** sobrescribe el código en ejecución — ideal cuando producción
+ya está desplegada y solo quieres llevar los datos/medios de tu local.
+
+> ⚠️ **Es destructivo**: reemplaza la base de datos actual del servidor por la del
+> paquete. Haz un respaldo (crea un paquete) antes si tienes datos que conservar.
+> Para paquetes grandes, ajusta `upload_max_filesize` y `post_max_size` en `php.ini`.
+
 ## 🔧 Características del Sistema
 
 ### Detección Automática de Dominio

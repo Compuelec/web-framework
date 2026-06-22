@@ -55,7 +55,7 @@
 							<small>
 								<i class="bi bi-info-circle me-2"></i>
 								<strong>Se detectó un archivo <code>database.sql</code> en la raíz.</strong><br>
-								Este es un paquete empaquetado. La base de datos será restaurada automáticamente durante la instalación usando la configuración de <code>config.php</code>.
+								Esto es una <strong>restauración / migración</strong>: la base de datos del paquete se restaurará usando la configuración de <code>config.php</code>, y las URLs internas (imágenes, logos, enlaces) se <strong>migrarán automáticamente</strong> al dominio detectado arriba (<code><?php echo htmlspecialchars($domainInfo['base_url']); ?></code>).
 							</small>
 						</div>
 						<?php if ($hasDbConfig): ?>
@@ -329,7 +329,7 @@
 					</div>
 					<button type="submit" class="btn btn-primary w-100">
 						<i class="bi bi-check-circle me-2"></i>
-						Instalar Dashboard
+						<?php echo $isPackageInstall ? 'Restaurar / Migrar plataforma' : 'Instalar Dashboard'; ?>
 					</button>
 				</div>
 
