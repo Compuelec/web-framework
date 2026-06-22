@@ -135,11 +135,24 @@ class PackageInstallController {
         if (!is_file($zipPath)) { return ['success' => false, 'message' => 'Archivo de paquete no encontrado.']; }
 
         $rootDir = dirname(dirname(__DIR__));
-        $tmp = rtrim(sys_get_temp_dir(), '/') . '/pkg_restore_' . bin2hex(random_bytes(6));
 
         $zip = new ZipArchive();
         if ($zip->open($zipPath) !== true) { return ['success' => false, 'message' => 'No se pudo abrir el ZIP (¿archivo válido?).']; }
-        if (!@mkdir($tmp, 0775, true)) { $zip->close(); return ['success' => false, 'message' => 'No se pudo crear el directorio temporal.']; }
+
+        // Create the temp extraction dir in the first writable location. The system
+        // temp dir is often unwritable for the web-server user (it inherits the
+        // launching user's TMPDIR), so fall back to app-owned dirs like packages/.
+        $tmp = null;
+        foreach ([sys_get_temp_dir(), $rootDir . '/packages', $rootDir . '/cms', $rootDir] as $base) {
+            if (!$base) { continue; }
+            $candidate = rtrim($base, '/') . '/pkg_restore_' . bin2hex(random_bytes(6));
+            if (@mkdir($candidate, 0775, true)) { $tmp = $candidate; break; }
+        }
+        if ($tmp === null) {
+            $zip->close();
+            return ['success' => false, 'message' => 'No se pudo crear un directorio temporal escribible (revisa permisos de escritura del servidor).'];
+        }
+
         if (!$zip->extractTo($tmp)) { $zip->close(); self::rrmdir($tmp); return ['success' => false, 'message' => 'No se pudo extraer el ZIP.']; }
         $zip->close();
 
@@ -184,6 +197,11 @@ class PackageInstallController {
         } else {
             error_log('restoreFromZip: skipped URL rewrite — unsafe detected domain: ' . $newDomain);
         }
+
+        // Drop the opcode cache so the rewritten config files (and any restored
+        // code) are picked up on the next request, and refresh stat caches.
+        if (function_exists('opcache_reset')) { @opcache_reset(); }
+        clearstatcache();
 
         self::rrmdir($tmp);
         return [

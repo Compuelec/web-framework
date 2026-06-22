@@ -259,7 +259,27 @@ document.addEventListener('DOMContentLoaded', function() {
 							}
 							html += '</div>';
 							box.innerHTML = html;
-							Swal.fire({ icon: 'success', title: 'Plataforma restaurada', showConfirmButton: false, timer: 1800 });
+							// Clear client caches and reload the platform so the restored
+							// data shows up. The admins table was replaced, so end the
+							// current session and land on login with a fresh state.
+							Swal.fire({
+								icon: 'success',
+								title: 'Plataforma restaurada',
+								text: 'Se limpiará el caché y se recargará la plataforma…',
+								timer: 2500,
+								timerProgressBar: true,
+								showConfirmButton: false,
+								allowOutsideClick: false
+							});
+							setTimeout(function () {
+								try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+								var go = function () { window.location.href = '<?php echo $cmsBasePath; ?>/logout?t=' + Date.now(); };
+								if (window.caches && caches.keys) {
+									caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).then(go).catch(go);
+								} else {
+									go();
+								}
+							}, 2500);
 						} else {
 							box.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.message || 'No se pudo restaurar.') + '</div>';
 							Swal.fire({ icon: 'error', title: 'No se pudo restaurar', text: data.message || '' });
