@@ -41,9 +41,12 @@ class PackageInstallController {
             if (@is_file($c) && @is_executable($c)) { return $c; }
         }
         if (function_exists('shell_exec')) {
-            $which = @shell_exec('command -v mysql 2>/dev/null');
-            $which = is_string($which) ? trim($which) : '';
-            if ($which !== '' && @is_executable($which)) { return $which; }
+            $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+            if (!in_array('shell_exec', $disabled, true)) {
+                $which = @shell_exec('command -v mysql 2>/dev/null');
+                $which = is_string($which) ? trim($which) : '';
+                if ($which !== '' && @is_executable($which)) { return $which; }
+            }
         }
         return null;
     }
@@ -73,7 +76,8 @@ class PackageInstallController {
             2 => ['pipe', 'w'],
         ];
         // Pass the password via the environment, never on the command line.
-        $env = array_merge($_ENV ?: [], ['MYSQL_PWD' => (string) $dbConfig['pass']]);
+        // getenv() is more reliable than $_ENV (which can be empty per variables_order).
+        $env = array_merge(getenv() ?: [], ['MYSQL_PWD' => (string) $dbConfig['pass']]);
         $proc = @proc_open($cmd, $descriptors, $pipes, null, $env);
         if (!is_resource($proc)) { return null; }
 
@@ -101,7 +105,9 @@ class PackageInstallController {
         $count = 0;
         $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         foreach ($it as $item) {
-            $target = $dst . '/' . $it->getSubPathName();
+            $sub = $it->getSubPathName();
+            if (strpos($sub, '..') !== false) { continue; } // guard against path traversal
+            $target = $dst . '/' . $sub;
             if ($item->isDir()) { if (!is_dir($target)) { @mkdir($target, 0775, true); } }
             elseif (@copy($item->getPathname(), $target)) { $count++; }
         }
@@ -153,66 +159,71 @@ class PackageInstallController {
             return ['success' => false, 'message' => 'No se pudo crear un directorio temporal escribible (revisa permisos de escritura del servidor).'];
         }
 
-        if (!$zip->extractTo($tmp)) { $zip->close(); self::rrmdir($tmp); return ['success' => false, 'message' => 'No se pudo extraer el ZIP.']; }
-        $zip->close();
+        // Everything below runs with the temp dir present; the finally guarantees
+        // it (and the sensitive dump inside) is always removed, even on error.
+        try {
+            if (!$zip->extractTo($tmp)) { $zip->close(); return ['success' => false, 'message' => 'No se pudo extraer el ZIP.']; }
+            $zip->close();
 
-        $dbFile = self::locateInTree($tmp, 'database.sql');
-        if ($dbFile === null) { self::rrmdir($tmp); return ['success' => false, 'message' => 'El paquete no contiene database.sql.']; }
-        $packageRoot = dirname($dbFile);
+            $dbFile = self::locateInTree($tmp, 'database.sql');
+            if ($dbFile === null) { return ['success' => false, 'message' => 'El paquete no contiene database.sql.']; }
+            $packageRoot = dirname($dbFile);
 
-        require_once __DIR__ . '/install.controller.php';
-        require_once __DIR__ . '/path-updater.controller.php';
-        $config = InstallController::getConfig();
-        $dbConfig = $config['database'] ?? [];
-        if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
-            self::rrmdir($tmp); return ['success' => false, 'message' => 'La base de datos no está configurada en cms/config.php.'];
-        }
-
-        // 1) restore the database from the package dump (overwrites current data)
-        $restore = self::restoreDatabase($dbConfig, $dbFile);
-        if (!$restore['success']) { self::rrmdir($tmp); return ['success' => false, 'message' => 'Restauración de BD: ' . $restore['message']]; }
-
-        // 2) bring back the uploaded files so images/logos resolve
-        $filesCopied = 0;
-        if ($includeFiles) {
-            $srcFiles = $packageRoot . '/cms/views/assets/files';
-            if (is_dir($srcFiles)) { $filesCopied = self::copyTree($srcFiles, $rootDir . '/cms/views/assets/files'); }
-        }
-
-        // 3) rewrite stored URLs to this server's domain (config + database).
-        // Only when the detected domain is a sane http(s) URL — otherwise (e.g. run
-        // outside a normal web request) skip it so we never corrupt stored URLs.
-        $domainInfo = PathUpdaterController::detectDomain();
-        $newDomain  = $domainInfo['base_url'] ?? '';
-        $oldDomain  = PathUpdaterController::detectOldDomainFromDatabase($dbConfig);
-        $urlsUpdated = 0;
-        if (self::isSaneBaseUrl($newDomain)) {
-            PathUpdaterController::updateCmsConfigUrlsOnly($domainInfo);
-            PathUpdaterController::updateApiConfigUrlsOnly($domainInfo);
-            PathUpdaterController::updateWebConfigUrlsOnly($domainInfo);
-            if ($oldDomain && $oldDomain !== $newDomain) {
-                $up = PathUpdaterController::updateDatabaseUrls($oldDomain, $newDomain, $dbConfig);
-                $urlsUpdated = $up['updated_count'] ?? 0;
+            require_once __DIR__ . '/install.controller.php';
+            require_once __DIR__ . '/path-updater.controller.php';
+            $config = InstallController::getConfig();
+            $dbConfig = $config['database'] ?? [];
+            if (empty($dbConfig['host']) || empty($dbConfig['name']) || !isset($dbConfig['user']) || !isset($dbConfig['pass'])) {
+                return ['success' => false, 'message' => 'La base de datos no está configurada en cms/config.php.'];
             }
-        } else {
-            error_log('restoreFromZip: skipped URL rewrite — unsafe detected domain: ' . $newDomain);
+
+            // 1) restore the database from the package dump (overwrites current data)
+            $restore = self::restoreDatabase($dbConfig, $dbFile);
+            if (!$restore['success']) { return ['success' => false, 'message' => 'Restauración de BD: ' . $restore['message']]; }
+
+            // 2) bring back the uploaded files so images/logos resolve
+            $filesCopied = 0;
+            if ($includeFiles) {
+                $srcFiles = $packageRoot . '/cms/views/assets/files';
+                if (is_dir($srcFiles)) { $filesCopied = self::copyTree($srcFiles, $rootDir . '/cms/views/assets/files'); }
+            }
+
+            // 3) rewrite stored URLs to this server's domain (config + database).
+            // Only when the detected domain is a sane http(s) URL — otherwise (e.g. run
+            // outside a normal web request) skip it so we never corrupt stored URLs.
+            $domainInfo = PathUpdaterController::detectDomain();
+            $newDomain  = $domainInfo['base_url'] ?? '';
+            $oldDomain  = PathUpdaterController::detectOldDomainFromDatabase($dbConfig);
+            $urlsUpdated = 0;
+            if (self::isSaneBaseUrl($newDomain)) {
+                PathUpdaterController::updateCmsConfigUrlsOnly($domainInfo);
+                PathUpdaterController::updateApiConfigUrlsOnly($domainInfo);
+                PathUpdaterController::updateWebConfigUrlsOnly($domainInfo);
+                if ($oldDomain && $oldDomain !== $newDomain) {
+                    $up = PathUpdaterController::updateDatabaseUrls($oldDomain, $newDomain, $dbConfig);
+                    $urlsUpdated = $up['updated_count'] ?? 0;
+                }
+            } else {
+                error_log('restoreFromZip: skipped URL rewrite — unsafe detected domain: ' . $newDomain);
+            }
+
+            // Drop the opcode cache so the rewritten config files (and any restored
+            // code) are picked up on the next request, and refresh stat caches.
+            if (function_exists('opcache_reset')) { @opcache_reset(); }
+            clearstatcache();
+
+            return [
+                'success'      => true,
+                'message'      => 'Restauración completada.',
+                'method'       => $restore['method'] ?? 'pdo',
+                'files_copied' => $filesCopied,
+                'urls_updated' => $urlsUpdated,
+                'old_domain'   => $oldDomain,
+                'new_domain'   => $newDomain,
+            ];
+        } finally {
+            self::rrmdir($tmp);
         }
-
-        // Drop the opcode cache so the rewritten config files (and any restored
-        // code) are picked up on the next request, and refresh stat caches.
-        if (function_exists('opcache_reset')) { @opcache_reset(); }
-        clearstatcache();
-
-        self::rrmdir($tmp);
-        return [
-            'success'      => true,
-            'message'      => 'Restauración completada.',
-            'method'       => $restore['method'] ?? 'pdo',
-            'files_copied' => $filesCopied,
-            'urls_updated' => $urlsUpdated,
-            'old_domain'   => $oldDomain,
-            'new_domain'   => $newDomain,
-        ];
     }
 
     public static function restoreDatabase($dbConfig, $dbFile = null) {

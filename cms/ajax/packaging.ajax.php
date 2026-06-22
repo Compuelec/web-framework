@@ -105,6 +105,11 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Subida inválida.']);
                 break;
             }
+            $ext = strtolower(pathinfo($_FILES['package']['name'] ?? '', PATHINFO_EXTENSION));
+            if ($ext !== 'zip') {
+                echo json_encode(['success' => false, 'message' => 'El archivo debe ser un .zip válido.']);
+                break;
+            }
             require_once __DIR__ . '/../controllers/package-install.controller.php';
             $includeFiles = !isset($_POST['include_files']) || in_array($_POST['include_files'], ['1', 'true', 'on'], true);
             $result = PackageInstallController::restoreFromZip($_FILES['package']['tmp_name'], $includeFiles);
