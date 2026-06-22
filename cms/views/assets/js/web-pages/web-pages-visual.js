@@ -661,9 +661,12 @@ External dependencies (loaded by web-pages.php):
 
     function currentBlock() {
         if (!state.selectedId) { return null; }
-        return state.tree.blocks.find(function (b) {
-            return b.id === state.selectedId;
-        }) || null;
+        // findBlockById walks the whole tree so blocks nested inside
+        // list/form containers resolve correctly. A shallow .find on
+        // state.tree.blocks would return null for them and the props
+        // panel would silently fall back to the empty placeholder.
+        var hit = findBlockById(state.selectedId);
+        return hit ? hit.block : null;
     }
 
     // Walks the block tree (including children of containers) and yields
@@ -749,8 +752,13 @@ External dependencies (loaded by web-pages.php):
                 value = raw;
             }
 
-            var block = state.tree.blocks.find(function (b) { return b.id === blockId; });
-            if (!block) { return; }
+            // findBlockById walks containers' children so edits on blocks
+            // nested inside a list/form persist (a shallow find on
+            // state.tree.blocks would miss them and the keystroke would
+            // be silently dropped on the floor).
+            var hit = findBlockById(blockId);
+            if (!hit) { return; }
+            var block = hit.block;
             block.props = block.props || {};
             block.props[key] = value;
 
