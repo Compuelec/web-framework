@@ -526,18 +526,33 @@ class PackagingController {
             $sqlContent .= "SET AUTOCOMMIT=0;\n";
             $sqlContent .= "START TRANSACTION;\n\n";
             
+            // Views must be dumped separately (CREATE VIEW, no data) and AFTER the
+            // base tables they read from — otherwise SHOW CREATE TABLE returns no
+            // "Create Table" and an INSERT into the view fails on restore.
+            $views = [];
+            try {
+                $vstmt = $link->prepare("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'VIEW'");
+                $vstmt->execute([$dbName]);
+                $views = $vstmt->fetchAll(PDO::FETCH_COLUMN);
+            } catch (PDOException $e) {
+                $views = [];
+            }
+            $viewSet = array_flip($views);
+
             foreach ($tables as $table) {
+                if (isset($viewSet[$table])) { continue; } // views are handled below
+
                 // Get table structure
                 $createTable = $link->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
                 $sqlContent .= "DROP TABLE IF EXISTS `$table`;\n";
                 $sqlContent .= $createTable['Create Table'] . ";\n\n";
-                
+
                 // Get table data
                 $rows = $link->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
                 if (!empty($rows)) {
                     $sqlContent .= "LOCK TABLES `$table` WRITE;\n";
                     $sqlContent .= "INSERT INTO `$table` VALUES ";
-                    
+
                     $values = [];
                     foreach ($rows as $row) {
                         $rowValues = [];
@@ -554,7 +569,23 @@ class PackagingController {
                     $sqlContent .= "UNLOCK TABLES;\n\n";
                 }
             }
-            
+
+            // Now the views, once every base table exists. Strip the DEFINER clause
+            // so the view is created under whoever restores it (the packaged user
+            // usually doesn't exist on the target server).
+            foreach ($views as $view) {
+                try {
+                    $row = $link->query("SHOW CREATE VIEW `$view`")->fetch(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {
+                    continue;
+                }
+                $createView = $row['Create View'] ?? '';
+                if ($createView === '') { continue; }
+                $createView = preg_replace('/\sDEFINER=`[^`]*`@`[^`]*`/', '', $createView);
+                $sqlContent .= "DROP VIEW IF EXISTS `$view`;\n";
+                $sqlContent .= $createView . ";\n\n";
+            }
+
             $sqlContent .= "COMMIT;\n";
             $sqlContent .= "SET FOREIGN_KEY_CHECKS=1;\n";
             
