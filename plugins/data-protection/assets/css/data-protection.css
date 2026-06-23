@@ -27,3 +27,7 @@
 #dp-app .dp-cfg-cols th, #dp-app .dp-cfg-cols td { font-size: .85rem; vertical-align: middle; }
 #dp-app .dp-cfg-cols .dp-c-strat { width: auto; min-width: 110px; }
 #dp-app .dp-cfg-cols .form-check-input { cursor: pointer; }
+
+/* cookies snippet */
+#dp-app .dp-snippet { background: #1f2430; color: #e6e9f0; border-radius: 8px; padding: .6rem .75rem; font-size: .8rem; white-space: pre-wrap; word-break: break-all; }
+#dp-app .form-switch .form-check-input:checked { background-color: var(--dp); border-color: var(--dp); }

@@ -39,7 +39,8 @@ $action  = $_POST['ajax_action'] ?? '';
 $adminId = (int) ($_SESSION['admin']->id_admin ?? 0);
 
 // State-changing actions require a valid CSRF token.
-$writeActions = ['erase_subject', 'create_request', 'update_request', 'save_dataset', 'delete_dataset'];
+$writeActions = ['erase_subject', 'create_request', 'update_request', 'save_dataset', 'delete_dataset',
+    'record_consent', 'withdraw_consent', 'save_settings'];
 if (in_array($action, $writeActions, true) && !SessionController::validateCsrfRequest()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
@@ -94,6 +95,37 @@ switch ($action) {
 
     case 'delete_dataset':
         echo json_encode($controller->deleteDataset($_POST['table'] ?? ''));
+        break;
+
+    /* ---- consent + cookie settings ---- */
+    case 'list_consents':
+        echo json_encode($controller->listConsents($_POST['subject'] ?? '', $_POST['status'] ?? ''));
+        break;
+
+    case 'record_consent':
+        echo json_encode($controller->recordConsent([
+            'subject'  => $_POST['subject'] ?? '',
+            'purpose'  => $_POST['purpose'] ?? '',
+            'status'   => $_POST['status'] ?? 'granted',
+            'channel'  => 'cms',
+            'source'   => 'cms',
+            'evidence' => $_POST['evidence'] ?? '',
+            'ip'       => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        ]));
+        break;
+
+    case 'withdraw_consent':
+        echo json_encode($controller->withdrawConsent((int) ($_POST['id'] ?? 0)));
+        break;
+
+    case 'get_settings':
+        echo json_encode(['success' => true, 'settings' => $controller->getSettings()]);
+        break;
+
+    case 'save_settings':
+        $payload = json_decode($_POST['settings'] ?? '{}', true) ?: [];
+        echo json_encode($controller->saveSettings($payload));
         break;
 
     case 'list_requests':

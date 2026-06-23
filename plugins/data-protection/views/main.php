@@ -43,6 +43,9 @@ $startCfg = $dpReady && !$hasData;            // start on the config tab if noth
             <?php if ($stats['overdue']): ?><span class="badge rounded-pill bg-danger ms-1" title="Vencidas"><?php echo (int)$stats['overdue'] ?></span><?php endif; ?>
         </button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dp-tab-subject" type="button"><i class="bi bi-person-vcard me-1"></i>Buscar titular</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dp-tab-consents" type="button" id="dp-consents-tab"><i class="bi bi-hand-thumbs-up me-1"></i>Consentimientos</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dp-tab-rat" type="button" id="dp-rat-tab"><i class="bi bi-journal-text me-1"></i>RAT</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dp-tab-cookies" type="button" id="dp-cookies-tab"><i class="bi bi-cookie me-1"></i>Cookies</button></li>
         <li class="nav-item"><button class="nav-link <?php echo $startCfg ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#dp-tab-config" type="button" id="dp-config-tab"><i class="bi bi-sliders me-1"></i>Configuración</button></li>
     </ul>
 
@@ -126,6 +129,109 @@ $startCfg = $dpReady && !$hasData;            // start on the config tab if noth
             </div>
         </div>
 
+        <!-- ============ CONSENTIMIENTOS ============ -->
+        <div class="tab-pane fade" id="dp-tab-consents">
+            <div class="row g-3">
+                <div class="col-lg-4">
+                    <div class="dp-card">
+                        <div class="dp-card-h"><i class="bi bi-plus-circle me-1"></i>Registrar consentimiento</div>
+                        <div class="dp-card-b">
+                            <label class="form-label small fw-semibold mb-1">Titular (email / RUT)</label>
+                            <input type="text" id="dp-con-subject" class="form-control form-control-sm mb-2" autocomplete="off">
+                            <label class="form-label small fw-semibold mb-1">Finalidad</label>
+                            <input type="text" id="dp-con-purpose" class="form-control form-control-sm mb-2" placeholder="ej. newsletter, marketing" autocomplete="off">
+                            <label class="form-label small fw-semibold mb-1">Estado</label>
+                            <select id="dp-con-status" class="form-select form-select-sm mb-2">
+                                <option value="granted">Otorgado</option>
+                                <option value="withdrawn">Revocado</option>
+                            </select>
+                            <button id="dp-con-save" class="btn dp-btn-primary w-100"><i class="bi bi-check-lg me-1"></i>Registrar</button>
+                            <div class="small text-muted mt-2">Los consentimientos del sitio público (banner/formularios) se registran solos aquí.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="dp-card">
+                        <div class="dp-card-h d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-hand-thumbs-up me-1"></i>Registro de consentimientos</span>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="dp-con-filter" class="form-control form-control-sm" placeholder="filtrar por titular…" style="width:auto">
+                                <select id="dp-con-fstatus" class="form-select form-select-sm" style="width:auto">
+                                    <option value="">Todos</option><option value="granted">Otorgados</option><option value="withdrawn">Revocados</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="dp-card-b p-0">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr class="small text-muted"><th>Titular</th><th>Finalidad</th><th>Estado</th><th>Canal</th><th>Fecha</th><th></th></tr></thead>
+                                <tbody id="dp-con-rows"><tr><td colspan="6" class="text-muted small p-3">Cargando…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ RAT (Registro de Actividades de Tratamiento) ============ -->
+        <div class="tab-pane fade" id="dp-tab-rat">
+            <div class="dp-card">
+                <div class="dp-card-h d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-journal-text me-1"></i>Registro de Actividades de Tratamiento (RAT)</span>
+                    <button id="dp-rat-print" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir / PDF</button>
+                </div>
+                <div class="dp-card-b" id="dp-rat-wrap">
+                    <div class="alert alert-info py-2 small mb-3"><i class="bi bi-info-circle me-1"></i>
+                        Registro de cada tratamiento de datos personales (accountability). Se genera a partir de las tablas que marcaste en <strong>Configuración</strong>.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle" id="dp-rat-table">
+                            <thead class="table-light"><tr class="small">
+                                <th>Actividad</th><th>Tabla</th><th>Finalidad</th><th>Categorías de datos</th>
+                                <th>Datos sensibles</th><th>Base legal</th><th>Destinatarios</th><th>Retención</th>
+                            </tr></thead>
+                            <tbody id="dp-rat-rows"><tr><td colspan="8" class="text-muted small p-3">Cargando…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ COOKIES ============ -->
+        <div class="tab-pane fade" id="dp-tab-cookies">
+            <div class="row g-3">
+                <div class="col-lg-7">
+                    <div class="dp-card">
+                        <div class="dp-card-h"><i class="bi bi-cookie me-1"></i>Banner de cookies del sitio público</div>
+                        <div class="dp-card-b">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="dp-ck-enabled" checked>
+                                <label class="form-check-label small fw-semibold" for="dp-ck-enabled">Mostrar el banner en el sitio público</label>
+                            </div>
+                            <label class="form-label small fw-semibold mb-1">Texto del aviso</label>
+                            <textarea id="dp-ck-text" class="form-control form-control-sm mb-2" rows="3"></textarea>
+                            <label class="form-label small fw-semibold mb-1">URL de la política de privacidad</label>
+                            <input type="text" id="dp-ck-policy" class="form-control form-control-sm mb-2" placeholder="https://tu-sitio.cl/privacidad">
+                            <div class="row g-2 mb-2">
+                                <div class="col"><label class="form-label small fw-semibold mb-1">Botón aceptar</label><input type="text" id="dp-ck-accept" class="form-control form-control-sm"></div>
+                                <div class="col"><label class="form-label small fw-semibold mb-1">Botón rechazar</label><input type="text" id="dp-ck-reject" class="form-control form-control-sm"></div>
+                            </div>
+                            <div class="d-flex justify-content-end"><button id="dp-ck-save" class="btn dp-btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="dp-card">
+                        <div class="dp-card-h"><i class="bi bi-code-slash me-1"></i>Activarlo en tu sitio</div>
+                        <div class="dp-card-b">
+                            <p class="small text-muted">Agrega esta línea una vez en la plantilla del sitio público (antes de <code>&lt;/body&gt;</code>):</p>
+                            <pre class="dp-snippet"><code>&lt;script src="<?php echo htmlspecialchars($projectBasePath) ?>/plugins/data-protection/assets/public/cookie-banner.js" defer&gt;&lt;/script&gt;</code></pre>
+                            <p class="small text-muted mb-0">El banner toma el texto de aquí, muestra el aviso una vez por visitante y <strong>registra la decisión</strong> en la pestaña Consentimientos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ============ CONFIGURACIÓN ============ -->
         <div class="tab-pane fade <?php echo $startCfg ? 'show active' : '' ?>" id="dp-tab-config">
             <div class="row g-3">
@@ -188,6 +294,10 @@ $startCfg = $dpReady && !$hasData;            // start on the config tab if noth
                                         <label class="form-label small fw-semibold mb-1">Retención (días)</label>
                                         <input type="number" id="dp-cfg-retention" class="form-control form-control-sm" min="0" placeholder="opcional">
                                     </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="form-label small fw-semibold mb-1">Destinatarios <small class="text-muted">(con quién se comparten)</small></label>
+                                    <input type="text" id="dp-cfg-recipients" class="form-control form-control-sm" placeholder="ej. proveedor de pagos, contabilidad externa…">
                                 </div>
                                 <div class="d-flex justify-content-end mt-3">
                                     <button id="dp-cfg-save" class="btn dp-btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar tabla</button>

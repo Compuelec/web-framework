@@ -216,6 +216,7 @@
         $('#dp-cfg-label').val(saved.label || table);
         $('#dp-cfg-purpose').val(saved.purpose || '');
         $('#dp-cfg-legal').val(saved.legal_basis || '');
+        $('#dp-cfg-recipients').val(saved.recipients || '');
         $('#dp-cfg-retention').val(saved.retention_days != null ? saved.retention_days : '');
 
         var $pk = $('#dp-cfg-pk').empty();
@@ -285,6 +286,7 @@
             table: table, label: $('#dp-cfg-label').val().trim(), pk: $('#dp-cfg-pk').val(),
             subject_keys: keys, fields: fields, sensitive: sens, anonymize: anon,
             purpose: $('#dp-cfg-purpose').val().trim(), legal_basis: $('#dp-cfg-legal').val(),
+            recipients: $('#dp-cfg-recipients').val().trim(),
             retention_days: $('#dp-cfg-retention').val()
         };
         var $btn = $(this).prop('disabled', true);
@@ -292,6 +294,113 @@
             $btn.prop('disabled', false);
             if (res && res.success) { toast('success', 'Tabla guardada'); loadConfig(); }
             else { alertMsg('error', 'No se pudo guardar', (res && res.error) || ''); }
+        }).fail(function () { $btn.prop('disabled', false); alertMsg('error', 'Error de conexión', ''); });
+    });
+
+    /* ===================== RAT (Registro de Actividades) ===================== */
+    function loadRat() {
+        post({ ajax_action: 'list_datasets' }).done(function (res) {
+            var $b = $('#dp-rat-rows').empty();
+            var list = (res && res.success) ? res.datasets : [];
+            if (!list.length) {
+                $b.append($('<tr>').append($('<td colspan="8" class="text-muted small p-3">').text('Aún no hay tratamientos. Marca tablas en Configuración.')));
+                return;
+            }
+            list.forEach(function (d) {
+                var $tr = $('<tr>');
+                $tr.append($('<td>').append($('<strong>').text(d.label || d.table)));
+                $tr.append($('<td class="small text-muted">').text(d.table));
+                $tr.append($('<td class="small">').text(d.purpose || '—'));
+                $tr.append($('<td class="small">').text((d.fields || []).join(', ') || '—'));
+                $tr.append($('<td class="small">').text((d.sensitive || []).join(', ') || '—'));
+                $tr.append($('<td class="small">').text(d.legal_basis || '—'));
+                $tr.append($('<td class="small">').text(d.recipients || '—'));
+                $tr.append($('<td class="small">').text(d.retention_days != null ? (d.retention_days + ' días') : '—'));
+                $b.append($tr);
+            });
+        });
+    }
+    $('#dp-rat-tab').on('shown.bs.tab', loadRat);
+
+    $('#dp-app').on('click', '#dp-rat-print', function () {
+        var html = '<h3>Registro de Actividades de Tratamiento (RAT)</h3>'
+            + '<p>Ley 21.719 · generado ' + new Date().toLocaleString() + '</p>'
+            + '<style>table{border-collapse:collapse;width:100%;font-family:sans-serif;font-size:12px}'
+            + 'th,td{border:1px solid #999;padding:4px;text-align:left;vertical-align:top}th{background:#eee}</style>'
+            + '<table>' + $('#dp-rat-table').html() + '</table>';
+        var w = window.open('', '_blank');
+        if (!w) { alertMsg('warning', 'Permite las ventanas emergentes para imprimir', ''); return; }
+        w.document.write(html); w.document.close(); w.focus(); w.print();
+    });
+
+    /* ===================== CONSENTIMIENTOS ===================== */
+    var CON_STATUS = { granted: 'Otorgado', withdrawn: 'Revocado' };
+    function loadConsents() {
+        post({ ajax_action: 'list_consents', subject: $('#dp-con-filter').val().trim(), status: $('#dp-con-fstatus').val() }).done(function (res) {
+            var $b = $('#dp-con-rows').empty();
+            var list = (res && res.success) ? res.consents : [];
+            if (!list.length) { $b.append($('<tr>').append($('<td colspan="6" class="text-muted small p-3">').text('Sin consentimientos registrados.'))); return; }
+            list.forEach(function (c) {
+                var $tr = $('<tr>');
+                $tr.append($('<td>').text(c.subject_consent || '—'));
+                $tr.append($('<td class="small">').text(c.purpose_consent || '—'));
+                $tr.append($('<td>').append($('<span class="badge ' + (c.status_consent === 'granted' ? 'bg-success' : 'bg-secondary') + '">').text(CON_STATUS[c.status_consent] || c.status_consent)));
+                $tr.append($('<td class="small text-muted">').text(c.channel_consent || '—'));
+                $tr.append($('<td class="small text-muted">').text((c.date_created_consent || '').replace('T', ' ')));
+                var $act = $('<td>');
+                if (c.status_consent === 'granted') {
+                    $act.append($('<button class="btn btn-sm btn-outline-secondary dp-con-withdraw" title="Revocar"><i class="bi bi-x-circle"></i></button>').attr('data-id', c.id_consent));
+                }
+                $tr.append($act);
+                $b.append($tr);
+            });
+        });
+    }
+    $('#dp-consents-tab').on('shown.bs.tab', loadConsents);
+    $('#dp-app').on('input', '#dp-con-filter', loadConsents);
+    $('#dp-app').on('change', '#dp-con-fstatus', loadConsents);
+
+    $('#dp-app').on('click', '#dp-con-save', function () {
+        var subject = $('#dp-con-subject').val().trim(), purpose = $('#dp-con-purpose').val().trim();
+        if (!purpose) { alertMsg('warning', 'Falta la finalidad', ''); return; }
+        post({ ajax_action: 'record_consent', subject: subject, purpose: purpose, status: $('#dp-con-status').val(), evidence: 'Registrado manualmente desde el CMS' }).done(function (res) {
+            if (res && res.success) { toast('success', 'Consentimiento registrado'); $('#dp-con-subject').val(''); $('#dp-con-purpose').val(''); loadConsents(); }
+            else { alertMsg('error', 'No se pudo registrar', (res && res.error) || ''); }
+        });
+    });
+    $('#dp-app').on('click', '.dp-con-withdraw', function () {
+        var id = $(this).data('id');
+        post({ ajax_action: 'withdraw_consent', id: id }).done(function (res) {
+            if (res && res.success) { toast('success', 'Consentimiento revocado'); loadConsents(); }
+            else { alertMsg('error', 'No se pudo revocar', (res && res.error) || ''); }
+        });
+    });
+
+    /* ===================== COOKIES ===================== */
+    function loadCookieSettings() {
+        post({ ajax_action: 'get_settings' }).done(function (res) {
+            var s = (res && res.success) ? res.settings : {};
+            $('#dp-ck-enabled').prop('checked', (s.cookie_enabled || '1') === '1');
+            $('#dp-ck-text').val(s.cookie_text || '');
+            $('#dp-ck-policy').val(s.cookie_policy_url || '');
+            $('#dp-ck-accept').val(s.cookie_accept || 'Aceptar');
+            $('#dp-ck-reject').val(s.cookie_reject || 'Rechazar');
+        });
+    }
+    $('#dp-cookies-tab').on('shown.bs.tab', loadCookieSettings);
+
+    $('#dp-app').on('click', '#dp-ck-save', function () {
+        var settings = {
+            cookie_enabled: $('#dp-ck-enabled').prop('checked') ? '1' : '0',
+            cookie_text: $('#dp-ck-text').val(),
+            cookie_policy_url: $('#dp-ck-policy').val().trim(),
+            cookie_accept: $('#dp-ck-accept').val().trim() || 'Aceptar',
+            cookie_reject: $('#dp-ck-reject').val().trim() || 'Rechazar'
+        };
+        var $btn = $(this).prop('disabled', true);
+        post({ ajax_action: 'save_settings', settings: JSON.stringify(settings) }).done(function (res) {
+            $btn.prop('disabled', false);
+            if (res && res.success) { toast('success', 'Cookies guardadas'); } else { alertMsg('error', 'No se pudo guardar', (res && res.error) || ''); }
         }).fail(function () { $btn.prop('disabled', false); alertMsg('error', 'Error de conexión', ''); });
     });
 
