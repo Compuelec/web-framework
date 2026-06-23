@@ -66,6 +66,7 @@ cms/test-email-simple.php
 # Ignore loose SQL files but not versioned migrations
 *.sql
 !migrations/*.sql
+!plugins/**/migrations/*.sql
 
 # Upload files (if they shouldn't be versioned)
 uploads/
@@ -106,4 +107,5 @@ web/pages/*
 # installation by the builder
 web/partials/
 packages/
-.qodo/
+.qodo
+plugins/data-protection/config.php
