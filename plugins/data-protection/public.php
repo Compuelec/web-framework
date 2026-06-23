@@ -37,8 +37,9 @@ if ($action === 'record') {
         exit;
     }
     // Same-origin guard: if an Origin is sent, its host must match this host.
+    // Strip the port from HTTP_HOST (the Origin header's host never carries one).
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    $host   = $_SERVER['HTTP_HOST'] ?? '';
+    $host   = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '');
     if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== $host) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'origin']);

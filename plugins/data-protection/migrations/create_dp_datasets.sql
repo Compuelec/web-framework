@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS dp_datasets (
     anonymize_dataset TEXT NULL,                   -- JSON object {column: null|redact|hash}
     purpose_dataset TEXT NULL,
     legal_basis_dataset VARCHAR(160) NULL,
+    recipients_dataset TEXT NULL,                  -- who the data is shared with
     retention_days_dataset INT NULL,
     date_created_dataset DATETIME NULL,
     date_updated_dataset TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -4,7 +4,7 @@
 // Plugin assets live at the project root, so strip the trailing /cms.
 
 $cmsBasePath     = $cmsBasePath ?? '';
-$projectBasePath = preg_replace('#/cms/?$#', '', $cmsBasePath);
+$projectBasePath = rtrim(preg_replace('#/cms/?$#', '', $cmsBasePath), '/');
 
 require_once __DIR__ . '/../controllers/data-protection.controller.php';
 $dpCtrl  = new DataProtectionController();

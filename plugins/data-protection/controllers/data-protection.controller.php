@@ -349,7 +349,7 @@ class DataProtectionController
             [$where, $params] = $this->subjectWhere($d, $value);
             $fields = $d['fields'] ?? [];
             $cols = array_unique(array_merge([$d['id']], $fields));
-            $select = implode(', ', array_map(fn($c) => "`$c`", $cols));
+            $select = implode(', ', array_map(function ($c) { return "`$c`"; }, $cols));
             try {
                 $st = $this->link->prepare("SELECT $select FROM `{$d['table']}` WHERE $where LIMIT 500");
                 $st->execute($params);
