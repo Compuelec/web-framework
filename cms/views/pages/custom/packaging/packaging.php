@@ -2,9 +2,17 @@
 
 /**
  * Packaging Page
- * 
+ *
  * Interface for creating and managing project packages
  */
+
+// Configuration/deployment tool: superadmin & admin only — even if an editor were
+// granted this page via RBAC, packaging (full DB dump / restore) must not show.
+if (!isset($_SESSION['admin']) || !in_array($_SESSION['admin']->rol_admin ?? '', ['superadmin', 'admin'], true)) {
+    echo '<div class="alert alert-danger m-4"><i class="bi bi-shield-lock me-2"></i>'
+        . 'Acceso restringido: solo administradores pueden gestionar el empaquetado.</div>';
+    return;
+}
 
 require_once __DIR__ . '/../../../../controllers/packaging.controller.php';
 

@@ -1,0 +1,33 @@
+/* Data Protection (Ley 21.719) — inherits the CMS theme color (var(--cms-accent)). */
+#dp-app { --dp: var(--cms-accent, #2563eb); }
+#dp-app .dp-logo {
+    width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--dp), color-mix(in srgb, var(--dp) 65%, #000));
+    color: #fff; font-size: 1.35rem; box-shadow: 0 6px 16px color-mix(in srgb, var(--dp) 35%, transparent);
+}
+#dp-app .dp-tabs .nav-link { color: #5b5670; font-weight: 600; border-radius: 30px; padding: .45rem 1.1rem; }
+#dp-app .dp-tabs .nav-link.active { background: var(--dp); color: #fff; }
+
+#dp-app .dp-card { background: #fff; border: 1px solid #ecebf5; border-radius: 16px; box-shadow: 0 4px 18px rgba(40, 36, 90, .05); overflow: hidden; height: 100%; }
+#dp-app .dp-card-h { padding: .75rem 1rem; font-weight: 600; font-size: .9rem; color: #3a3550; border-bottom: 1px solid #f0eff8; background: #fbfbfe; }
+#dp-app .dp-card-b { padding: 1rem; }
+
+#dp-app .dp-btn-primary { background: var(--dp); color: #fff; font-weight: 600; border: 0; border-radius: 10px; }
+#dp-app .dp-btn-primary:hover:not(:disabled) { filter: brightness(.92); color: #fff; }
+#dp-app .dp-btn-primary:disabled { opacity: .55; }
+
+#dp-app .dp-ds { border: 1px solid #eeedf8; border-radius: 12px; overflow: hidden; }
+#dp-app .dp-ds-h { padding: .5rem .85rem; background: #f8f7ff; border-bottom: 1px solid #f0eff8; }
+#dp-app .dp-ds table { font-size: .85rem; }
+#dp-app .dp-ds td, #dp-app .dp-ds th { white-space: nowrap; }
+
+/* configuration tab */
+#dp-app .dp-cfg-item { display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+    border: 1px solid #eeedf8; border-radius: 10px; padding: .5rem .7rem; margin-bottom: .4rem; background: #fcfcff; }
+#dp-app .dp-cfg-cols th, #dp-app .dp-cfg-cols td { font-size: .85rem; vertical-align: middle; }
+#dp-app .dp-cfg-cols .dp-c-strat { width: auto; min-width: 110px; }
+#dp-app .dp-cfg-cols .form-check-input { cursor: pointer; }
+
+/* cookies snippet */
+#dp-app .dp-snippet { background: #1f2430; color: #e6e9f0; border-radius: 8px; padding: .6rem .75rem; font-size: .8rem; white-space: pre-wrap; word-break: break-all; }
+#dp-app .form-switch .form-check-input:checked { background-color: var(--dp); border-color: var(--dp); }

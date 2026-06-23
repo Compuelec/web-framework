@@ -154,3 +154,13 @@ PluginsRegistry::register('production-manager', [
     'author'      => 'Web Framework'
 ]);
 
+PluginsRegistry::register('data-protection', [
+    'url'         => 'data-protection',
+    'name'        => 'Protección de Datos (Ley 21.719)',
+    'description' => 'Cumplimiento de la Ley 21.719: derechos ARCOP, exportación, borrado y anonimización de datos personales de un titular. Se mapea a tus tablas vía config.php',
+    'icon'        => 'bi-shield-lock',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Web Framework'
+]);
+
