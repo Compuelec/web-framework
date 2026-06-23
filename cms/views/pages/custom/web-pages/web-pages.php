@@ -290,7 +290,7 @@ button that closes the modal without changes (data flows commit 7/N).
                     <main class="wpb-visual-canvas" id="wpb-canvas">
                         <div class="text-center text-muted small py-5">
                             <i class="bi bi-arrow-down-square d-block fs-1 mb-2"></i>
-                            Arrastrá un bloque desde la paleta para empezar<br>
+                            Arrastra un bloque desde la paleta para empezar<br>
                             <em>(canvas listo, DnD viene en el próximo commit)</em>
                         </div>
                     </main>

@@ -286,6 +286,13 @@ function pb_normalizeConfig(array $raw) {
     $builderMode = (string)($raw['builderMode'] ?? 'code');
     if ($builderMode !== 'visual') { $builderMode = 'code'; }
     $blocks = (is_array($raw['blocks'] ?? null)) ? $raw['blocks'] : null;
+    // Defensive: a page tagged "visual" without a blocks tree would open
+    // the visual modal on an empty canvas and the user might overwrite a
+    // real, hand-written .php without realising it. Fall back to "code"
+    // so the next edit lands in the textarea where the actual HTML is.
+    if ($builderMode === 'visual' && $blocks === null) {
+        $builderMode = 'code';
+    }
 
     return [
         'table'       => $table,

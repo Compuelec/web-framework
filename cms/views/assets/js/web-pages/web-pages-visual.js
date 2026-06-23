@@ -386,8 +386,8 @@ External dependencies (loaded by web-pages.php):
                     "data-sortable-skip": "1",
                     style: "pointer-events:none",
                     text: block.type === "list"
-                        ? "Arrastrá aquí los bloques que se repetirán por cada registro"
-                        : "Arrastrá aquí los campos del formulario"
+                        ? "Arrastra aquí los bloques que se repetirán por cada registro"
+                        : "Arrastra aquí los campos del formulario"
                 }));
             } else {
                 block.children.forEach(function (child, i) {
@@ -545,7 +545,7 @@ External dependencies (loaded by web-pages.php):
             $props.appendChild(el("div", {
                 className: "small text-muted text-center py-4 px-2",
                 html: '<i class="bi bi-sliders d-block fs-2 mb-2"></i>' +
-                      'Seleccioná un bloque<br>para editar sus propiedades'
+                      'Selecciona un bloque<br>para editar sus propiedades'
             }));
             return;
         }
@@ -909,7 +909,7 @@ External dependencies (loaded by web-pages.php):
                 "data-sortable-skip": "1",
                 style: "pointer-events:none",
                 html: '<i class="bi bi-arrow-down-square d-block fs-1 mb-2"></i>' +
-                      'Arrastrá un bloque desde la paleta para empezar'
+                      'Arrastra un bloque desde la paleta para empezar'
             }));
         } else {
             state.tree.blocks.forEach(function (b, i) {
@@ -927,6 +927,15 @@ External dependencies (loaded by web-pages.php):
 
     function teardownSortables() {
         state.sortables.forEach(function (s) {
+            // Drop the wpb marker BEFORE destroy so a subsequent
+            // ensureSortables() (e.g. when the modal is reopened) sees
+            // the host element as un-wired and recreates the instance.
+            // Otherwise data-sortable-wired persists on the still-attached
+            // palette/chips lists, ensureSortables short-circuits, and DnD
+            // is dead from the second open onwards.
+            if (s && s.el && s.el.dataset) {
+                delete s.el.dataset.sortableWired;
+            }
             try { s.destroy(); } catch (e) { /* ignore */ }
         });
         state.sortables = [];
@@ -1310,44 +1319,51 @@ External dependencies (loaded by web-pages.php):
     var columnsCache = {}; // table → { columns, types }
 
     function ajaxFormFetch(payload) {
-        // Bootstraps a POST with URL-encoded form data, same shape the
-        // legacy code-mode editor uses, so the CSRF interceptor jQuery
-        // sets up on the host still applies (we re-use jQuery when present).
-        if (window.jQuery) {
-            return new Promise(function (resolve, reject) {
-                window.jQuery.ajax({
-                    url: ajaxUrl(), method: "POST", dataType: "json", data: payload
-                }).done(resolve).fail(reject);
-            });
+        // POST with URL-encoded form data, same shape the legacy code-mode
+        // editor uses. We rely on jQuery so the CSRF interceptor the CMS
+        // installs in ajaxSend applies — a hand-rolled fetch would skip
+        // it and the server would reject the request with "Invalid CSRF
+        // token". jQuery is bundled by the CMS on every authenticated
+        // page, so this is always available here.
+        if (!window.jQuery) {
+            return Promise.reject(new Error(
+                "jQuery is required for the visual builder (CSRF interceptor)"
+            ));
         }
-        var body = new URLSearchParams();
-        Object.keys(payload).forEach(function (k) { body.append(k, payload[k] == null ? "" : payload[k]); });
-        return fetch(ajaxUrl(), {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: body.toString()
-        }).then(function (r) { return r.json(); });
+        return new Promise(function (resolve, reject) {
+            window.jQuery.ajax({
+                url: ajaxUrl(), method: "POST", dataType: "json", data: payload
+            }).done(resolve).fail(reject);
+        });
     }
 
     function loadTables() {
         if (tablesCache) { return Promise.resolve(tablesCache); }
+        // Only cache successful responses; a transient network error
+        // would otherwise pin the picker to an empty list for the rest
+        // of the session and the user would have to reload the CMS.
         return ajaxFormFetch({ action: "tables" }).then(function (res) {
-            tablesCache = (res && res.success && Array.isArray(res.tables)) ? res.tables : [];
-            return tablesCache;
-        }).catch(function () { return []; });
+            if (res && res.success && Array.isArray(res.tables)) {
+                tablesCache = res.tables;
+                return tablesCache;
+            }
+            throw new Error((res && res.error) || "No se pudieron cargar las tablas");
+        });
     }
 
     function loadColumns(table) {
         if (!table) { return Promise.resolve({ columns: [], types: {} }); }
         if (columnsCache[table]) { return Promise.resolve(columnsCache[table]); }
+        // Same logic as loadTables: don't cache failures, throw so the
+        // caller can decide whether to surface the error.
         return ajaxFormFetch({ action: "columns", table: table }).then(function (res) {
-            var out = (res && res.success)
-                ? { columns: res.columns || [], types: res.types || {} }
-                : { columns: [], types: {} };
-            columnsCache[table] = out;
-            return out;
-        }).catch(function () { return { columns: [], types: {} }; });
+            if (res && res.success) {
+                var out = { columns: res.columns || [], types: res.types || {} };
+                columnsCache[table] = out;
+                return out;
+            }
+            throw new Error((res && res.error) || "No se pudieron cargar las columnas");
+        });
     }
 
     function populateTableSelect() {
@@ -1368,6 +1384,9 @@ External dependencies (loaded by web-pages.php):
             // Sync the value with the current tree (which may carry a
             // table from a freshly-loaded page).
             if (state.tree.table) { $sel.value = state.tree.table; }
+        }).catch(function (err) {
+            // Leave wpbPopulated unset so the next mount retries.
+            console.warn("[wpb-visual] populateTableSelect:", err && err.message || err);
         });
     }
 
@@ -1380,6 +1399,11 @@ External dependencies (loaded by web-pages.php):
         state.tree.table = newTable || "";
         loadColumns(newTable).then(function (info) {
             setColumns(info.columns || []);
+        }).catch(function (err) {
+            // Clear chips on transient failure but don't pin the cache —
+            // loadColumns now throws on errors instead of caching empties.
+            setColumns([]);
+            console.warn("[wpb-visual] loadColumns:", err && err.message || err);
         });
     }
 
@@ -1487,12 +1511,12 @@ External dependencies (loaded by web-pages.php):
 
     function saveBlocks() {
         if (!state.tree.blocks.length) {
-            showSaveFeedback("warning", "Agregá al menos un bloque antes de guardar.");
+            showSaveFeedback("warning", "Agrega al menos un bloque antes de guardar.");
             return;
         }
         var host = readHostConfig();
         if (!host.name) {
-            showSaveFeedback("warning", "Escribí un nombre de archivo en el editor (campo \"Nombre del archivo\") antes de guardar.");
+            showSaveFeedback("warning", "Escribe un nombre de archivo en el editor (campo \"Nombre del archivo\") antes de guardar.");
             return;
         }
 
@@ -1502,10 +1526,25 @@ External dependencies (loaded by web-pages.php):
         // table identifier.
         state.tree.table = host.table || "";
 
-        var compiled = compileForPreview();
+        // Compile directly (not via compileForPreview which embeds errors
+        // as an HTML <pre> in `template` — fine for the iframe preview,
+        // disastrous if it got persisted). If compilation throws we abort
+        // the save and surface the error so the user can fix the offending
+        // block before clobbering the .php file on disk.
+        if (!window.WebPagesCompile) {
+            showSaveFeedback("error", "El compilador no está cargado.");
+            return;
+        }
+        var compiled;
+        try {
+            compiled = window.WebPagesCompile.compileTree(state.tree);
+        } catch (err) {
+            showSaveFeedback("error", "Error al compilar: " +
+                (err && err.message ? err.message : String(err)));
+            return;
+        }
         if (compiled.warnings && compiled.warnings.length) {
-            // Non-fatal: log the warnings but proceed. The compiler is
-            // strict enough that any real error would have thrown.
+            // Non-fatal: log the warnings but proceed.
             console.warn("[wpb-visual] compile warnings:", compiled.warnings);
         }
 
@@ -1545,27 +1584,18 @@ External dependencies (loaded by web-pages.php):
             updateSaveButtonState();
         }
 
-        if (window.jQuery) {
-            window.jQuery.ajax({
-                url: ajaxUrl(), method: "POST", dataType: "json", data: payload
-            }).done(done).fail(fail);
-        } else {
-            var body = new URLSearchParams();
-            Object.keys(payload).forEach(function (k) {
-                var v = payload[k];
-                if (Array.isArray(v)) {
-                    v.forEach(function (item) { body.append(k, item); });
-                } else {
-                    body.append(k, v == null ? "" : v);
-                }
-            });
-            fetch(ajaxUrl(), {
-                method: "POST",
-                credentials: "same-origin",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: body.toString()
-            }).then(function (r) { return r.json(); }).then(done).catch(fail);
+        // jQuery is always bundled by the CMS; we rely on its ajaxSend
+        // interceptor to attach the CSRF token. A vanilla fetch fallback
+        // would skip that header and the server would reject the save
+        // — drop the fallback so the path stays consistent with the rest
+        // of the visual builder (ajaxFormFetch) and the legacy editor.
+        if (!window.jQuery) {
+            fail();
+            return;
         }
+        window.jQuery.ajax({
+            url: ajaxUrl(), method: "POST", dataType: "json", data: payload
+        }).done(done).fail(fail);
     }
 
     function wireSaveButton() {
@@ -1584,16 +1614,21 @@ External dependencies (loaded by web-pages.php):
         var $visual = document.getElementById("wpb-visual-name");
         if ($host && $host.dataset.wpbWired !== "1") {
             $host.dataset.wpbWired = "1";
-            $host.addEventListener("input", function () {
+            // Listen to both `input` and `change`: typing fires `input`,
+            // but a `value = …` assignment elsewhere followed by a manual
+            // `change` event would otherwise skip the visual mirror.
+            var syncToVisual = function () {
                 if ($visual && $visual.value !== $host.value) {
                     $visual.value = $host.value;
                 }
                 updateSaveButtonState();
-            });
+            };
+            $host.addEventListener("input",  syncToVisual);
+            $host.addEventListener("change", syncToVisual);
         }
         if ($visual && $visual.dataset.wpbWired !== "1") {
             $visual.dataset.wpbWired = "1";
-            $visual.addEventListener("input", function () {
+            var syncToHost = function () {
                 if ($host && $host.value !== $visual.value) {
                     $host.value = $visual.value;
                     // Some host listeners react to "change" rather than
@@ -1602,7 +1637,9 @@ External dependencies (loaded by web-pages.php):
                     $host.dispatchEvent(new Event("change", { bubbles: true }));
                 }
                 updateSaveButtonState();
-            });
+            };
+            $visual.addEventListener("input",  syncToHost);
+            $visual.addEventListener("change", syncToHost);
         }
         // Seed the visual input with the host's current value (handles
         // the "open modal after editing a page in code mode" case).

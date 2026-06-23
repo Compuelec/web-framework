@@ -293,10 +293,26 @@ if ($action !== 'generate') {
 // to a string in the POST so the value survives the form encoding without
 // us having to flatten its nested structure). Decode it before handing
 // the config to pb_normalizeConfig, which expects an array (or null).
+//
+// We abort the request on malformed JSON instead of silently saving with
+// blocks=null — silently dropping the tree would persist a `visual` page
+// without its block payload, which the next "open in Visual" would render
+// as an empty canvas and the user's work would be lost.
 $blocksRaw = $_POST['blocks'] ?? '';
 $blocks    = null;
 if (is_string($blocksRaw) && $blocksRaw !== '') {
     $decoded = json_decode($blocksRaw, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        Logger::warning('web-pages: invalid blocks JSON', [
+            'error' => json_last_error_msg(),
+            'len'   => strlen($blocksRaw),
+        ]);
+        echo json_encode([
+            'success' => false,
+            'error'   => 'No se pudieron decodificar los bloques (JSON inválido): ' . json_last_error_msg(),
+        ]);
+        exit;
+    }
     if (is_array($decoded)) {
         $blocks = $decoded;
     }
