@@ -1,8 +1,22 @@
 {
-  "latest_version": "1.0.1",
-  "update_available": true,
-  "release_date": "2024-12-19",
+  "latest_version": "1.1.2",
+  "update_available": false,
+  "release_date": "2026-06-24",
   "changelog": {
+    "1.1.2": {
+      "version": "1.1.2",
+      "release_date": "2026-06-24",
+      "type": "minor",
+      "changes": [
+        "Nuevos plugins: dashboard-manager, rbac-manager, pos-manager, production-manager y data-protection (Ley 21.719)",
+        "Sistema de empaquetado y restauración de plataforma (packaging/restore)",
+        "Gestión de SEO por página (meta tags, OpenGraph, sitemap)",
+        "Migración del frontend a Bootstrap 5",
+        "Endurecimiento de seguridad: gating de plugins de configuración a superadmin/admin y correcciones XSS"
+      ],
+      "breaking_changes": false,
+      "requires_migration": true
+    },
     "1.0.1": {
       "version": "1.0.1",
       "release_date": "2024-12-19",
@@ -17,7 +31,7 @@
       "requires_migration": false
     }
   },
-  "download_url": "https://github.com/Compuelec/web-framework/archive/refs/tags/v1.0.1.zip",
+  "download_url": "https://github.com/Compuelec/web-framework/archive/refs/tags/v1.1.2.zip",
   "checksum": "",
   "min_php_version": "7.4",
   "min_mysql_version": "5.7"
