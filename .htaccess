@@ -27,10 +27,14 @@ Options All -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Force HTTPS — skip on localhost to avoid breaking local development
+    # Force HTTPS — skip on localhost to avoid breaking local development.
+    # The host comparisons tolerate an optional :port suffix because dev
+    # stacks routinely expose Apache on 8080 (Docker Compose, XAMPP, etc.)
+    # and without it `Host: 127.0.0.1:8080` would slip through the guard
+    # and bounce to https://, which has no cert locally.
     RewriteCond %{HTTPS} !=on
-    RewriteCond %{HTTP_HOST} !^localhost$ [NC]
-    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
+    RewriteCond %{HTTP_HOST} !^localhost(:[0-9]+)?$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:[0-9]+)?$
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Serve the PUBLIC site (web/) at the domain root. The admin is at /cms and
@@ -82,8 +86,9 @@ Options All -Indexes
     # unsafe-inline/unsafe-eval required for inline PHP-generated script blocks
     Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://app.payku.cl https://des.payku.cl; frame-ancestors 'self'; object-src 'none'"
 
-    # HSTS — skip on localhost to avoid breaking local dev
-    <If "%{HTTP_HOST} != 'localhost' && %{HTTP_HOST} != '127.0.0.1'">
+    # HSTS — skip on localhost to avoid breaking local dev. Matches
+    # both bare hosts and host:port forms (see the HTTPS guard above).
+    <If "! %{HTTP_HOST} =~ /^(localhost|127\.0\.0\.1)(:[0-9]+)?$/">
         Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
     </If>
 </IfModule>
