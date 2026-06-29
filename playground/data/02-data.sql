@@ -72,28 +72,28 @@ UNLOCK TABLES;
 
 LOCK TABLES `comprobantes_venta` WRITE;
 /*!40000 ALTER TABLE `comprobantes_venta` DISABLE KEYS */;
-INSERT INTO `comprobantes_venta` (`id_venta`, `tipo_documento_venta`, `folio_venta`, `fecha_venta`, `cliente_venta`, `glosa_venta`, `neto_venta`, `iva_venta`, `exento_venta`, `total_venta`, `estado_venta`, `date_created_venta`, `date_updated_venta`) VALUES (1,'factura_afecta',1001,'2026-06-03',2,'Servicios de impresión 1000 trípticos',850000,161500,0,1011500,'emitido',NULL,'2026-06-28 12:20:15'),
-(2,'factura_exenta',1006,'2026-06-22',2,'Servicios educacionales (exento)',0,0,450000,450000,'emitido',NULL,'2026-06-28 12:20:15'),
-(3,'boleta',1004,'2026-06-15',5,'Venta mostrador varios',65000,12350,0,77350,'emitido',NULL,'2026-06-28 12:20:15'),
-(4,'factura_afecta',1005,'2026-06-18',6,'Diseño de catálogo y manual de marca',1200000,228000,0,1428000,'emitido',NULL,'2026-06-28 12:20:15'),
-(5,'factura_afecta',1002,'2026-06-08',3,'Café y catering reunión directorio',280000,53200,0,333200,'emitido',NULL,'2026-06-28 12:20:15'),
-(6,'factura_afecta',991,'2026-05-05',2,'Impresión folletos mayo',420000,79800,0,499800,'emitido',NULL,'2026-06-28 12:20:15'),
-(7,'boleta',993,'2026-05-20',5,'Compra mostrador (mayo)',42000,7980,0,49980,'emitido',NULL,'2026-06-28 12:20:15'),
-(8,'factura_afecta',992,'2026-05-14',3,'Catering evento corporativo',780000,148200,0,928200,'emitido',NULL,'2026-06-28 12:20:17'),
-(9,'factura_afecta',1003,'2026-06-12',4,'Materiales obra civil galpón',3500000,665000,0,4165000,'emitido',NULL,'2026-06-28 12:20:18');
+INSERT INTO `comprobantes_venta` (`id_venta`, `tipo_documento_venta`, `folio_venta`, `fecha_venta`, `cliente_venta`, `glosa_venta`, `archivo_venta`, `neto_venta`, `iva_venta`, `exento_venta`, `total_venta`, `estado_venta`, `date_created_venta`, `date_updated_venta`) VALUES (1,'factura_afecta',1001,'2026-06-03',2,'Servicios de impresión 1000 trípticos',NULL,850000,161500,0,1011500,'emitido',NULL,'2026-06-28 12:20:15'),
+(2,'factura_exenta',1006,'2026-06-22',2,'Servicios educacionales (exento)',NULL,0,0,450000,450000,'emitido',NULL,'2026-06-28 12:20:15'),
+(3,'boleta',1004,'2026-06-15',5,'Venta mostrador varios',NULL,65000,12350,0,77350,'emitido',NULL,'2026-06-28 12:20:15'),
+(4,'factura_afecta',1005,'2026-06-18',6,'Diseño de catálogo y manual de marca',NULL,1200000,228000,0,1428000,'emitido',NULL,'2026-06-28 12:20:15'),
+(5,'factura_afecta',1002,'2026-06-08',3,'Café y catering reunión directorio',NULL,280000,53200,0,333200,'emitido',NULL,'2026-06-28 12:20:15'),
+(6,'factura_afecta',991,'2026-05-05',2,'Impresión folletos mayo',NULL,420000,79800,0,499800,'emitido',NULL,'2026-06-28 12:20:15'),
+(7,'boleta',993,'2026-05-20',5,'Compra mostrador (mayo)',NULL,42000,7980,0,49980,'emitido',NULL,'2026-06-28 12:20:15'),
+(8,'factura_afecta',992,'2026-05-14',3,'Catering evento corporativo',NULL,780000,148200,0,928200,'emitido',NULL,'2026-06-28 12:20:17'),
+(9,'factura_afecta',1003,'2026-06-12',4,'Materiales obra civil galpón',NULL,3500000,665000,0,4165000,'emitido',NULL,'2026-06-28 12:20:18');
 /*!40000 ALTER TABLE `comprobantes_venta` ENABLE KEYS */;
 UNLOCK TABLES;
 
 LOCK TABLES `comprobantes_compra` WRITE;
 /*!40000 ALTER TABLE `comprobantes_compra` DISABLE KEYS */;
-INSERT INTO `comprobantes_compra` (`id_compra`, `tipo_documento_compra`, `folio_compra`, `fecha_compra`, `proveedor_compra`, `categoria_compra`, `glosa_compra`, `neto_compra`, `iva_compra`, `exento_compra`, `total_compra`, `estado_compra`, `date_created_compra`, `date_updated_compra`) VALUES (1,'factura_afecta',5002,'2026-06-05',2,6,'Luz mes de mayo',142000,26980,0,168980,'pagado',NULL,'2026-06-28 12:20:15'),
-(2,'factura_afecta',4902,'2026-05-06',2,6,'Luz mes de abril',128000,24320,0,152320,'pagado',NULL,'2026-06-28 12:20:15'),
-(3,'factura_afecta',4901,'2026-05-03',1,3,'Materiales de oficina mayo',95000,18050,0,113050,'pagado',NULL,'2026-06-28 12:20:15'),
-(4,'boleta_honorarios',87,'2026-05-15',4,2,'Contabilidad mes de mayo',0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:15'),
-(5,'factura_afecta',5001,'2026-06-01',1,3,'Resmas, lápices, post-its',185000,35150,0,220150,'pagado',NULL,'2026-06-28 12:20:16'),
-(6,'factura_afecta',5004,'2026-06-20',5,5,'Mercadería para reventa (Q2)',2400000,456000,0,2856000,'registrado',NULL,'2026-06-28 12:20:16'),
-(7,'factura_afecta',5003,'2026-06-10',3,4,'Internet + telefonía junio',89000,16910,0,105910,'registrado',NULL,'2026-06-28 12:20:17'),
-(8,'boleta_honorarios',88,'2026-06-15',4,2,'Contabilidad mes de junio',0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:18');
+INSERT INTO `comprobantes_compra` (`id_compra`, `tipo_documento_compra`, `folio_compra`, `fecha_compra`, `proveedor_compra`, `categoria_compra`, `glosa_compra`, `archivo_compra`, `neto_compra`, `iva_compra`, `exento_compra`, `total_compra`, `estado_compra`, `date_created_compra`, `date_updated_compra`) VALUES (1,'factura_afecta',5002,'2026-06-05',2,6,'Luz mes de mayo',NULL,142000,26980,0,168980,'pagado',NULL,'2026-06-28 12:20:15'),
+(2,'factura_afecta',4902,'2026-05-06',2,6,'Luz mes de abril',NULL,128000,24320,0,152320,'pagado',NULL,'2026-06-28 12:20:15'),
+(3,'factura_afecta',4901,'2026-05-03',1,3,'Materiales de oficina mayo',NULL,95000,18050,0,113050,'pagado',NULL,'2026-06-28 12:20:15'),
+(4,'boleta_honorarios',87,'2026-05-15',4,2,'Contabilidad mes de mayo',NULL,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:15'),
+(5,'factura_afecta',5001,'2026-06-01',1,3,'Resmas, lápices, post-its',NULL,185000,35150,0,220150,'pagado',NULL,'2026-06-28 12:20:16'),
+(6,'factura_afecta',5004,'2026-06-20',5,5,'Mercadería para reventa (Q2)',NULL,2400000,456000,0,2856000,'registrado',NULL,'2026-06-28 12:20:16'),
+(7,'factura_afecta',5003,'2026-06-10',3,4,'Internet + telefonía junio',NULL,89000,16910,0,105910,'registrado',NULL,'2026-06-28 12:20:17'),
+(8,'boleta_honorarios',88,'2026-06-15',4,2,'Contabilidad mes de junio',NULL,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:18');
 /*!40000 ALTER TABLE `comprobantes_compra` ENABLE KEYS */;
 UNLOCK TABLES;
 

@@ -20,20 +20,25 @@ its own PR.
 ```
 playground/
 ├── README.md                  this file
+├── GLOSARIO.md                term reference for non-technical users
 ├── install.sh                 idempotent installer (re-jugable)
 ├── data/
 │   ├── 01-schema.sql          DROP+CREATE for the 8 demo tables
 │   ├── 02-data.sql            INSERTs: cuentas, dummies, asientos
 │   ├── 03-cms-modules.sql     CMS menu metadata
-│   ├── 04-cms-columns.sql     CRUD column definitions
+│   ├── 04-cms-columns.sql     CRUD column definitions (alias + select matrices)
 │   └── 05-cms-pages.sql       CMS pages (sidebar entries)
 └── pages/
+    ├── _lib/
+    │   └── asientos.php       shared accounting logic (compile + insert)
     ├── balance.php            queries plan_cuentas + asiento_lineas
+    ├── cargar-compra.php      1-click form: insert + asiento + file upload
+    ├── cargar-venta.php       1-click form: insert + asiento + file upload
     ├── dashboard-contable.php totals of the chosen month
-    ├── generar-asientos.php   button-driven asiento creation
-    ├── libro-compras.php      bound to comprobantes_compra (via create_page)
+    ├── generar-asientos.php   button-driven asiento creation (retry/orphans)
+    ├── libro-compras.php      JOIN proveedores + categorias + asientos
     ├── libro-diario.php       JOIN asientos + lineas + plan_cuentas
-    ├── libro-ventas.php       bound to comprobantes_venta (via create_page)
+    └── libro-ventas.php       JOIN clientes + asientos
 ```
 
 ## What was used vs. handwritten
@@ -46,14 +51,17 @@ hand.
 |---|---|---|
 | 8 tables + admin CRUD | MCP `create_section` × 8 | Plan de cuentas, clientes, proveedores, categorías, comprobantes (venta/compra), asientos, líneas. |
 | Demo dataset | MCP `create_record` × 51 | 22 cuentas + 6 categorías + 6 clientes + 6 proveedores + 9 ventas + 8 compras. |
-| Select options | MCP `update_record` × 8 | Tipos, naturaleza, estados, tipo_documento. |
-| Libro de ventas / compras | MCP `create_page` × 2 | Plain `{{#cada}}` listings — bound to the table. |
+| Select options + better aliases | MCP `update_record` × 12 | Tipos, naturaleza, estados, tipo_documento, "Folio (N° del documento)". |
+| Attachment column on comprobantes | SQL `ALTER TABLE` + MCP `create_record` × 2 | New `archivo_*` columns of type `file` so users can attach the PDF. |
 | Dashboard | Handwritten PHP | Aggregates totals for the chosen month. |
 | Libro diario | Handwritten PHP | JOIN asientos + asiento_lineas + plan_cuentas. |
+| Libro de ventas / compras | Handwritten PHP | JOIN to clientes / proveedores / categorías + asiento badge. (Initially generated via MCP `create_page` but rewritten when we needed razón social and JOINs.) |
 | Balance | Handwritten PHP | Acumulated saldos by tipo_cuenta, cuadre check. |
-| Generar asientos | Handwritten PHP | Builds double-entry from each comprobante. |
+| Generar asientos (retry) | Handwritten PHP | Builds double-entry for orphan comprobantes. |
+| Cargar venta / compra | Handwritten PHP | 1-click form with auto-IVA, file upload, transactional insert + asiento. |
+| Shared accounting library | `web/pages/_lib/asientos.php` | `compileAsientoVenta` / `compileAsientoCompra` / `insertarAsiento` / `cuentaPorCodigo` — reused by 3 pages. |
 
-61 MCP calls + 4 PHP files written from scratch.
+65 MCP calls + 7 PHP files written from scratch (4 pages + 2 forms + 1 lib).
 
 ## How to revive the playground
 
@@ -103,12 +111,35 @@ Compra exenta or boleta de honorarios:
 A `Σ debe = Σ haber` check aborts the insert if the legs don't balance
 (should never happen with the templates above, but it's cheap insurance).
 
+## How a contador uses it (workflow)
+
+Two ways to load comprobantes:
+
+1. **Quick path — `/cargar-venta` and `/cargar-compra`.** A single page
+   per comprobante: pick the type, fill folio + fecha + cliente/proveedor +
+   monto neto, the IVA auto-calculates at 19% (you can override), optionally
+   attach the PDF/JPG. Click "Cargar y generar asiento" and the system
+   inserts the comprobante + writes the double-entry asiento in one
+   transaction. If anything fails, both rollback.
+
+2. **CMS admin path — `/cms`.** Each table appears as a section in the
+   sidebar. The CRUD grid lets you list, edit, search and (re-)attach
+   files. Useful for bulk corrections or for users who prefer table-style
+   data entry. After loading a comprobante from here, hit
+   `/generar-asientos` to create its asiento (the form-based path does it
+   automatically; the CMS-loaded ones are "orphans" until you ask).
+
+The `archivo_venta` / `archivo_compra` columns are of CMS type `file`, so
+the CRUD form renders the Files Manager modal (browse-or-upload UI). Files
+are stored under `cms/views/assets/files/`.
+
 ## Known limitations
 
-- **No auth** on the public pages. Anyone hitting `/balance` sees the
-  numbers. Putting `private: true` on each page (via the CMS or by
-  regenerating with `create_page { private: true, accessRoles: [...] }`)
-  is the right next step before deploying anywhere.
+- **No auth** on the public pages. Anyone hitting `/balance` or
+  `/cargar-venta` sees the data / can post. Putting `private: true` on
+  each page (via the CMS or by regenerating with `create_page { private:
+  true, accessRoles: [...] }`) is the right next step before deploying
+  anywhere.
 - **No FK enforcement** between tables. The framework uses int columns that
   point at other tables by convention; deleting a cliente leaves dangling
   references in `comprobantes_venta`.

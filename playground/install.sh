@@ -91,13 +91,25 @@ run_sql_force "$DATA_DIR/05-cms-pages.sql"   "CMS pages (menu entries)"
 
 # --- 3. Copy public pages ---------------------------------------------------
 
-mkdir -p "$PAGES_DST"
+mkdir -p "$PAGES_DST" "$PAGES_DST/_lib"
 echo "==> Copying public pages → web/pages/"
 for src in "$PAGES_SRC"/*.php; do
     name="$(basename "$src")"
     cp "$src" "$PAGES_DST/$name"
     echo "    $name"
 done
+
+# Shared accounting library used by /cargar-venta, /cargar-compra and
+# /generar-asientos. Lives under web/pages/_lib/ so includes resolve
+# relatively from any sibling page.
+if [[ -d "$PAGES_SRC/_lib" ]]; then
+    echo "==> Copying shared lib → web/pages/_lib/"
+    for src in "$PAGES_SRC/_lib"/*.php; do
+        name="$(basename "$src")"
+        cp "$src" "$PAGES_DST/_lib/$name"
+        echo "    _lib/$name"
+    done
+fi
 
 # --- 4. Done ----------------------------------------------------------------
 
@@ -109,9 +121,11 @@ Playground installed. URLs to visit (assuming Apache on http://localhost:8080):
     http://localhost:8080/dashboard-contable
     http://localhost:8080/libro-diario
     http://localhost:8080/balance
-    http://localhost:8080/libro-ventas
-    http://localhost:8080/libro-compras
-    http://localhost:8080/generar-asientos     (button-driven asiento creation)
+    http://localhost:8080/libro-ventas              (con razón social + asiento)
+    http://localhost:8080/libro-compras             (con proveedor + categoría)
+    http://localhost:8080/cargar-venta              (form 1-click: insert + asiento)
+    http://localhost:8080/cargar-compra             (form 1-click: insert + asiento)
+    http://localhost:8080/generar-asientos          (retoque de comprobantes huérfanos)
 
   Admin CMS (login: admin@admin.com / admin123 if fresh)
     http://localhost:8080/cms/
