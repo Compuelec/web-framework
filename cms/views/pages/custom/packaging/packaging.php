@@ -164,12 +164,18 @@ if (empty($projectBasePath) || $projectBasePath === '.') {
 										<?php echo htmlspecialchars($package['created']); ?>
 									</td>
 									<td>
-										<a href="<?php echo htmlspecialchars($projectBasePath . '/packages/' . $package['filename']); ?>" 
-										   class="btn btn-sm btn-primary" 
+										<a href="<?php echo htmlspecialchars($projectBasePath . '/packages/' . $package['filename']); ?>"
+										   class="btn btn-sm btn-primary"
 										   download>
 											<i class="bi bi-download"></i> Descargar
 										</a>
-										<button class="btn btn-sm btn-danger delete-package-btn" 
+										<?php if (($_SESSION['admin']->rol_admin ?? '') === 'superadmin'): ?>
+										<button class="btn btn-sm btn-warning restore-package-btn"
+										        data-filename="<?php echo htmlspecialchars($package['filename']); ?>">
+											<i class="bi bi-arrow-counterclockwise"></i> Restaurar
+										</button>
+										<?php endif; ?>
+										<button class="btn btn-sm btn-danger delete-package-btn"
 										        data-filename="<?php echo htmlspecialchars($package['filename']); ?>">
 											<i class="bi bi-trash"></i> Eliminar
 										</button>
@@ -182,6 +188,36 @@ if (empty($projectBasePath) || $projectBasePath === '.') {
 			<?php endif; ?>
 		</div>
 	</div>
+
+	<?php if (($_SESSION['admin']->rol_admin ?? '') === 'superadmin'): ?>
+	<!-- Danger zone: factory reset (superadmin only) -->
+	<div class="card border-danger mt-4" id="factory-reset-card">
+		<div class="card-body">
+			<h5 class="card-title mb-2 text-danger">
+				<i class="bi bi-exclamation-octagon-fill me-1"></i>Zona de peligro · Restablecer de fábrica
+			</h5>
+			<p class="text-muted mb-3">
+				Devuelve el sistema al estado de instalación inicial para empezar un proyecto nuevo desde cero. Esta acción:
+			</p>
+			<ul class="text-muted small mb-3">
+				<li>Elimina las <strong>tablas y módulos personalizados</strong> creados desde el CMS.</li>
+				<li>Elimina también las <strong>tablas de los plugins</strong> (se recrean vacías al volver a usar cada plugin).</li>
+				<li>Borra las <strong>carpetas custom huérfanas</strong> en disco (conserva las del sistema y los plugins).</li>
+				<li>Vacía los datos del núcleo (páginas, archivos, carpetas, logs, workflows) y restablece el tema.</li>
+				<li>Conserva <strong>únicamente tu cuenta de superadmin</strong> (se eliminan los demás administradores).</li>
+				<li>Conserva el historial de <strong>migraciones y actualizaciones</strong> del framework.</li>
+				<li>Genera y descarga un <strong>respaldo SQL completo</strong> antes de borrar nada.</li>
+			</ul>
+			<div class="alert alert-warning small py-2 mb-3">
+				<i class="bi bi-shield-exclamation me-1"></i>
+				Acción irreversible (salvo restaurando el respaldo). Úsala solo al iniciar un nuevo desarrollo.
+			</div>
+			<button class="btn btn-danger" id="fr-trigger-btn">
+				<i class="bi bi-arrow-counterclockwise me-1"></i>Restablecer de fábrica
+			</button>
+		</div>
+	</div>
+	<?php endif; ?>
 
 </div>
 
@@ -219,7 +255,62 @@ document.addEventListener('DOMContentLoaded', function() {
 			deletePackage(filename);
 		});
 	});
-	
+
+	// Restore from an existing package (DESTRUCTIVE: overwrites current DB)
+	document.querySelectorAll('.restore-package-btn').forEach(btn => {
+		btn.addEventListener('click', function() {
+			const filename = this.getAttribute('data-filename');
+			Swal.fire({
+				title: '¿Restaurar desde este paquete?',
+				html: 'Se <strong>reemplazará la base de datos actual</strong> por la del paquete ' +
+					  '<code>' + filename + '</code>. Esta acción no se puede deshacer.',
+				icon: 'warning',
+				input: 'checkbox',
+				inputValue: 1,
+				inputPlaceholder: 'Incluir también las imágenes/archivos subidos',
+				showCancelButton: true,
+				confirmButtonColor: '#d33',
+				confirmButtonText: 'Sí, restaurar',
+				cancelButtonText: 'Cancelar'
+			}).then((result) => {
+				if (!result.isConfirmed) { return; }
+				const includeFiles = result.value ? '1' : '0';
+
+				Swal.fire({
+					title: 'Restaurando…',
+					html: 'Reemplazando la base de datos desde el paquete. No cierres esta ventana.',
+					allowOutsideClick: false,
+					allowEscapeKey: false,
+					didOpen: function () { Swal.showLoading(); }
+				});
+
+				fetch((window.CMS_AJAX_PATH || '') + '/packaging.ajax.php', {
+					method: 'POST',
+					body: new URLSearchParams({ action: 'restore_existing', filename: filename, include_files: includeFiles })
+				})
+					.then(r => r.json())
+					.then(function (res) {
+						if (!res || !res.success) {
+							Swal.fire('Error', (res && (res.message || res.error)) || 'No se pudo restaurar.', 'error');
+							return;
+						}
+						Swal.fire({
+							icon: 'success',
+							title: 'Plataforma restaurada',
+							html: (res.message || 'Restauración completada.') + '<br>Recargando…',
+							timer: 3500,
+							timerProgressBar: true,
+							showConfirmButton: false,
+							allowOutsideClick: false
+						}).then(function () { window.location.reload(); });
+					})
+					.catch(function (err) {
+						Swal.fire('Error', 'Fallo durante la restauración (' + (err && err.message ? err.message : 'error') + ').', 'error');
+					});
+			});
+		});
+	});
+
 	// Restore / migrate from an uploaded package
 	function escHtml(s) { const d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
 	const restoreBtn = document.getElementById('restoreBtn');
@@ -417,5 +508,106 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 	}
 });
+</script>
+
+<!-- Factory reset (superadmin only): typed confirmation + SQL backup + reset -->
+<script>
+(function () {
+	'use strict';
+
+	var triggerBtn = document.getElementById('fr-trigger-btn');
+	if (!triggerBtn) return; // not a superadmin / card not rendered
+
+	var RESET_URL    = (window.CMS_AJAX_PATH || '') + '/factory-reset.ajax.php';
+	var CONFIRM_WORD = 'RESETEAR';
+
+	// The server creates a full backup package (DB + files) BEFORE wiping, then
+	// performs the reset, all in this single request. It aborts if the backup
+	// fails, so data is never destroyed without a restore point.
+	function runReset() {
+		Swal.fire({
+			title: 'Creando respaldo y restableciendo…',
+			html: 'Se está generando un paquete de respaldo (base de datos + archivos) antes de borrar nada. ' +
+				  'Esto puede tardar un minuto. No cierres esta ventana.',
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			didOpen: function () { Swal.showLoading(); }
+		});
+
+		fetch(RESET_URL, {
+			method: 'POST',
+			body: new URLSearchParams({ action: 'reset' })
+		})
+			.then(function (r) { return r.json(); })
+			.then(function (res) {
+				if (!res || !res.success) {
+					Swal.fire('No se restableció', (res && res.error) || 'No se pudo restablecer el sistema.', 'error');
+					return;
+				}
+				var foldersDeleted = (res.folders_deleted || []).length;
+				var foldersFailed  = (res.folders_failed || []);
+				var html = 'Se eliminaron <strong>' + (res.dropped_count || 0) + '</strong> tabla(s) (custom y de plugins) y ' +
+						   '<strong>' + foldersDeleted + '</strong> carpeta(s) custom.<br>';
+				if (res.backup_package) {
+					html += 'Respaldo guardado en Empaquetado: <code>' + res.backup_package + '</code>' +
+							(res.backup_size_mb ? ' (' + res.backup_size_mb + ' MB)' : '') + '.<br>';
+				}
+				if (foldersFailed.length) {
+					html += '<span class="text-warning">No se pudieron borrar (permisos): ' +
+							foldersFailed.join(', ') + '. Elimínalas manualmente.</span><br>';
+				}
+				html += 'Recargando…';
+
+				Swal.fire({
+					icon: 'success',
+					title: 'Sistema restablecido',
+					html: html,
+					timer: foldersFailed.length ? 6500 : 4000,
+					timerProgressBar: true,
+					showConfirmButton: false,
+					allowOutsideClick: false
+				}).then(function () {
+					window.location.reload();
+				});
+			})
+			.catch(function (err) {
+				Swal.fire(
+					'Error',
+					'Fallo durante el restablecimiento (' + (err && err.message ? err.message : 'error') + ').',
+					'error'
+				);
+			});
+	}
+
+	triggerBtn.addEventListener('click', function () {
+		Swal.fire({
+			title: '¿Restablecer de fábrica?',
+			icon: 'warning',
+			html: 'Esta acción es <strong>irreversible</strong>. Se eliminarán todas las tablas y datos ' +
+				  'personalizados y solo quedará tu cuenta de superadmin.<br><br>' +
+				  'Para confirmar, escribe <code>' + CONFIRM_WORD + '</code>:',
+			input: 'text',
+			inputPlaceholder: CONFIRM_WORD,
+			inputAttributes: { autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false' },
+			showCancelButton: true,
+			confirmButtonText: 'Sí, restablecer todo',
+			cancelButtonText: 'Cancelar',
+			confirmButtonColor: '#dc3545',
+			focusCancel: true,
+			preConfirm: function (value) {
+				if ((value || '').trim() !== CONFIRM_WORD) {
+					Swal.showValidationMessage('Debes escribir ' + CONFIRM_WORD + ' para continuar');
+					return false;
+				}
+				return true;
+			}
+		}).then(function (result) {
+			if (result.isConfirmed) {
+				runReset();
+			}
+		});
+	});
+
+})();
 </script>
 

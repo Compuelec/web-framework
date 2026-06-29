@@ -116,6 +116,37 @@ try {
             echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             break;
 
+        case 'restore_existing':
+            // Restore the platform from a package already stored in packages/
+            // (DESTRUCTIVE: overwrites the current database). Superadmin only.
+            if (($_SESSION['admin']->rol_admin ?? '') !== 'superadmin') {
+                echo json_encode(['success' => false, 'message' => 'Solo un superadmin puede restaurar la plataforma.']);
+                break;
+            }
+            $filename = basename($_POST['filename'] ?? '');
+            if ($filename === '' || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'zip') {
+                echo json_encode(['success' => false, 'message' => 'Nombre de paquete inválido.']);
+                break;
+            }
+            // Resolve the real path by matching against the actual package list
+            // (prevents path traversal: only files truly in packages/ match).
+            $target = null;
+            foreach (PackagingController::getPackages() as $pkg) {
+                if ($pkg['filename'] === $filename) {
+                    $target = $pkg['filepath'];
+                    break;
+                }
+            }
+            if (!$target || !is_file($target)) {
+                echo json_encode(['success' => false, 'message' => 'Paquete no encontrado.']);
+                break;
+            }
+            require_once __DIR__ . '/../controllers/package-install.controller.php';
+            $includeFiles = !isset($_POST['include_files']) || in_array($_POST['include_files'], ['1', 'true', 'on'], true);
+            $result = PackageInstallController::restoreFromZip($target, $includeFiles);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            break;
+
         default:
             echo json_encode([
                 'success' => false,
