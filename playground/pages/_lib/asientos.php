@@ -144,15 +144,20 @@ function compileAsientoCompra(PDO $db, array $c): array {
 
     $lineas = [];
     $orden  = 1;
-    // Una línea de gasto por el neto (si hay IVA) o por el total (exento/honorarios).
-    $importeGasto = $iva > 0 ? $neto : ($total > 0 ? $total : $exento);
-    $lineas[] = [
-        'cuenta_linea' => $cuentaGastoId,
-        'glosa_linea'  => 'Gasto del período',
-        'debe_linea'   => $importeGasto,
-        'haber_linea'  => 0,
-        'orden_linea'  => $orden++,
-    ];
+    // El "gasto" es lo que entra a la categoría contable: neto (parte afecta)
+    // + exento. Una factura mixta (afecto + exento en el mismo documento) los
+    // junta acá; el SII las permite y el asiento debe reflejar el costo total
+    // sin contar el IVA — el IVA va en su propia cuenta de crédito fiscal.
+    $importeGasto = $neto + $exento;
+    if ($importeGasto > 0) {
+        $lineas[] = [
+            'cuenta_linea' => $cuentaGastoId,
+            'glosa_linea'  => 'Gasto del período',
+            'debe_linea'   => $importeGasto,
+            'haber_linea'  => 0,
+            'orden_linea'  => $orden++,
+        ];
+    }
     if ($iva > 0 && $ivaCredito) {
         $lineas[] = [
             'cuenta_linea' => (int)$ivaCredito['id_cuenta'],
@@ -171,6 +176,68 @@ function compileAsientoCompra(PDO $db, array $c): array {
     ];
 
     $glosa = sprintf('Compra — %s N° %s', $c['tipo_documento_compra'] ?? 'doc', $c['folio_compra'] ?? '?');
+    return ['lineas' => $lineas, 'glosa' => $glosa];
+}
+
+/**
+ * Builds the D/H lines for a pago a proveedor. The recipe is the mirror
+ * of compra:
+ *
+ *   D  Proveedores            monto
+ *      H  Caja  / Banco          monto
+ *
+ * Uses the `pagos` row as input. `medio_pago` ∈ {caja, banco} picks the
+ * H account by codigo_cuenta (1.1.01 / 1.1.02). The folio of the
+ * underlying compra is read so the glosa is informative.
+ */
+function compileAsientoPago(PDO $db, array $p): array {
+    $monto = (float)($p['monto_pago'] ?? 0);
+    $medio = (string)($p['medio_pago'] ?? '');
+    if ($monto <= 0) {
+        return ['error' => 'El monto del pago debe ser mayor que cero'];
+    }
+    $codigoBanco = $medio === 'caja' ? '1.1.01' : ($medio === 'banco' ? '1.1.02' : null);
+    if ($codigoBanco === null) {
+        return ['error' => 'Medio de pago inválido (esperado: caja o banco)'];
+    }
+
+    $proveedores = cuentaPorCodigo($db, '2.1.01');
+    if (!$proveedores) {
+        return ['error' => 'Falta la cuenta 2.1.01 Proveedores en el plan de cuentas'];
+    }
+    $cuentaBanco = cuentaPorCodigo($db, $codigoBanco);
+    if (!$cuentaBanco) {
+        return ['error' => 'Falta la cuenta ' . $codigoBanco . ' (' . $medio . ') en el plan de cuentas'];
+    }
+
+    // Pull the originating compra's folio for the glosa (informational).
+    $compraId = (int)($p['compra_pago'] ?? 0);
+    $folio    = '?';
+    if ($compraId > 0) {
+        $stmt = $db->prepare("SELECT folio_compra FROM comprobantes_compra WHERE id_compra = :id LIMIT 1");
+        $stmt->execute([':id' => $compraId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) { $folio = (string)$row['folio_compra']; }
+    }
+
+    $lineas = [
+        [
+            'cuenta_linea' => (int)$proveedores['id_cuenta'],
+            'glosa_linea'  => 'Pago factura proveedor N° ' . $folio,
+            'debe_linea'   => $monto,
+            'haber_linea'  => 0,
+            'orden_linea'  => 1,
+        ],
+        [
+            'cuenta_linea' => (int)$cuentaBanco['id_cuenta'],
+            'glosa_linea'  => 'Salida por ' . $medio,
+            'debe_linea'   => 0,
+            'haber_linea'  => $monto,
+            'orden_linea'  => 2,
+        ],
+    ];
+
+    $glosa = sprintf('Pago — factura compra N° %s · medio: %s', $folio, $medio);
     return ['lineas' => $lineas, 'glosa' => $glosa];
 }
 
