@@ -21,6 +21,9 @@ if (!empty($siteCfg['timezone'])) {
 }
 
 require_once __DIR__ . '/../../api/models/connection.php';
+require_once __DIR__ . '/_lib/auth.php';
+wpb_require_role(['contador', 'lectura']);
+
 $db = Connection::connect();
 
 function pesos($n) {
@@ -237,6 +240,7 @@ include __DIR__ . '/../partials/header.php';
 </style>
 </head>
 <body>
+<?= wpb_render_user_bar() ?>
 <div class="container py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">

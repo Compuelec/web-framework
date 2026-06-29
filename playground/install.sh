@@ -88,6 +88,7 @@ run_sql_force() {
 run_sql_force "$DATA_DIR/03-cms-modules.sql" "CMS modules"
 run_sql_force "$DATA_DIR/04-cms-columns.sql" "CMS columns"
 run_sql_force "$DATA_DIR/05-cms-pages.sql"   "CMS pages (menu entries)"
+run_sql_force "$DATA_DIR/06-users.sql"       "test users (contador, lectura)"
 
 # --- 3. Copy public pages ---------------------------------------------------
 
@@ -133,6 +134,11 @@ Playground installed. URLs to visit (assuming Apache on http://localhost:8080):
     Sections appear in the left menu: Plan de Cuentas, Clientes,
     Proveedores, Categorías de gasto, Comprobantes de venta/compra,
     Asientos contables, Líneas de asiento.
+
+  Test users for the playground pages:
+    contador@empresa.cl / contador123   (puede ver + cargar comprobantes)
+    lectura@empresa.cl  / lectura123    (solo consulta — sin acceso a /cargar-*)
+    admin@admin.com     / admin123      (superadmin — todo)
 
 The full story of how this was built end-to-end (MCP + custom PHP) lives
 in playground/README.md.

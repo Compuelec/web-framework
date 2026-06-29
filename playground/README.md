@@ -133,13 +133,44 @@ The `archivo_venta` / `archivo_compra` columns are of CMS type `file`, so
 the CRUD form renders the Files Manager modal (browse-or-upload UI). Files
 are stored under `cms/views/assets/files/`.
 
+## Authentication
+
+All 9 public pages now require login. Sessions are validated against the
+framework's `admins` table — same email/password as the CMS, no parallel
+user store. Three roles are wired up:
+
+| Role | Pages allowed |
+|---|---|
+| `lectura` | dashboard, libros, balance, validacion (read-only) |
+| `contador` | all of the above + `/cargar-venta`, `/cargar-compra`, `/generar-asientos` |
+| `superadmin` / `admin` | bypass all role checks (CMS administrators) |
+
+Test users shipped by `install.sh` (`data/06-users.sql`):
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@admin.com` | `admin123` | superadmin |
+| `contador@empresa.cl` | `contador123` | contador |
+| `lectura@empresa.cl` | `lectura123` | lectura |
+
+To add a new user, create it from `/cms/` → Administradores, then set its
+`rol_admin` to `contador` or `lectura`.
+
+The auth layer lives in `web/pages/_lib/auth.php` and is included by every
+playground page with two lines:
+
+```php
+require_once __DIR__ . '/_lib/auth.php';
+wpb_require_role(['contador', 'lectura']);   // or just ['contador'] for write pages
+```
+
+`wpb_require_role([])` (empty array) means "any logged-in user". The
+header shows the current user's email + role and a "Cerrar sesión" link
+that hits `?wpb_logout=1`.
+
 ## Known limitations
 
-- **No auth** on the public pages. Anyone hitting `/balance` or
-  `/cargar-venta` sees the data / can post. Putting `private: true` on
-  each page (via the CMS or by regenerating with `create_page { private:
-  true, accessRoles: [...] }`) is the right next step before deploying
-  anywhere.
+- **No password reset** flow. Lost passwords are reset via the CMS.
 - **No FK enforcement** between tables. The framework uses int columns that
   point at other tables by convention; deleting a cliente leaves dangling
   references in `comprobantes_venta`.
