@@ -70,6 +70,8 @@ $flash       = null;
 $valoresPrev = $_POST; // si falla la validación, repintamos el form con lo que escribió
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
+    wpb_csrf_check(); // rejects forged POSTs before we touch the DB
+
     // Sanitize inputs
     $tipo     = trim($_POST['tipo_documento'] ?? '');
     $folio    = (int)($_POST['folio'] ?? 0);
@@ -233,6 +235,7 @@ include __DIR__ . '/../partials/header.php';
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data" id="form-venta">
+            <?= wpb_csrf_field() ?>
 
             <div class="row g-3 mb-3">
                 <div class="col-md-6">

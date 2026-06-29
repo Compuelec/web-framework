@@ -45,9 +45,16 @@ function pesos($n) {
    ========================================================================= */
 
 $flash = null;
-if (isset($_GET['accion']) && $_GET['accion'] === 'generar' && $db) {
-    $tipo = $_GET['tipo'] ?? '';
-    $id   = (int)($_GET['id'] ?? 0);
+// Switched from GET to POST + CSRF: a mutator over GET is a bad-practice
+// CSRF target — just visiting `<img src="...?accion=generar&...">` from
+// another site would create rows on behalf of a logged-in user. POST + token
+// closes both paths.
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && ($_POST['accion'] ?? '') === 'generar'
+    && $db) {
+    wpb_csrf_check();
+    $tipo = $_POST['tipo'] ?? '';
+    $id   = (int)($_POST['id'] ?? 0);
     if ($id > 0 && in_array($tipo, ['venta','compra'], true)) {
         if ($tipo === 'venta') {
             $stmt = $db->prepare("SELECT * FROM comprobantes_venta WHERE id_venta = :id");
@@ -184,10 +191,13 @@ include __DIR__ . '/../partials/header.php';
                         <td class="text-end"><?= pesos($v['exento_venta']) ?></td>
                         <td class="text-end"><strong><?= pesos($v['total_venta']) ?></strong></td>
                         <td>
-                            <a class="btn btn-sm btn-success btn-generar"
-                               href="?accion=generar&tipo=venta&id=<?= (int)$v['id_venta'] ?>">
-                                Generar asiento
-                            </a>
+                            <form method="post" class="d-inline">
+                                <?= wpb_csrf_field() ?>
+                                <input type="hidden" name="accion" value="generar">
+                                <input type="hidden" name="tipo" value="venta">
+                                <input type="hidden" name="id" value="<?= (int)$v['id_venta'] ?>">
+                                <button type="submit" class="btn btn-sm btn-success btn-generar">Generar asiento</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -227,10 +237,13 @@ include __DIR__ . '/../partials/header.php';
                         <td class="text-end"><?= pesos($c['exento_compra']) ?></td>
                         <td class="text-end"><strong><?= pesos($c['total_compra']) ?></strong></td>
                         <td>
-                            <a class="btn btn-sm btn-success btn-generar"
-                               href="?accion=generar&tipo=compra&id=<?= (int)$c['id_compra'] ?>">
-                                Generar asiento
-                            </a>
+                            <form method="post" class="d-inline">
+                                <?= wpb_csrf_field() ?>
+                                <input type="hidden" name="accion" value="generar">
+                                <input type="hidden" name="tipo" value="compra">
+                                <input type="hidden" name="id" value="<?= (int)$c['id_compra'] ?>">
+                                <button type="submit" class="btn btn-sm btn-success btn-generar">Generar asiento</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>

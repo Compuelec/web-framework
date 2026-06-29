@@ -53,6 +53,8 @@ $flash       = null;
 $valoresPrev = $_POST;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
+    wpb_csrf_check(); // rejects forged POSTs before we touch the DB
+
     $tipo      = trim($_POST['tipo_documento'] ?? '');
     $folio     = (int)($_POST['folio'] ?? 0);
     $fecha     = trim($_POST['fecha'] ?? '');
@@ -217,6 +219,7 @@ include __DIR__ . '/../partials/header.php';
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data" id="form-compra">
+            <?= wpb_csrf_field() ?>
 
             <div class="row g-3 mb-3">
                 <div class="col-md-6">

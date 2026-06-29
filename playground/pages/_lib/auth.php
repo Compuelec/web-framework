@@ -18,6 +18,8 @@
  *   wpb_require_role(array $roles): void  → renders the login form and exit()s if missing
  *   wpb_render_user_bar(): string  → small HTML strip for the page header
  *   wpb_handle_logout(): void  → called automatically; redirects ?wpb_logout=1
+ *   wpb_csrf_field(): string  → renders <input type="hidden" name="_csrf_token" …>
+ *   wpb_csrf_check(): void  → validates POST/PUT/DELETE; HTTP 403 + exit on failure
  */
 
 if (defined('WPB_AUTH_LIB_LOADED')) { return; }
@@ -180,4 +182,62 @@ function wpb_render_user_bar(): string {
          . ' <span class="badge bg-secondary ms-1">' . $role . '</span></span>'
          . '<a href="' . htmlspecialchars($url) . '" class="ms-3">Cerrar sesión</a>'
          . '</div>';
+}
+
+/* =========================================================================
+   CSRF — reuse the framework's SessionController so the token is the SAME
+   one the CMS already manages. That means a contador logged into the CMS
+   in another tab shares the token, and any future page (form or AJAX)
+   that needs it can call SessionController::getCsrfToken() / validateCsrfRequest()
+   without us re-implementing anything.
+   ========================================================================= */
+
+if (!class_exists('SessionController', false)) {
+    require_once __DIR__ . '/../../../cms/controllers/session.controller.php';
+}
+
+/**
+ * Returns the hidden input for embedding in a <form>. Always include this
+ * inside POST forms that mutate state.
+ */
+function wpb_csrf_field(): string {
+    $token = SessionController::getCsrfToken();
+    return '<input type="hidden" name="_csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES) . '">';
+}
+
+/**
+ * Validates the current request's CSRF token. Safe (GET/HEAD/OPTIONS) requests
+ * are exempt. On failure, emits 403 + a friendly HTML page and exit()s — we
+ * don't want to let a CSRF'd POST silently produce a comprobante.
+ *
+ * Call this at the top of any page that handles a state-changing POST,
+ * AFTER wpb_require_role() so the user context is set.
+ */
+function wpb_csrf_check(): void {
+    if (SessionController::validateCsrfRequest()) { return; }
+
+    http_response_code(403);
+    ?><!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Token inválido — Contabilidad</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container py-5">
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">Token de seguridad inválido o expirado</h4>
+        <p>
+            La solicitud no pudo verificarse. Esto suele pasar si la página
+            estuvo abierta mucho tiempo o si el envío vino desde otro sitio.
+        </p>
+        <p class="mb-0">
+            <a href="<?= htmlspecialchars(strtok($_SERVER['REQUEST_URI'], '?'), ENT_QUOTES) ?>" class="btn btn-primary">Volver e intentar de nuevo</a>
+        </p>
+    </div>
+</div>
+</body>
+</html><?php
+    exit;
 }
