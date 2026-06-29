@@ -73,13 +73,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
     if ($total <= 0)                       { $errors[] = 'El total debe ser mayor que cero.'; }
     if (!in_array($estado, ['registrado','pagado','anulado'], true)) { $errors[] = 'Estado inválido.'; }
 
-    $advertencias = [];
-    if ($tipo === 'factura_afecta') {
-        $ivaEsperado = round($neto * 0.19);
-        if (abs($ivaEsperado - $iva) > 1) {
-            $advertencias[] = sprintf('El IVA debería ser ~%s (19%% del neto) pero está en %s.', pesos($ivaEsperado), pesos($iva));
+    // Hard validations to prevent rows that would later fail to produce a
+    // balanced asiento. The user can still load an `anulado` row without
+    // these checks, since that path skips the asiento generation entirely.
+    if ($estado !== 'anulado') {
+        // Boletas de honorarios + facturas exentas no llevan IVA por ley.
+        if (in_array($tipo, ['boleta_honorarios', 'factura_exenta'], true) && $iva != 0) {
+            $errors[] = sprintf('Una %s no lleva IVA. Pasá el monto a "Exento" o "Neto" y dejá el IVA en 0.', str_replace('_', ' ', $tipo));
+        }
+        // Factura afecta: el IVA tiene que ser ~19% del neto (tolerancia de $1 por redondeo).
+        if ($tipo === 'factura_afecta') {
+            $ivaEsperado = round($neto * 0.19);
+            if (abs($ivaEsperado - $iva) > 1) {
+                $errors[] = sprintf(
+                    'El IVA debería ser %s (19%% del neto %s) pero está en %s. Ajustá los montos.',
+                    pesos($ivaEsperado), pesos($neto), pesos($iva)
+                );
+            }
         }
     }
+
+    // No softs warnings — todo lo importante es bloqueante para evitar
+    // comprobantes con asiento descuadrado.
+    $advertencias = [];
 
     if (!$errors) {
         $db->beginTransaction();
@@ -305,10 +321,11 @@ include __DIR__ . '/../partials/header.php';
             </div>
 
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Cargar y generar asiento</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit">Cargar y generar asiento</button>
                 <a href="/cargar-compra" class="btn btn-outline-secondary">Limpiar</a>
                 <a href="/libro-compras" class="btn btn-link ms-auto">Ver libro de compras →</a>
             </div>
+            <div id="form-validation-msg" class="alert alert-warning mt-3" style="display:none"></div>
 
         </form>
     </div>
@@ -316,16 +333,42 @@ include __DIR__ . '/../partials/header.php';
 
 <script>
 (function () {
+    // Auto-IVA + validación en vivo. Reglas SII:
+    //   factura_afecta      → IVA == 19% del neto (±$1)
+    //   factura_exenta      → IVA == 0
+    //   boleta_honorarios   → IVA == 0 (el monto va en Exento o Neto sin IVA)
+    //   nota_credito / debito → libre (las maneja el contador)
+    // El botón submit queda deshabilitado mientras la validación falla.
     var $tipo   = document.getElementById('tipo_documento');
     var $neto   = document.getElementById('neto');
     var $iva    = document.getElementById('iva');
     var $exento = document.getElementById('exento');
+    var $estado = document.getElementById('estado');
     var $total  = document.getElementById('total-display');
     var $hint   = document.getElementById('iva-auto-hint');
+    var $submit = document.getElementById('btn-submit');
+    var $msg    = document.getElementById('form-validation-msg');
     var ivaTouched = false;
 
     function tipoLlevaIva() {
         return $tipo.value === 'factura_afecta';
+    }
+
+    function pesos(n) { return '$ ' + n.toLocaleString('es-CL'); }
+
+    function validar(neto, iva) {
+        if ($estado.value === 'anulado') { return null; }
+        var t = $tipo.value;
+        if ((t === 'factura_exenta' || t === 'boleta_honorarios') && iva !== 0) {
+            return 'Una ' + t.replace('_', ' ') + ' no lleva IVA. Pasá el monto a "Exento" o "Neto" y dejá el IVA en 0.';
+        }
+        if (t === 'factura_afecta') {
+            var esperado = Math.round(neto * 0.19);
+            if (Math.abs(esperado - iva) > 1) {
+                return 'El IVA debería ser ' + pesos(esperado) + ' (19% del neto ' + pesos(neto) + ') pero está en ' + pesos(iva) + '.';
+            }
+        }
+        return null;
     }
 
     function recalcular() {
@@ -334,13 +377,26 @@ include __DIR__ . '/../partials/header.php';
         if (!ivaTouched) {
             $iva.value = tipoLlevaIva() ? Math.round(neto * 0.19) : 0;
         }
-        var total = neto + (parseFloat($iva.value) || 0) + exento;
-        $total.textContent = '$ ' + total.toLocaleString('es-CL');
+        var iva   = parseFloat($iva.value) || 0;
+        var total = neto + iva + exento;
+        $total.textContent = pesos(total);
+
+        var err = validar(neto, iva);
+        if (err) {
+            $msg.textContent = err;
+            $msg.style.display = '';
+            $submit.disabled = true;
+        } else {
+            $msg.style.display = 'none';
+            $msg.textContent = '';
+            $submit.disabled = false;
+        }
     }
 
     $iva.addEventListener('input', function () { ivaTouched = true; $hint.textContent = 'editado a mano'; recalcular(); });
     $neto.addEventListener('input', recalcular);
     $exento.addEventListener('input', recalcular);
+    $estado.addEventListener('change', recalcular);
     $tipo.addEventListener('change', function () {
         ivaTouched = false;
         $hint.textContent = 'se calcula solo';
