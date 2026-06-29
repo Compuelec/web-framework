@@ -48,14 +48,14 @@ INSERT INTO `columns` (`id_column`, `id_module_column`, `title_column`, `alias_c
 (38,14,'total_debe_asiento','Total Debe','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (39,14,'total_haber_asiento','Total Haber','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (40,14,'estado_asiento','Estado','select','borrador,validado,anulado','',1,'2026-06-28','2026-06-28 02:05:22'),
-(41,16,'tipo_documento_venta','Tipo documento','select','factura_afecta,factura_exenta,boleta,nota_credito,nota_debito','',1,'2026-06-28','2026-06-28 02:05:22'),
-(42,16,'folio_venta','Folio','int','','',1,'2026-06-28','2026-06-28 01:49:48'),
+(41,16,'tipo_documento_venta','Tipo de documento (factura/boleta)','select','factura_afecta,factura_exenta,boleta,nota_credito,nota_debito','',1,'2026-06-28','2026-06-28 21:43:25'),
+(42,16,'folio_venta','Folio (N° del documento)','int','','',1,'2026-06-28','2026-06-28 21:43:25'),
 (43,16,'fecha_venta','Fecha','date','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (44,16,'cliente_venta','Cliente','int','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (45,16,'glosa_venta','Glosa','textarea','','',1,'2026-06-28','2026-06-28 01:49:48'),
-(46,18,'tipo_documento_compra','Tipo documento','select','factura_afecta,factura_exenta,boleta_honorarios,nota_credito,nota_debito','',1,'2026-06-28','2026-06-28 02:05:22'),
+(46,18,'tipo_documento_compra','Tipo de documento (factura/boleta)','select','factura_afecta,factura_exenta,boleta_honorarios,nota_credito,nota_debito','',1,'2026-06-28','2026-06-28 21:43:25'),
 (47,16,'neto_venta','Neto','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
-(48,18,'folio_compra','Folio','int','','',1,'2026-06-28','2026-06-28 01:49:48'),
+(48,18,'folio_compra','Folio (N° del documento)','int','','',1,'2026-06-28','2026-06-28 21:43:25'),
 (49,16,'iva_venta','IVA','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (50,18,'fecha_compra','Fecha','date','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (51,16,'exento_venta','Exento','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
@@ -68,7 +68,9 @@ INSERT INTO `columns` (`id_column`, `id_module_column`, `title_column`, `alias_c
 (58,18,'iva_compra','IVA','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (59,18,'exento_compra','Exento','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (60,18,'total_compra','Total','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
-(61,18,'estado_compra','Estado','select','registrado,pagado,anulado','',1,'2026-06-28','2026-06-28 02:05:22');
+(61,18,'estado_compra','Estado','select','registrado,pagado,anulado','',1,'2026-06-28','2026-06-28 02:05:22'),
+(62,16,'archivo_venta','Archivo (PDF/imagen)','file',NULL,NULL,0,NULL,'2026-06-28 21:41:23'),
+(63,18,'archivo_compra','Archivo (PDF/imagen)','file',NULL,NULL,0,NULL,'2026-06-28 21:41:23');
 /*!40000 ALTER TABLE `columns` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
