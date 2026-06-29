@@ -125,6 +125,7 @@ Playground installed. URLs to visit (assuming Apache on http://localhost:8080):
     http://localhost:8080/libro-compras             (con proveedor + categoría)
     http://localhost:8080/cargar-venta              (form 1-click: insert + asiento)
     http://localhost:8080/cargar-compra             (form 1-click: insert + asiento)
+    http://localhost:8080/validacion                (chequeo automático de errores)
     http://localhost:8080/generar-asientos          (retoque de comprobantes huérfanos)
 
   Admin CMS (login: admin@admin.com / admin123 if fresh)

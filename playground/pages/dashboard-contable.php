@@ -56,6 +56,35 @@ $comprasTotal  = totalSum($db, "SELECT COALESCE(SUM(total_compra),0) AS total FR
 $ivaPagar     = $ventasIva - $comprasIva;   // débito - crédito fiscal
 $resultadoMes = $ventasNeto + $ventasExento - $comprasNeto - $comprasExento;
 
+// Quick health check — count rows that would fail full validation. Cheap
+// queries; if /validacion needs to surface details, the user clicks
+// through. We only show the banner when there's at least one issue.
+$alertas = 0;
+if ($db) {
+    try {
+        // orphans: comprobantes activos sin asiento
+        $alertas += (int)$db->query(
+            "SELECT COUNT(*) FROM comprobantes_venta v
+             LEFT JOIN asientos a ON a.origen_asiento='venta' AND a.origen_id_asiento=v.id_venta
+             WHERE v.estado_venta != 'anulado' AND a.id_asiento IS NULL"
+        )->fetchColumn();
+        $alertas += (int)$db->query(
+            "SELECT COUNT(*) FROM comprobantes_compra c
+             LEFT JOIN asientos a ON a.origen_asiento='compra' AND a.origen_id_asiento=c.id_compra
+             WHERE c.estado_compra != 'anulado' AND a.id_asiento IS NULL"
+        )->fetchColumn();
+        // suma interna descuadrada
+        $alertas += (int)$db->query(
+            "SELECT COUNT(*) FROM comprobantes_venta
+             WHERE estado_venta != 'anulado' AND ABS((neto_venta+iva_venta+exento_venta)-total_venta) > 1"
+        )->fetchColumn();
+        $alertas += (int)$db->query(
+            "SELECT COUNT(*) FROM comprobantes_compra
+             WHERE estado_compra != 'anulado' AND ABS((neto_compra+iva_compra+exento_compra)-total_compra) > 1"
+        )->fetchColumn();
+    } catch (Throwable $e) {}
+}
+
 $nombreMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][$mes];
 
 include __DIR__ . '/../partials/header.php';
@@ -96,6 +125,16 @@ include __DIR__ . '/../partials/header.php';
             <button class="btn btn-primary">Ver</button>
         </form>
     </div>
+
+    <?php if ($alertas > 0): ?>
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <div>
+                ⚠ <strong><?= $alertas ?> problema(s) detectado(s)</strong>
+                en los comprobantes (huérfanos sin asiento o montos descuadrados).
+            </div>
+            <a href="/validacion" class="btn btn-sm btn-warning">Ver detalle →</a>
+        </div>
+    <?php endif; ?>
 
     <div class="row g-3 mb-4">
         <div class="col-md-3">
@@ -140,10 +179,13 @@ include __DIR__ . '/../partials/header.php';
         <div class="card-body">
             <h5>Accesos rápidos</h5>
             <ul class="mb-0">
+                <li><a href="/cargar-venta">Cargar venta</a> · <a href="/cargar-compra">Cargar compra</a></li>
                 <li><a href="/libro-ventas">Libro de Ventas</a></li>
                 <li><a href="/libro-compras">Libro de Compras</a></li>
                 <li><a href="/libro-diario">Libro Diario</a></li>
                 <li><a href="/balance">Balance</a></li>
+                <li><a href="/validacion">Validación contable</a> <span class="text-muted small">(chequeo automático de errores)</span></li>
+                <li><a href="/generar-asientos">Generar asientos pendientes</a></li>
             </ul>
         </div>
     </div>
