@@ -183,7 +183,7 @@ include __DIR__ . '/../partials/header.php';
         <div class="card-body">
             <h5>Accesos rápidos</h5>
             <ul class="mb-0">
-                <li><a href="/cargar-venta">Cargar venta</a> · <a href="/cargar-compra">Cargar compra</a></li>
+                <li><a href="/cargar-venta">Cargar venta</a> · <a href="/cargar-compra">Cargar compra</a> · <a href="/cargar-pago">Cargar pago</a></li>
                 <li><a href="/libro-ventas">Libro de Ventas</a></li>
                 <li><a href="/libro-compras">Libro de Compras</a></li>
                 <li><a href="/libro-diario">Libro Diario</a></li>

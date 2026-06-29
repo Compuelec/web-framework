@@ -70,7 +70,14 @@ INSERT INTO `columns` (`id_column`, `id_module_column`, `title_column`, `alias_c
 (60,18,'total_compra','Total','money','','',1,'2026-06-28','2026-06-28 01:49:48'),
 (61,18,'estado_compra','Estado','select','registrado,pagado,anulado','',1,'2026-06-28','2026-06-28 02:05:22'),
 (62,16,'archivo_venta','Archivo (PDF/imagen)','file',NULL,NULL,0,NULL,'2026-06-28 21:41:23'),
-(63,18,'archivo_compra','Archivo (PDF/imagen)','file',NULL,NULL,0,NULL,'2026-06-28 21:41:23');
+(63,18,'archivo_compra','Archivo (PDF/imagen)','file',NULL,NULL,0,NULL,'2026-06-28 21:41:23'),
+(64,20,'fecha_pago','Fecha del pago','date','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(65,20,'compra_pago','Compra (id)','int','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(66,20,'proveedor_pago','Proveedor (id)','int','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(67,20,'medio_pago','Medio de pago','select','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(68,20,'monto_pago','Monto','money','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(69,20,'glosa_pago','Glosa / referencia','textarea','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(70,20,'estado_pago','Estado','select','','',1,'2026-06-29','2026-06-29 21:22:33');
 /*!40000 ALTER TABLE `columns` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

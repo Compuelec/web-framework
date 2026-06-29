@@ -91,7 +91,7 @@ CREATE TABLE `comprobantes_venta` (
   `date_created_venta` date DEFAULT NULL,
   `date_updated_venta` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_venta`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `comprobantes_compra`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -113,7 +113,7 @@ CREATE TABLE `comprobantes_compra` (
   `date_created_compra` date DEFAULT NULL,
   `date_updated_compra` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_compra`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `asientos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -131,7 +131,7 @@ CREATE TABLE `asientos` (
   `date_created_asiento` date DEFAULT NULL,
   `date_updated_asiento` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_asiento`)
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `asiento_lineas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -147,7 +147,24 @@ CREATE TABLE `asiento_lineas` (
   `date_created_linea` date DEFAULT NULL,
   `date_updated_linea` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_linea`)
-) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `pagos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pagos` (
+  `id_pago` int(11) NOT NULL AUTO_INCREMENT,
+  `fecha_pago` date DEFAULT NULL,
+  `compra_pago` int(11) DEFAULT 0,
+  `proveedor_pago` int(11) DEFAULT 0,
+  `medio_pago` text DEFAULT NULL,
+  `monto_pago` double DEFAULT 0,
+  `glosa_pago` text DEFAULT NULL,
+  `estado_pago` text DEFAULT NULL,
+  `date_created_pago` date DEFAULT NULL,
+  `date_updated_pago` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_pago`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
