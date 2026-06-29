@@ -288,10 +288,15 @@ Web Pages builder (template + live preview)
     }
 
     /* ---------- config in/out ---------- */
+    // Named data sources (multi-table pages). Round-tripped as a JSON string so a
+    // code-mode save preserves them; the visual builder only models one table.
+    var _wpbSources = [];
+
     function collectConfig() {
         syncEditors();
         return {
             action:    "generate",
+            sources:   JSON.stringify(_wpbSources || []),
             table:     isStatic() ? "" : $table.val(),
             name:      $("#wpb-name").val(),
             heading:   $("#wpb-heading").val(),
@@ -348,6 +353,8 @@ Web Pages builder (template + live preview)
     }
 
     function applyConfig(c) {
+        // Preserve multi-table sources across a code-mode edit/save.
+        _wpbSources = Array.isArray(c.sources) ? c.sources : [];
         // The table <select> is set at the end (real table vs. static sentinel).
         $("#wpb-heading").val(c.heading || "");
         $("#wpb-name").val(c.fileName || "");

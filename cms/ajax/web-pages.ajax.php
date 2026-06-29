@@ -335,6 +335,8 @@ $config = [
     'ogType'      => $_POST['ogType']    ?? 'website',
     'ogDesc'      => $_POST['ogDesc']    ?? '',
     'ogImage'     => $_POST['ogImage']   ?? '',
+    // Extra named data sources for multi-table pages (sent as a JSON string).
+    'sources'     => (is_array($_POST['sources'] ?? null)) ? $_POST['sources'] : (json_decode((string)($_POST['sources'] ?? '[]'), true) ?: []),
     // Visual builder round-trip — see pb_normalizeConfig for the contract.
     'builderMode' => $_POST['builderMode'] ?? 'code',
     'blocks'      => $blocks,

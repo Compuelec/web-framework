@@ -198,21 +198,27 @@ function pb_imageUrls($raw) {
  * Render a template against the record set; tags outside a repeat block use
  * the $single record.
  */
-function pb_renderTemplate($template, array $records, array $single, array $formRow = []) {
-    // Split on the repeat block, capturing the inner HTML. Even-index parts are
-    // outside any block (rendered once with $single); odd-index parts are the
-    // captured inner blocks (rendered once per record). Each segment is filled
-    // exactly once, so field values that happen to contain {{...}} are never
-    // re-evaluated. $formRow prefills {{#form}} inputs (edit mode only).
-    $parts = preg_split('/\{\{#cada\}\}(.*?)\{\{\/cada\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
+function pb_renderTemplate($template, array $records, array $single, array $formRow = [], array $sources = []) {
+    // Split on the repeat block, capturing the source name and inner HTML. The
+    // block can be the default {{#cada}}...{{/cada}} (bound to $records) or a
+    // named {{#cada:nombre}}...{{/cada:nombre}} bound to $sources['nombre'] —
+    // this lets one page render several tables. PREG_SPLIT_DELIM_CAPTURE yields
+    // [text, name, inner, text, name, inner, …]; each segment is filled exactly
+    // once so {{...}} found inside data is never re-evaluated.
+    $parts = preg_split('/\{\{#cada(?::([a-zA-Z0-9_]+))?\}\}(.*?)\{\{\/cada(?:[a-zA-Z0-9_:]*)?\}\}/s', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
     $out = '';
-    foreach ($parts as $i => $part) {
-        if ($i % 2 === 1) {
-            foreach ($records as $rec) {
-                $out .= pb_replaceFields($part, (array) $rec, []);
+    $n = count($parts);
+    for ($i = 0; $i < $n; $i++) {
+        if ($i % 3 === 0) {
+            $out .= pb_replaceFields($parts[$i], $single, $formRow);
+        } elseif ($i % 3 === 1) {
+            $name = $parts[$i];
+            $inner = $parts[$i + 1] ?? '';
+            $rows = ($name !== '' && isset($sources[$name])) ? $sources[$name] : $records;
+            foreach ($rows as $rec) {
+                $out .= pb_replaceFields($inner, (array) $rec, []);
             }
-        } else {
-            $out .= pb_replaceFields($part, $single, $formRow);
+            $i++; // skip the inner segment just consumed
         }
     }
     return $out;
@@ -241,6 +247,42 @@ function pb_deriveSuffix($table) {
         return substr($table, 0, -1);
     }
     return $table;
+}
+
+/**
+ * Validate the extra named data sources for a multi-table page. Each entry binds
+ * a {{#cada:name}} loop to a table, optionally filtered/ordered/limited.
+ *
+ * @return array list of { name, table, idColumn, order, orderMode, limit, filter }
+ */
+function pb_normalizeSources($raw) {
+    $out = [];
+    if (!is_array($raw)) {
+        return $out;
+    }
+    foreach ($raw as $s) {
+        if (!is_array($s)) { continue; }
+        $name  = (string)($s['name'] ?? '');
+        $table = (string)($s['table'] ?? '');
+        if (!pb_isIdentifier($name) || !pb_isIdentifier($table)) { continue; }
+        $entry = [
+            'name'      => $name,
+            'table'     => $table,
+            'idColumn'  => pb_isIdentifier($s['idColumn'] ?? '') ? $s['idColumn'] : 'id_' . pb_deriveSuffix($table),
+            'order'     => pb_isIdentifier($s['order'] ?? '') ? $s['order'] : '',
+            'orderMode' => (strtoupper((string)($s['orderMode'] ?? 'ASC')) === 'DESC') ? 'DESC' : 'ASC',
+            'limit'     => max(1, min(500, (int)($s['limit'] ?? 200))),
+            'filter'    => null,
+        ];
+        if (isset($s['filter']) && is_array($s['filter']) && pb_isIdentifier($s['filter']['column'] ?? '')) {
+            $entry['filter'] = [
+                'column' => (string)$s['filter']['column'],
+                'value'  => (string)($s['filter']['value'] ?? ''),
+            ];
+        }
+        $out[] = $entry;
+    }
+    return $out;
 }
 
 /**
@@ -320,6 +362,8 @@ function pb_normalizeConfig(array $raw) {
         'ogType'      => (string)($raw['ogType'] ?? 'website'),
         'ogDesc'      => (string)($raw['ogDesc'] ?? ''),
         'ogImage'     => (string)($raw['ogImage'] ?? ''),
+        // Extra named data sources for multi-table pages ({{#cada:name}}).
+        'sources'     => pb_normalizeSources($raw['sources'] ?? []),
         // Visual builder round-trip data — see comment above.
         'builderMode' => $builderMode,
         'blocks'      => $blocks,
@@ -483,6 +527,25 @@ if (\$table !== '') { // static pages (no table) skip the data fetch
     }
 }
 
+// Extra named data sources for {{#cada:nombre}} multi-table loops.
+\$wpbData = [];
+foreach ((array)(\$cfg['sources'] ?? []) as \$src) {
+    \$sn = isset(\$src['name']) ? (string) \$src['name'] : '';
+    if (\$sn === '' || empty(\$src['table'])) { continue; }
+    try {
+        if (!empty(\$src['filter']) && !empty(\$src['filter']['column'])) {
+            \$resp = ApiController::getByFilter(\$src['table'], \$src['filter']['column'], \$src['filter']['value'] ?? '');
+        } else {
+            \$ob = !empty(\$src['order']) ? \$src['order'] : (\$src['idColumn'] ?? 'id');
+            \$om = (\$src['orderMode'] ?? 'ASC');
+            \$resp = ApiController::getAll(\$src['table'], '*', \$ob, \$om, 0, (int)(\$src['limit'] ?? 200));
+        }
+        \$wpbData[\$sn] = (isset(\$resp->status) && \$resp->status == 200 && !empty(\$resp->results)) ? \$resp->results : [];
+    } catch (Throwable \$e) {
+        \$wpbData[\$sn] = [];
+    }
+}
+
 // Template renderer (mirrors tools/page-builder.php).
 if (!function_exists('wpb_fields')) {
     function wpb_image_urls(\$raw) {
@@ -577,16 +640,22 @@ if (!function_exists('wpb_fields')) {
             return htmlspecialchars(is_scalar(\$val) ? (string) \$val : '', ENT_QUOTES);
         }, \$html);
     }
-    function wpb_render(\$template, array \$records, array \$single, array \$formRow = []) {
-        // Split on the repeat block (capturing inner HTML) so each segment is
-        // filled exactly once — no re-evaluation of {{...}} found in data.
-        \$parts = preg_split('/\\{\\{#cada\\}\\}(.*?)\\{\\{\\/cada\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
+    function wpb_render(\$template, array \$records, array \$single, array \$formRow = [], array \$sources = []) {
+        // Default {{#cada}} binds to \$records; named {{#cada:nombre}} binds to
+        // \$sources['nombre'] so one page can render several tables. Each segment
+        // is filled exactly once — no re-evaluation of {{...}} found in data.
+        \$parts = preg_split('/\\{\\{#cada(?::([a-zA-Z0-9_]+))?\\}\\}(.*?)\\{\\{\\/cada(?:[a-zA-Z0-9_:]*)?\\}\\}/s', \$template, -1, PREG_SPLIT_DELIM_CAPTURE);
         \$out = '';
-        foreach (\$parts as \$i => \$part) {
-            if (\$i % 2 === 1) {
-                foreach (\$records as \$rec) { \$out .= wpb_fields(\$part, (array) \$rec, []); }
-            } else {
-                \$out .= wpb_fields(\$part, \$single, \$formRow);
+        \$n = count(\$parts);
+        for (\$i = 0; \$i < \$n; \$i++) {
+            if (\$i % 3 === 0) {
+                \$out .= wpb_fields(\$parts[\$i], \$single, \$formRow);
+            } elseif (\$i % 3 === 1) {
+                \$name = \$parts[\$i];
+                \$inner = \$parts[\$i + 1] ?? '';
+                \$rows = (\$name !== '' && isset(\$sources[\$name])) ? \$sources[\$name] : \$records;
+                foreach (\$rows as \$rec) { \$out .= wpb_fields(\$inner, (array) \$rec, []); }
+                \$i++;
             }
         }
         return \$out;
@@ -619,7 +688,7 @@ if (!\$single && isset(\$records[0])) { \$single = (array) \$records[0]; }
 // In edit mode (?id) the form is prefilled with that record; in create mode it
 // is empty (so a new submission doesn't show the first record's data).
 \$formRow = (\$recordId !== null && \$recordId !== '') ? \$single : [];
-\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single, \$formRow);
+\$body = (\$error || !\$hasAccess) ? '' : wpb_render(\$template, \$records, \$single, \$formRow, \$wpbData);
 
 ob_start();
 ?>

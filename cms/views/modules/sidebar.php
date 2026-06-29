@@ -65,8 +65,21 @@ if($pages->status == 200){
 
 			<?php foreach ($pages as $key => $value): ?>
 
+				<?php
+					// Pages reserved for superadmin/admin only: editors must never see
+					// them, even if a permission was granted. The visual page builder
+					// ("Páginas Web") is a powerful system tool, so it is admin-only.
+					$adminOnlyPages = ['web-pages'];
+					$_rol   = is_object($_SESSION["admin"] ?? null) ? ($_SESSION["admin"]->rol_admin ?? '') : '';
+					$_perms = (is_object($_SESSION["admin"] ?? null) && isset($_SESSION["admin"]->permissions_admin))
+						? json_decode(urldecode($_SESSION["admin"]->permissions_admin), true) : [];
+					$_isAdminOnly = in_array($value->url_page, $adminOnlyPages, true);
+					$_canSeePage = ($_rol === "superadmin" || $_rol === "admin"
+						|| (!$_isAdminOnly && $_rol === "editor" && is_array($_perms)
+							&& isset($_perms[$value->url_page]) && $_perms[$value->url_page] === "on"));
+				?>
 
-				<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && ($_SESSION["admin"]->rol_admin == "superadmin" || $_SESSION["admin"]->rol_admin == "admin" || ($_SESSION["admin"]->rol_admin == "editor" && isset($_SESSION["admin"]->permissions_admin) && isset(json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page]) && json_decode(urldecode($_SESSION["admin"]->permissions_admin), true)[$value->url_page] == "on"))): ?>
+				<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && $_canSeePage): ?>
 
 				<?php 
 					// Check if this is a menu page with subpages

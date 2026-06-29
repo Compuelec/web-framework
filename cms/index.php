@@ -41,7 +41,12 @@ if (is_array($config) && isset($config['database'])) {
         require_once "controllers/packaging-setup.controller.php";
         // Run in background, don't block if it fails
         @PackagingSetupController::ensurePackagingPage();
-        
+
+        // Ensure the "Páginas Web" (visual builder) section exists so it survives
+        // fresh installs and factory resets.
+        require_once "controllers/web-pages-setup.controller.php";
+        @WebPagesSetupController::ensureWebPagesPage();
+
         // Ensure all custom pages have their files created
         require_once "controllers/pages-setup.controller.php";
         @PagesSetupController::ensureCustomPagesFiles();

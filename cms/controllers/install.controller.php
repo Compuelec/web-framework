@@ -733,6 +733,10 @@ class InstallController{
 				$packagingPageResult = PackagingSetupController::ensurePackagingPage();
 				$packagingPage = (object)['status' => $packagingPageResult['success'] ? 200 : 500];
 
+				// Create the "Páginas Web" (visual builder) section
+				require_once __DIR__ . '/web-pages-setup.controller.php';
+				WebPagesSetupController::ensureWebPagesPage();
+
 				// Create Breadcrumb module for admins page
 
 				$url = "modules?token=no&except=id_module";

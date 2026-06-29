@@ -265,10 +265,13 @@ class RBACManagerController {
 
     public function getPages() {
         try {
+            // Pages reserved for superadmin/admin only are not assignable to roles
+            // (e.g. the visual page builder "web-pages").
             $stmt = $this->link->query(
                 "SELECT id_page, title_page, url_page, icon_page, type_page
                  FROM pages
                  WHERE type_page IN ('modules', 'custom')
+                   AND url_page NOT IN ('web-pages')
                  ORDER BY order_page ASC"
             );
             return ['success' => true, 'pages' => $stmt->fetchAll(PDO::FETCH_OBJ)];

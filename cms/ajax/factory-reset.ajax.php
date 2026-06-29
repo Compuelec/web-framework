@@ -184,17 +184,22 @@ try {
     // Remove orphaned custom-page folders on disk (best-effort).
     $folders = factoryResetCleanupFolders();
 
+    // Remove builder/custom public pages (web/pages), keeping framework examples.
+    $webPages = factoryResetCleanupWebPages();
+
     // Log the operation (activity_logs was just truncated, so this is row #1).
     factoryResetLog($link, $adminId, count($tablesToDrop), count($folders['deleted']), $backup['filename'] ?? '');
 
     echo json_encode([
-        'success'         => true,
-        'dropped'         => $tablesToDrop,
-        'dropped_count'   => count($tablesToDrop),
-        'folders_deleted' => $folders['deleted'],
-        'folders_failed'  => $folders['failed'],
-        'backup_package'  => $backup['filename'] ?? '',
-        'backup_size_mb'  => $backup['size_mb'] ?? null,
+        'success'           => true,
+        'dropped'           => $tablesToDrop,
+        'dropped_count'     => count($tablesToDrop),
+        'folders_deleted'   => $folders['deleted'],
+        'folders_failed'    => $folders['failed'],
+        'web_pages_deleted' => $webPages['deleted'],
+        'web_pages_failed'  => $webPages['failed'],
+        'backup_package'    => $backup['filename'] ?? '',
+        'backup_size_mb'    => $backup['size_mb'] ?? null,
     ]);
 
 } catch (Throwable $e) {
@@ -345,6 +350,19 @@ function factoryResetSeed(PDO $link, int $adminId): void
             // Non-critical; ignore.
         }
     }
+
+    // ── Páginas Web (visual builder) page (best-effort) ───────────────────
+    $webPagesSetup = __DIR__ . '/../controllers/web-pages-setup.controller.php';
+    if (file_exists($webPagesSetup)) {
+        try {
+            require_once $webPagesSetup;
+            if (class_exists('WebPagesSetupController') && method_exists('WebPagesSetupController', 'ensureWebPagesPage')) {
+                WebPagesSetupController::ensureWebPagesPage();
+            }
+        } catch (Throwable $e) {
+            // Non-critical; ignore.
+        }
+    }
 }
 
 /**
@@ -413,6 +431,43 @@ function factoryResetCleanupFolders(): array
         } else {
             $failed[] = $entry;
         }
+    }
+
+    return ['deleted' => $deleted, 'failed' => $failed];
+}
+
+/**
+ * Remove builder-generated / custom public pages from web/pages so a factory
+ * reset returns the public site to a clean install state. The framework example
+ * pages (example-*.php) and protected files (.htaccess) are always kept.
+ */
+function factoryResetCleanupWebPages(): array
+{
+    $deleted = [];
+    $failed  = [];
+
+    $pagesDir = realpath(__DIR__ . '/../../web/pages');
+    if ($pagesDir === false || !is_dir($pagesDir)) {
+        return ['deleted' => $deleted, 'failed' => $failed];
+    }
+
+    foreach (glob($pagesDir . '/*.php') as $file) {
+        $base = basename($file, '.php');
+        // Keep the framework's example pages; remove everything else.
+        if (strpos($base, 'example-') === 0) {
+            continue;
+        }
+        if (@unlink($file)) {
+            $deleted[] = basename($file);
+        } else {
+            $failed[] = basename($file);
+        }
+    }
+
+    // Reset the home-page marker so the site falls back to the default landing.
+    $homeMarker = $pagesDir . '/../partials/home.txt';
+    if (is_file($homeMarker)) {
+        @unlink($homeMarker);
     }
 
     return ['deleted' => $deleted, 'failed' => $failed];

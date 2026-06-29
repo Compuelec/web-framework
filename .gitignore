@@ -106,6 +106,9 @@ web/pages/*
 # Shared header/footer partials + home-page marker — auto-created per
 # installation by the builder
 web/partials/
+web/views/
+# Client-specific public endpoints (app content, not framework)
+web/leads.php
 packages/
 .qodo
 plugins/data-protection/config.php

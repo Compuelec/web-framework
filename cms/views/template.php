@@ -615,12 +615,19 @@ if (!isset($_SESSION['cms_theme'])) {
 								$_rbac_access = RBACManagerController::canAccessPage($routesArray[0]);
 							}
 						}
+
+						// Pages reserved for superadmin/admin only (e.g. the visual page
+						// builder): no RBAC role can unlock them.
+						$_adminOnlyPages = ['web-pages'];
+						$_isAdminOnly = in_array($routesArray[0] ?? '', $_adminOnlyPages, true);
+						if ($_isAdminOnly) { $_rbac_access = false; }
 						?>
 						<?php if (isset($_SESSION["admin"]) && is_object($_SESSION["admin"]) && (
 							$_SESSION["admin"]->rol_admin == "superadmin" ||
 							$_SESSION["admin"]->rol_admin == "admin" ||
 							$_rbac_access === true ||
 							(
+								!$_isAdminOnly &&
 								$_SESSION["admin"]->rol_admin == "editor" &&
 								empty($_SESSION["admin"]->id_role_admin) &&
 								isset($_SESSION["admin"]->permissions_admin) &&
