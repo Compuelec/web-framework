@@ -22,6 +22,7 @@ if (!empty($siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../../api/models/connection.php';
 require_once __DIR__ . '/_lib/auth.php';
+require_once __DIR__ . '/_lib/rut.php';
 wpb_require_role(['contador', 'lectura']);
 
 $db = Connection::connect();
@@ -202,12 +203,44 @@ if ($db) {
 }
 
 /* =========================================================================
+   6. RUTs inválidos (clientes + proveedores). Aplica módulo 11 del SII.
+      Listas vacías (sin RUT) NO cuentan como inválidas — son simplemente
+      datos incompletos que el usuario puede completar después.
+   ========================================================================= */
+$rutIssues = []; // each: { kind: cliente|proveedor, id, razon_social, rut, dv_esperado }
+if ($db) {
+    try {
+        $stmt = $db->query("SELECT id_cliente AS id, razon_social_cliente AS razon, rut_cliente AS rut FROM clientes");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            if (empty(trim($r['rut'] ?? ''))) { continue; }
+            if (!rut_is_valid($r['rut'])) {
+                $clean = rut_clean($r['rut']);
+                $body  = substr($clean, 0, -1);
+                $dv    = ctype_digit($body) ? rut_dv($body) : '?';
+                $rutIssues[] = ['kind'=>'cliente'] + $r + ['dv_esperado' => $dv];
+            }
+        }
+        $stmt = $db->query("SELECT id_proveedor AS id, razon_social_proveedor AS razon, rut_proveedor AS rut FROM proveedores");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            if (empty(trim($r['rut'] ?? ''))) { continue; }
+            if (!rut_is_valid($r['rut'])) {
+                $clean = rut_clean($r['rut']);
+                $body  = substr($clean, 0, -1);
+                $dv    = ctype_digit($body) ? rut_dv($body) : '?';
+                $rutIssues[] = ['kind'=>'proveedor'] + $r + ['dv_esperado' => $dv];
+            }
+        }
+    } catch (Throwable $e) {}
+}
+
+/* =========================================================================
    Resumen global
    ========================================================================= */
 $totalProblemas = 0;
 foreach ($folioReport as $r) { $totalProblemas += count($r['gaps']) + count($r['dupes']); }
 $totalProblemas += count($orphansVenta) + count($orphansCompra)
-                + count($ivaIssues) + count($sumaIssues) + count($estadoIssues);
+                + count($ivaIssues) + count($sumaIssues) + count($estadoIssues)
+                + count($rutIssues);
 
 include __DIR__ . '/../partials/header.php';
 ?>
@@ -464,6 +497,43 @@ include __DIR__ . '/../partials/header.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!--========================== 6. RUTs inválidos ========================== -->
+    <div class="seccion">
+        <?php $cls = $rutIssues ? 'error' : 'ok'; ?>
+        <div class="seccion-head <?= $cls ?>">
+            <span>6. RUTs inválidos (clientes + proveedores)</span>
+            <span><?= $rutIssues ? '🛑 ' . count($rutIssues) . ' RUT(s) con dígito verificador incorrecto' : '✓ todos los RUTs cargados son válidos' ?></span>
+        </div>
+        <div class="seccion-body">
+            <p class="small text-muted mb-2">
+                Validación oficial del SII por módulo 11. Detecta cuando alguien
+                tipeó mal el dígito verificador (el número/letra después del guión).
+                Los registros sin RUT no aparecen acá — son datos incompletos, no errores.
+            </p>
+            <?php if (!$rutIssues): ?>
+                <p class="mb-0 text-success">✓ Todos los RUTs cargados pasan la validación del SII.</p>
+            <?php else: ?>
+                <table class="table compact mb-0">
+                    <thead><tr><th>Origen</th><th>ID</th><th>Razón social</th><th>RUT cargado</th><th>DV esperado</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($rutIssues as $r): ?>
+                        <tr>
+                            <td><span class="pill"><?= htmlspecialchars($r['kind']) ?></span></td>
+                            <td>#<?= (int)$r['id'] ?></td>
+                            <td><?= htmlspecialchars($r['razon'] ?? '—') ?></td>
+                            <td><code><?= htmlspecialchars($r['rut']) ?></code></td>
+                            <td><strong class="text-success"><?= htmlspecialchars($r['dv_esperado']) ?></strong></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="small text-muted mt-2 mb-0">
+                    Para corregir: andá al CMS (sección Clientes / Proveedores), abrí el registro y reemplazá el DV con el sugerido.
+                </p>
             <?php endif; ?>
         </div>
     </div>

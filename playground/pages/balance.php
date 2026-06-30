@@ -36,23 +36,30 @@ function pesos($n) {
 // Por cada cuenta, computa saldo acumulado = ΣDebe − ΣHaber.
 // Para cuentas de naturaleza acreedora (pasivo, patrimonio, ingreso) se
 // invierte el signo para que el saldo "natural" sea positivo.
+//
+// El filtro de fecha tiene que ir DENTRO del SUM, no en el JOIN — si lo
+// pongo como condición del LEFT JOIN, las líneas que pertenecen a asientos
+// fuera del rango siguen sumando (el join queda NULL del lado de `a` pero
+// la línea ya está). Usamos CASE WHEN para sumar solo lo que corresponde.
 $saldos = [];
 if ($db) {
     try {
         $stmt = $db->prepare(
             "SELECT c.id_cuenta, c.codigo_cuenta, c.nombre_cuenta, c.tipo_cuenta, c.naturaleza_cuenta, c.nivel_cuenta,
-                    COALESCE(SUM(l.debe_linea), 0) AS debe,
-                    COALESCE(SUM(l.haber_linea), 0) AS haber
+                    COALESCE(SUM(CASE
+                        WHEN a.fecha_asiento <= :hasta1 AND a.estado_asiento != 'anulado'
+                        THEN l.debe_linea ELSE 0 END), 0) AS debe,
+                    COALESCE(SUM(CASE
+                        WHEN a.fecha_asiento <= :hasta2 AND a.estado_asiento != 'anulado'
+                        THEN l.haber_linea ELSE 0 END), 0) AS haber
              FROM plan_cuentas c
              LEFT JOIN asiento_lineas l ON l.cuenta_linea = c.id_cuenta
-             LEFT JOIN asientos a ON a.id_asiento = l.asiento_linea
-                AND a.fecha_asiento <= :hasta
-                AND a.estado_asiento != 'anulado'
+             LEFT JOIN asientos a       ON a.id_asiento  = l.asiento_linea
              WHERE c.activa_cuenta = 1 AND c.nivel_cuenta >= 3
              GROUP BY c.id_cuenta, c.codigo_cuenta, c.nombre_cuenta, c.tipo_cuenta, c.naturaleza_cuenta, c.nivel_cuenta
              ORDER BY c.codigo_cuenta ASC"
         );
-        $stmt->execute([':hasta' => $hasta]);
+        $stmt->execute([':hasta1' => $hasta, ':hasta2' => $hasta]);
         $saldos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         $saldos = [];
