@@ -129,6 +129,7 @@ Playground installed. URLs to visit (assuming Apache on http://localhost:8080):
     http://localhost:8080/cargar-pago               (pago a proveedor con asiento)
     http://localhost:8080/validacion                (chequeo automático de errores)
     http://localhost:8080/cierre-mes                (bloquea períodos declarados al SII)
+    http://localhost:8080/f29                       (Formulario 29 calculado, imprimible)
     http://localhost:8080/generar-asientos          (retoque de comprobantes huérfanos)
 
   Admin CMS (login: admin@admin.com / admin123 if fresh)
