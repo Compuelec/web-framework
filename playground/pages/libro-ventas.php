@@ -20,6 +20,7 @@ if (!empty($siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../../api/models/connection.php';
 require_once __DIR__ . '/_lib/auth.php';
+require_once __DIR__ . '/_lib/sii.php';
 wpb_require_role(['contador', 'lectura']);
 
 $db = Connection::connect();
@@ -67,6 +68,19 @@ if ($db) {
 }
 
 $nombreMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][$mes];
+
+// CSV export (formato SII): salida en lugar de renderizar HTML.
+// Mantiene el filtro de mes/año del request normal, pero saca también
+// las filas anuladas (el libro SII las muestra como anuladas, no las
+// omite). La cabecera Content-Disposition fuerza la descarga.
+if (($_GET['formato'] ?? '') === 'csv-sii') {
+    $filename = sprintf('libro-ventas-%04d-%02d.csv', $anio, $mes);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: no-store');
+    echo sii_csv_libro_ventas($ventas);
+    exit;
+}
 
 include __DIR__ . '/../partials/header.php';
 ?>
@@ -177,9 +191,12 @@ include __DIR__ . '/../partials/header.php';
             </table>
         </div>
 
-        <div class="mt-3">
+        <div class="mt-3 d-flex gap-2 flex-wrap">
             <a href="/dashboard-contable" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
             <a href="/generar-asientos" class="btn btn-outline-primary btn-sm">Generar asientos pendientes</a>
+            <a href="?mes=<?= (int)$mes ?>&anio=<?= (int)$anio ?>&formato=csv-sii" class="btn btn-success btn-sm ms-auto">
+                ⬇ Descargar CSV (formato SII)
+            </a>
         </div>
     <?php endif; ?>
 </div>
