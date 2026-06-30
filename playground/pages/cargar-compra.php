@@ -66,6 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
     $exento    = (float)str_replace(['.', ','], ['', '.'], (string)($_POST['exento'] ?? '0'));
     $total     = $neto + $iva + $exento;
     $estado    = trim($_POST['estado'] ?? 'registrado');
+    // La retención SOLO aplica a boletas de honorarios. Para cualquier otro
+    // tipo de documento, se ignora aunque el form la mande (defensa contra
+    // un POST manual).
+    $retencion = $tipo === 'boleta_honorarios'
+        ? (float)str_replace(['.', ','], ['', '.'], (string)($_POST['retencion'] ?? '0'))
+        : 0.0;
 
     $errors = [];
     if (!preg_match('/^(factura_afecta|factura_exenta|boleta_honorarios|nota_credito|nota_debito)$/', $tipo)) {
@@ -96,6 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
                 );
             }
         }
+        // Boleta de honorarios: la retención debe ser exactamente 10% del bruto.
+        // El bruto en honorarios va en "exento" porque no lleva IVA. Tolerancia $1.
+        if ($tipo === 'boleta_honorarios' && $retencion > 0) {
+            $bruto = $exento + $neto; // por si alguien lo cargó en neto en vez de exento
+            $retEsperada = round($bruto * 0.10);
+            if (abs($retEsperada - $retencion) > 1) {
+                $errors[] = sprintf(
+                    'La retención debería ser %s (10%% del bruto %s) pero está en %s.',
+                    pesos($retEsperada), pesos($bruto), pesos($retencion)
+                );
+            }
+        }
     }
 
     // No softs warnings — todo lo importante es bloqueante para evitar
@@ -110,9 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
             $stmt = $db->prepare(
                 "INSERT INTO comprobantes_compra
                     (tipo_documento_compra, folio_compra, fecha_compra, proveedor_compra, categoria_compra,
-                     glosa_compra, archivo_compra, neto_compra, iva_compra, exento_compra, total_compra,
-                     estado_compra, date_created_compra)
-                 VALUES (:tipo, :folio, :fecha, :prov, :cat, :glosa, :archivo, :neto, :iva, :exento, :total, :estado, CURDATE())"
+                     glosa_compra, archivo_compra, neto_compra, iva_compra, retencion_compra, exento_compra,
+                     total_compra, estado_compra, date_created_compra)
+                 VALUES (:tipo, :folio, :fecha, :prov, :cat, :glosa, :archivo, :neto, :iva, :ret, :exento, :total, :estado, CURDATE())"
             );
             $stmt->execute([
                 ':tipo'    => $tipo,
@@ -124,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
                 ':archivo' => $archivo,
                 ':neto'    => $neto,
                 ':iva'     => $iva,
+                ':ret'     => $retencion,
                 ':exento'  => $exento,
                 ':total'   => $total,
                 ':estado'  => $estado,
@@ -138,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
                     'categoria_compra'      => $categoria,
                     'neto_compra'           => $neto,
                     'iva_compra'            => $iva,
+                    'retencion_compra'      => $retencion,
                     'exento_compra'         => $exento,
                     'total_compra'          => $total,
                 ]);
@@ -194,7 +214,8 @@ include __DIR__ . '/../partials/header.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <style>
     .form-card { max-width: 760px; margin: 0 auto; }
-    .montos-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: .75rem; }
+    .montos-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .75rem; }
+    .ret-hidden { display: none; }
     .total-display {
         background: #fdecea; border-radius: 6px; padding: .75rem 1rem;
         font-weight: 600; color: #b91c1c; text-align: right;
@@ -305,9 +326,16 @@ include __DIR__ . '/../partials/header.php';
                     <input type="number" class="form-control" id="exento" name="exento" step="1" min="0"
                            value="<?= htmlspecialchars($valoresPrev['exento'] ?? '0') ?>">
                 </div>
+                <div id="retencion-cell" class="ret-hidden">
+                    <label class="form-label" for="retencion">Retención (10%)</label>
+                    <input type="number" class="form-control" id="retencion" name="retencion" step="1" min="0"
+                           value="<?= htmlspecialchars($valoresPrev['retencion'] ?? '0') ?>">
+                    <div class="hint" id="ret-auto-hint">solo boletas de honorarios</div>
+                </div>
                 <div>
                     <label class="form-label">Total</label>
                     <div class="total-display" id="total-display">$ 0</div>
+                    <div class="hint" id="a-pagar-hint" style="display:none">Al proveedor: <strong id="a-pagar-val">$ 0</strong></div>
                 </div>
             </div>
 
@@ -346,24 +374,28 @@ include __DIR__ . '/../partials/header.php';
     //   boleta_honorarios   → IVA == 0 (el monto va en Exento o Neto sin IVA)
     //   nota_credito / debito → libre (las maneja el contador)
     // El botón submit queda deshabilitado mientras la validación falla.
-    var $tipo   = document.getElementById('tipo_documento');
-    var $neto   = document.getElementById('neto');
-    var $iva    = document.getElementById('iva');
-    var $exento = document.getElementById('exento');
-    var $estado = document.getElementById('estado');
-    var $total  = document.getElementById('total-display');
-    var $hint   = document.getElementById('iva-auto-hint');
-    var $submit = document.getElementById('btn-submit');
-    var $msg    = document.getElementById('form-validation-msg');
+    var $tipo      = document.getElementById('tipo_documento');
+    var $neto      = document.getElementById('neto');
+    var $iva       = document.getElementById('iva');
+    var $exento    = document.getElementById('exento');
+    var $retencion = document.getElementById('retencion');
+    var $retCell   = document.getElementById('retencion-cell');
+    var $retHint   = document.getElementById('ret-auto-hint');
+    var $estado    = document.getElementById('estado');
+    var $total     = document.getElementById('total-display');
+    var $aPagar    = document.getElementById('a-pagar-hint');
+    var $aPagarVal = document.getElementById('a-pagar-val');
+    var $hint      = document.getElementById('iva-auto-hint');
+    var $submit    = document.getElementById('btn-submit');
+    var $msg       = document.getElementById('form-validation-msg');
     var ivaTouched = false;
+    var retTouched = false;
 
-    function tipoLlevaIva() {
-        return $tipo.value === 'factura_afecta';
-    }
+    function tipoLlevaIva()       { return $tipo.value === 'factura_afecta'; }
+    function tipoLlevaRetencion() { return $tipo.value === 'boleta_honorarios'; }
+    function pesos(n)             { return '$ ' + n.toLocaleString('es-CL'); }
 
-    function pesos(n) { return '$ ' + n.toLocaleString('es-CL'); }
-
-    function validar(neto, iva) {
+    function validar(neto, iva, retencion, exento) {
         if ($estado.value === 'anulado') { return null; }
         var t = $tipo.value;
         if ((t === 'factura_exenta' || t === 'boleta_honorarios') && iva !== 0) {
@@ -373,6 +405,13 @@ include __DIR__ . '/../partials/header.php';
             var esperado = Math.round(neto * 0.19);
             if (Math.abs(esperado - iva) > 1) {
                 return 'El IVA debería ser ' + pesos(esperado) + ' (19% del neto ' + pesos(neto) + ') pero está en ' + pesos(iva) + '.';
+            }
+        }
+        if (t === 'boleta_honorarios' && retencion > 0) {
+            var bruto = exento + neto;
+            var rEsperada = Math.round(bruto * 0.10);
+            if (Math.abs(rEsperada - retencion) > 1) {
+                return 'La retención debería ser ' + pesos(rEsperada) + ' (10% del bruto ' + pesos(bruto) + ') pero está en ' + pesos(retencion) + '.';
             }
         }
         return null;
@@ -388,7 +427,30 @@ include __DIR__ . '/../partials/header.php';
         var total = neto + iva + exento;
         $total.textContent = pesos(total);
 
-        var err = validar(neto, iva);
+        // Retención: solo en boletas de honorarios. Cuando aplica, auto-calcula
+        // 10% del bruto (neto + exento) si el usuario no la editó.
+        if (tipoLlevaRetencion()) {
+            $retCell.classList.remove('ret-hidden');
+            if (!retTouched) {
+                $retencion.value = Math.round((neto + exento) * 0.10);
+            }
+        } else {
+            $retCell.classList.add('ret-hidden');
+            $retencion.value = 0;
+            retTouched = false;
+            $retHint.textContent = 'solo boletas de honorarios';
+        }
+        var retencion = parseFloat($retencion.value) || 0;
+
+        // Si hay retención, mostrá cuánto se le paga realmente al proveedor.
+        if (retencion > 0) {
+            $aPagar.style.display = '';
+            $aPagarVal.textContent = pesos(total - retencion);
+        } else {
+            $aPagar.style.display = 'none';
+        }
+
+        var err = validar(neto, iva, retencion, exento);
         if (err) {
             $msg.textContent = err;
             $msg.style.display = '';
@@ -401,6 +463,7 @@ include __DIR__ . '/../partials/header.php';
     }
 
     $iva.addEventListener('input', function () { ivaTouched = true; $hint.textContent = 'editado a mano'; recalcular(); });
+    $retencion.addEventListener('input', function () { retTouched = true; $retHint.textContent = 'editada a mano'; recalcular(); });
     $neto.addEventListener('input', recalcular);
     $exento.addEventListener('input', recalcular);
     $estado.addEventListener('change', recalcular);

@@ -24,7 +24,7 @@ CREATE TABLE `plan_cuentas` (
   `date_created_cuenta` date DEFAULT NULL,
   `date_updated_cuenta` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_cuenta`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `clientes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -107,13 +107,14 @@ CREATE TABLE `comprobantes_compra` (
   `archivo_compra` text DEFAULT NULL,
   `neto_compra` double DEFAULT 0,
   `iva_compra` double DEFAULT 0,
+  `retencion_compra` double DEFAULT 0,
   `exento_compra` double DEFAULT 0,
   `total_compra` double DEFAULT 0,
   `estado_compra` text DEFAULT NULL,
   `date_created_compra` date DEFAULT NULL,
   `date_updated_compra` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_compra`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `asientos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -131,7 +132,7 @@ CREATE TABLE `asientos` (
   `date_created_asiento` date DEFAULT NULL,
   `date_updated_asiento` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_asiento`)
-) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `asiento_lineas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -147,7 +148,7 @@ CREATE TABLE `asiento_lineas` (
   `date_created_linea` date DEFAULT NULL,
   `date_updated_linea` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_linea`)
-) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `pagos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

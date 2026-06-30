@@ -33,7 +33,8 @@ INSERT INTO `plan_cuentas` (`id_cuenta`, `codigo_cuenta`, `nombre_cuenta`, `tipo
 (19,'4.1.01','Ventas afectas','ingreso','acreedora',3,1,NULL,'2026-06-28 01:54:23'),
 (20,'5.1.02','Gastos generales','gasto','deudora',3,1,NULL,'2026-06-28 01:54:24'),
 (21,'5.1.03','Honorarios','gasto','deudora',3,1,NULL,'2026-06-28 01:54:24'),
-(22,'6.1.01','Costo de ventas','costo','deudora',3,1,NULL,'2026-06-28 01:54:24');
+(22,'6.1.01','Costo de ventas','costo','deudora',3,1,NULL,'2026-06-28 01:54:24'),
+(23,'2.1.04','Retención honorarios por pagar','pasivo','acreedora',3,1,'2026-06-30','2026-06-30 00:17:22');
 /*!40000 ALTER TABLE `plan_cuentas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -86,14 +87,14 @@ UNLOCK TABLES;
 
 LOCK TABLES `comprobantes_compra` WRITE;
 /*!40000 ALTER TABLE `comprobantes_compra` DISABLE KEYS */;
-INSERT INTO `comprobantes_compra` (`id_compra`, `tipo_documento_compra`, `folio_compra`, `fecha_compra`, `proveedor_compra`, `categoria_compra`, `glosa_compra`, `archivo_compra`, `neto_compra`, `iva_compra`, `exento_compra`, `total_compra`, `estado_compra`, `date_created_compra`, `date_updated_compra`) VALUES (1,'factura_afecta',5002,'2026-06-05',2,6,'Luz mes de mayo',NULL,142000,26980,0,168980,'pagado',NULL,'2026-06-28 12:20:15'),
-(2,'factura_afecta',4902,'2026-05-06',2,6,'Luz mes de abril',NULL,128000,24320,0,152320,'pagado',NULL,'2026-06-28 12:20:15'),
-(3,'factura_afecta',4901,'2026-05-03',1,3,'Materiales de oficina mayo',NULL,95000,18050,0,113050,'pagado',NULL,'2026-06-28 12:20:15'),
-(4,'boleta_honorarios',87,'2026-05-15',4,2,'Contabilidad mes de mayo',NULL,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:15'),
-(5,'factura_afecta',5001,'2026-06-01',1,3,'Resmas, lápices, post-its',NULL,185000,35150,0,220150,'pagado',NULL,'2026-06-28 12:20:16'),
-(6,'factura_afecta',5004,'2026-06-20',5,5,'Mercadería para reventa (Q2)',NULL,2400000,456000,0,2856000,'registrado',NULL,'2026-06-28 12:20:16'),
-(7,'factura_afecta',5003,'2026-06-10',3,4,'Internet + telefonía junio',NULL,89000,16910,0,105910,'registrado',NULL,'2026-06-28 12:20:17'),
-(8,'boleta_honorarios',88,'2026-06-15',4,2,'Contabilidad mes de junio',NULL,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:18');
+INSERT INTO `comprobantes_compra` (`id_compra`, `tipo_documento_compra`, `folio_compra`, `fecha_compra`, `proveedor_compra`, `categoria_compra`, `glosa_compra`, `archivo_compra`, `neto_compra`, `iva_compra`, `retencion_compra`, `exento_compra`, `total_compra`, `estado_compra`, `date_created_compra`, `date_updated_compra`) VALUES (1,'factura_afecta',5002,'2026-06-05',2,6,'Luz mes de mayo',NULL,142000,26980,0,0,168980,'pagado',NULL,'2026-06-28 12:20:15'),
+(2,'factura_afecta',4902,'2026-05-06',2,6,'Luz mes de abril',NULL,128000,24320,0,0,152320,'pagado',NULL,'2026-06-28 12:20:15'),
+(3,'factura_afecta',4901,'2026-05-03',1,3,'Materiales de oficina mayo',NULL,95000,18050,0,0,113050,'pagado',NULL,'2026-06-28 12:20:15'),
+(4,'boleta_honorarios',87,'2026-05-15',4,2,'Contabilidad mes de mayo',NULL,0,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:15'),
+(5,'factura_afecta',5001,'2026-06-01',1,3,'Resmas, lápices, post-its',NULL,185000,35150,0,0,220150,'pagado',NULL,'2026-06-28 12:20:16'),
+(6,'factura_afecta',5004,'2026-06-20',5,5,'Mercadería para reventa (Q2)',NULL,2400000,456000,0,0,2856000,'registrado',NULL,'2026-06-28 12:20:16'),
+(7,'factura_afecta',5003,'2026-06-10',3,4,'Internet + telefonía junio',NULL,89000,16910,0,0,105910,'registrado',NULL,'2026-06-28 12:20:17'),
+(8,'boleta_honorarios',88,'2026-06-15',4,2,'Contabilidad mes de junio',NULL,0,0,0,380000,380000,'pagado',NULL,'2026-06-28 12:20:18');
 /*!40000 ALTER TABLE `comprobantes_compra` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -170,6 +171,11 @@ INSERT INTO `asiento_lineas` (`id_linea`, `asiento_linea`, `cuenta_linea`, `glos
 (47,17,21,'Gasto del período',380000,0,1,'2026-06-28','2026-06-28 12:53:45'),
 (48,17,10,'Factura proveedor N° 88',0,380000,2,'2026-06-28','2026-06-28 12:53:45');
 /*!40000 ALTER TABLE `asiento_lineas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+LOCK TABLES `pagos` WRITE;
+/*!40000 ALTER TABLE `pagos` DISABLE KEYS */;
+/*!40000 ALTER TABLE `pagos` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

@@ -123,10 +123,12 @@ function compileAsientoVenta(PDO $db, array $v): array {
  * as the gasto/costo account.
  */
 function compileAsientoCompra(PDO $db, array $c): array {
-    $neto   = (float)($c['neto_compra']   ?? 0);
-    $iva    = (float)($c['iva_compra']    ?? 0);
-    $exento = (float)($c['exento_compra'] ?? 0);
-    $total  = (float)($c['total_compra']  ?? 0);
+    $tipo      = (string)($c['tipo_documento_compra'] ?? '');
+    $neto      = (float)($c['neto_compra']      ?? 0);
+    $iva       = (float)($c['iva_compra']       ?? 0);
+    $exento    = (float)($c['exento_compra']    ?? 0);
+    $total     = (float)($c['total_compra']     ?? 0);
+    $retencion = (float)($c['retencion_compra'] ?? 0);
 
     $catId = (int)($c['categoria_compra'] ?? 0);
     if (!$catId) { return ['error' => 'El comprobante no tiene categoría']; }
@@ -138,21 +140,25 @@ function compileAsientoCompra(PDO $db, array $c): array {
     }
     $cuentaGastoId = (int)$cat['cuenta_categoria'];
 
-    $proveedores = cuentaPorCodigo($db, '2.1.01');
-    $ivaCredito  = cuentaPorCodigo($db, '1.1.04');
+    $proveedores       = cuentaPorCodigo($db, '2.1.01');
+    $ivaCredito        = cuentaPorCodigo($db, '1.1.04');
+    $retencionPorPagar = cuentaPorCodigo($db, '2.1.04');
     if (!$proveedores) { return ['error' => 'Falta la cuenta 2.1.01 Proveedores en el plan de cuentas']; }
+    if ($retencion > 0 && !$retencionPorPagar) {
+        return ['error' => 'Falta la cuenta 2.1.04 Retención honorarios por pagar en el plan de cuentas'];
+    }
 
     $lineas = [];
     $orden  = 1;
-    // El "gasto" es lo que entra a la categoría contable: neto (parte afecta)
-    // + exento. Una factura mixta (afecto + exento en el mismo documento) los
-    // junta acá; el SII las permite y el asiento debe reflejar el costo total
-    // sin contar el IVA — el IVA va en su propia cuenta de crédito fiscal.
+    // El "gasto" es lo que entra a la categoría contable: neto + exento.
+    // Para boletas de honorarios el bruto es gasto completo; la retención
+    // no resta del gasto, sale del lado del haber junto con Proveedores
+    // (es una deuda al SII, no al proveedor).
     $importeGasto = $neto + $exento;
     if ($importeGasto > 0) {
         $lineas[] = [
             'cuenta_linea' => $cuentaGastoId,
-            'glosa_linea'  => 'Gasto del período',
+            'glosa_linea'  => $tipo === 'boleta_honorarios' ? 'Honorarios profesionales' : 'Gasto del período',
             'debe_linea'   => $importeGasto,
             'haber_linea'  => 0,
             'orden_linea'  => $orden++,
@@ -167,15 +173,28 @@ function compileAsientoCompra(PDO $db, array $c): array {
             'orden_linea'  => $orden++,
         ];
     }
+    // En honorarios con retención, al proveedor solo se le paga total -
+    // retención; la diferencia queda como deuda al SII. En cualquier otro
+    // caso, retención == 0 y al proveedor se le debe el total entero.
+    $aPagarProveedor = $total - $retencion;
     $lineas[] = [
         'cuenta_linea' => (int)$proveedores['id_cuenta'],
         'glosa_linea'  => 'Factura proveedor N° ' . ($c['folio_compra'] ?? '?'),
         'debe_linea'   => 0,
-        'haber_linea'  => $total,
+        'haber_linea'  => $aPagarProveedor,
         'orden_linea'  => $orden++,
     ];
+    if ($retencion > 0 && $retencionPorPagar) {
+        $lineas[] = [
+            'cuenta_linea' => (int)$retencionPorPagar['id_cuenta'],
+            'glosa_linea'  => 'Retención 10% boleta honorarios N° ' . ($c['folio_compra'] ?? '?'),
+            'debe_linea'   => 0,
+            'haber_linea'  => $retencion,
+            'orden_linea'  => $orden++,
+        ];
+    }
 
-    $glosa = sprintf('Compra — %s N° %s', $c['tipo_documento_compra'] ?? 'doc', $c['folio_compra'] ?? '?');
+    $glosa = sprintf('Compra — %s N° %s', $tipo ?: 'doc', $c['folio_compra'] ?? '?');
     return ['lineas' => $lineas, 'glosa' => $glosa];
 }
 

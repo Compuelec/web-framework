@@ -77,7 +77,8 @@ INSERT INTO `columns` (`id_column`, `id_module_column`, `title_column`, `alias_c
 (67,20,'medio_pago','Medio de pago','select','','',1,'2026-06-29','2026-06-29 21:22:33'),
 (68,20,'monto_pago','Monto','money','','',1,'2026-06-29','2026-06-29 21:22:33'),
 (69,20,'glosa_pago','Glosa / referencia','textarea','','',1,'2026-06-29','2026-06-29 21:22:33'),
-(70,20,'estado_pago','Estado','select','','',1,'2026-06-29','2026-06-29 21:22:33');
+(70,20,'estado_pago','Estado','select','','',1,'2026-06-29','2026-06-29 21:22:33'),
+(71,18,'retencion_compra','Retención 10% (honorarios)','money',NULL,NULL,1,'2026-06-30','2026-06-30 00:17:22');
 /*!40000 ALTER TABLE `columns` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
