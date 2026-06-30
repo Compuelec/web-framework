@@ -26,6 +26,7 @@ if (!empty($siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../../api/models/connection.php';
 require_once __DIR__ . '/_lib/auth.php';
+require_once __DIR__ . '/_lib/cierres.php';
 wpb_require_role(['contador']);
 
 require_once __DIR__ . '/_lib/asientos.php';
@@ -60,7 +61,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
             $stmt = $db->prepare("SELECT * FROM comprobantes_venta WHERE id_venta = :id");
             $stmt->execute([':id' => $id]);
             $v = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($v) {
+            if ($v && mes_esta_cerrado($db, (string)$v['fecha_venta'])) {
+                $flash = ['type' => 'danger', 'msg' => 'Venta #' . $id . ': el mes ' . substr($v['fecha_venta'], 0, 7) . ' está cerrado.'];
+            } elseif ($v) {
                 $compiled = compileAsientoVenta($db, $v);
                 if (isset($compiled['error'])) {
                     $flash = ['type' => 'danger', 'msg' => 'Venta #' . $id . ': ' . $compiled['error']];
@@ -79,7 +82,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
             $stmt = $db->prepare("SELECT * FROM comprobantes_compra WHERE id_compra = :id");
             $stmt->execute([':id' => $id]);
             $c = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($c) {
+            if ($c && mes_esta_cerrado($db, (string)$c['fecha_compra'])) {
+                $flash = ['type' => 'danger', 'msg' => 'Compra #' . $id . ': el mes ' . substr($c['fecha_compra'], 0, 7) . ' está cerrado.'];
+            } elseif ($c) {
                 $compiled = compileAsientoCompra($db, $c);
                 if (isset($compiled['error'])) {
                     $flash = ['type' => 'danger', 'msg' => 'Compra #' . $id . ': ' . $compiled['error']];

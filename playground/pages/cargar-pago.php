@@ -28,6 +28,7 @@ if (!empty($siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../../api/models/connection.php';
 require_once __DIR__ . '/_lib/auth.php';
+require_once __DIR__ . '/_lib/cierres.php';
 require_once __DIR__ . '/_lib/asientos.php';
 wpb_require_role(['contador']);
 $db = Connection::connect();
@@ -78,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
     if ($compra    <= 0) { $errors[] = 'Elegí la compra que estás pagando.'; }
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) { $errors[] = 'Fecha inválida.'; }
     if (!in_array($medio, ['caja','banco'], true))    { $errors[] = 'Medio de pago inválido.'; }
+
+    // Guard de cierre: el pago no puede caer en un mes ya cerrado.
+    if (mes_esta_cerrado($db, $fecha)) {
+        $errors[] = 'El mes de esa fecha está cerrado. Para cargar acá, primero reabrí el mes desde /cierre-mes.';
+    }
     if ($monto <= 0)     { $errors[] = 'El monto debe ser mayor que cero.'; }
 
     // No permitir pagar más que el saldo pendiente.

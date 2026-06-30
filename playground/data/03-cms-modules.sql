@@ -23,7 +23,8 @@ INSERT INTO `modules` (`id_module`, `id_page_module`, `type_module`, `title_modu
 (16,16,'tables','comprobantes_venta','venta',NULL,100,0,'2026-06-28','2026-06-28 01:49:48'),
 (18,17,'tables','comprobantes_compra','compra',NULL,100,0,'2026-06-28','2026-06-28 01:49:48'),
 (19,18,'breadcrumbs','Pagos a proveedores',NULL,NULL,100,1,'2026-06-29','2026-06-29 21:22:33'),
-(20,18,'tables','pagos','pago',NULL,100,0,'2026-06-29','2026-06-29 21:22:33');
+(20,18,'tables','pagos','pago',NULL,100,0,'2026-06-29','2026-06-29 21:22:33'),
+(21,0,'tables','cierres_mes','cierre',NULL,100,1,'2026-06-30','2026-06-30 12:54:44');
 /*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

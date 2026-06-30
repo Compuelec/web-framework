@@ -20,7 +20,8 @@ INSERT INTO `pages` (`id_page`, `title_page`, `url_page`, `icon_page`, `type_pag
 (15,'Asientos contables','asientos','bi bi-journal-bookmark','modules',0,106,'2026-06-28','2026-06-28 01:49:48'),
 (16,'Comprobantes de venta','comprobantes_venta','bi bi-receipt','modules',0,107,'2026-06-28','2026-06-28 01:49:48'),
 (17,'Comprobantes de compra','comprobantes_compra','bi bi-receipt-cutoff','modules',0,108,'2026-06-28','2026-06-28 01:49:48'),
-(18,'Pagos a proveedores','pagos','bi bi-cash-coin','modules',0,109,'2026-06-29','2026-06-29 21:22:33');
+(18,'Pagos a proveedores','pagos','bi bi-cash-coin','modules',0,109,'2026-06-29','2026-06-29 21:22:33'),
+(19,'Cierres de mes','cierres_mes','bi bi-lock-fill','modules',0,30,'2026-06-30','2026-06-30 13:05:51');
 /*!40000 ALTER TABLE `pages` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

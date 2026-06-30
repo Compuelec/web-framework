@@ -78,7 +78,12 @@ INSERT INTO `columns` (`id_column`, `id_module_column`, `title_column`, `alias_c
 (68,20,'monto_pago','Monto','money','','',1,'2026-06-29','2026-06-29 21:22:33'),
 (69,20,'glosa_pago','Glosa / referencia','textarea','','',1,'2026-06-29','2026-06-29 21:22:33'),
 (70,20,'estado_pago','Estado','select','','',1,'2026-06-29','2026-06-29 21:22:33'),
-(71,18,'retencion_compra','Retención 10% (honorarios)','money',NULL,NULL,1,'2026-06-30','2026-06-30 00:17:22');
+(71,18,'retencion_compra','Retención 10% (honorarios)','money',NULL,NULL,1,'2026-06-30','2026-06-30 00:17:22'),
+(72,21,'mes_cierre','Mes','int',NULL,NULL,1,'2026-06-30','2026-06-30 13:05:51'),
+(73,21,'anio_cierre','Año','int',NULL,NULL,1,'2026-06-30','2026-06-30 13:05:51'),
+(74,21,'fecha_cierre','Fecha del cierre','date',NULL,NULL,1,'2026-06-30','2026-06-30 13:05:51'),
+(75,21,'usuario_cierre','Usuario que cerró','text',NULL,NULL,1,'2026-06-30','2026-06-30 13:05:51'),
+(76,21,'notas_cierre','Notas / observaciones','textarea',NULL,NULL,0,'2026-06-30','2026-06-30 13:05:51');
 /*!40000 ALTER TABLE `columns` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

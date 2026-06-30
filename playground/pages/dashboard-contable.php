@@ -189,6 +189,7 @@ include __DIR__ . '/../partials/header.php';
                 <li><a href="/libro-diario">Libro Diario</a></li>
                 <li><a href="/balance">Balance</a></li>
                 <li><a href="/validacion">Validación contable</a> <span class="text-muted small">(chequeo automático de errores)</span></li>
+                <li><a href="/cierre-mes">Cierre de mes</a> <span class="text-muted small">(bloquea períodos declarados)</span></li>
                 <li><a href="/generar-asientos">Generar asientos pendientes</a></li>
             </ul>
         </div>

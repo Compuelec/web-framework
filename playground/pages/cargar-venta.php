@@ -25,6 +25,7 @@ if (!empty($siteCfg['timezone'])) {
 
 require_once __DIR__ . '/../../api/models/connection.php';
 require_once __DIR__ . '/_lib/auth.php';
+require_once __DIR__ . '/_lib/cierres.php';
 wpb_require_role(['contador']);
 
 require_once __DIR__ . '/_lib/asientos.php';
@@ -94,6 +95,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db) {
     if ($cliente <= 0)                     { $errors[] = 'Tenés que elegir un cliente.'; }
     if ($total <= 0)                       { $errors[] = 'El total debe ser mayor que cero.'; }
     if (!in_array($estado, ['emitido','anulado'], true)) { $errors[] = 'Estado inválido.'; }
+
+    // Guard: si el mes ya está cerrado, no se puede cargar más en él.
+    if (mes_esta_cerrado($db, $fecha)) {
+        $errors[] = 'El mes de esa fecha está cerrado. Para cargar acá, primero reabrí el mes desde /cierre-mes.';
+    }
 
     // Hard validations to prevent rows that would later fail to produce a
     // balanced asiento. Skipped when estado='anulado' since that path
