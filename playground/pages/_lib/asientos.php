@@ -261,6 +261,67 @@ function compileAsientoPago(PDO $db, array $p): array {
 }
 
 /**
+ * Builds the D/H lines for a cobro recibido de un cliente. Inversa
+ * simétrica del pago a proveedor:
+ *
+ *   D  Caja / Banco             monto
+ *      H  Clientes                  monto
+ *
+ * `medio_cobro` ∈ {caja, banco, payku}. payku se contabiliza como banco
+ * (Payku acredita a una cuenta bancaria); si después se necesita una
+ * cuenta separada (ej. para conciliar comisiones Payku), se puede crear
+ * 1.1.05 Cuenta Payku y mapearla acá.
+ */
+function compileAsientoCobro(PDO $db, array $p): array {
+    $monto = (float)($p['monto_cobro'] ?? 0);
+    $medio = (string)($p['medio_cobro'] ?? '');
+    if ($monto <= 0) {
+        return ['error' => 'El monto del cobro debe ser mayor que cero'];
+    }
+    if ($medio === 'caja') {
+        $codigoCuenta = '1.1.01';
+    } elseif ($medio === 'banco' || $medio === 'payku') {
+        $codigoCuenta = '1.1.02';
+    } else {
+        return ['error' => 'Medio de cobro inválido (esperado: caja, banco o payku)'];
+    }
+
+    $clientes    = cuentaPorCodigo($db, '1.1.03');
+    $cuentaIngreso = cuentaPorCodigo($db, $codigoCuenta);
+    if (!$clientes)      { return ['error' => 'Falta la cuenta 1.1.03 Clientes en el plan de cuentas']; }
+    if (!$cuentaIngreso) { return ['error' => 'Falta la cuenta ' . $codigoCuenta . ' en el plan de cuentas']; }
+
+    $ventaId = (int)($p['venta_cobro'] ?? 0);
+    $folio   = '?';
+    if ($ventaId > 0) {
+        $stmt = $db->prepare("SELECT folio_venta FROM comprobantes_venta WHERE id_venta = :id LIMIT 1");
+        $stmt->execute([':id' => $ventaId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) { $folio = (string)$row['folio_venta']; }
+    }
+
+    $lineas = [
+        [
+            'cuenta_linea' => (int)$cuentaIngreso['id_cuenta'],
+            'glosa_linea'  => 'Cobro factura/boleta N° ' . $folio . ' (' . $medio . ')',
+            'debe_linea'   => $monto,
+            'haber_linea'  => 0,
+            'orden_linea'  => 1,
+        ],
+        [
+            'cuenta_linea' => (int)$clientes['id_cuenta'],
+            'glosa_linea'  => 'Aplicación cobro factura N° ' . $folio,
+            'debe_linea'   => 0,
+            'haber_linea'  => $monto,
+            'orden_linea'  => 2,
+        ],
+    ];
+
+    $glosa = sprintf('Cobro — factura venta N° %s · medio: %s', $folio, $medio);
+    return ['lineas' => $lineas, 'glosa' => $glosa];
+}
+
+/**
  * Inserts asiento + lineas in a transaction. Refuses to write if Σ Debe ≠
  * Σ Haber (within $0.01). Returns the new asiento_id + numero on success.
  *

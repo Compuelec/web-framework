@@ -83,6 +83,7 @@ CREATE TABLE `comprobantes_venta` (
   `cliente_venta` int(11) DEFAULT 0,
   `glosa_venta` text DEFAULT NULL,
   `archivo_venta` text DEFAULT NULL,
+  `link_pago_venta` text DEFAULT NULL,
   `neto_venta` double DEFAULT 0,
   `iva_venta` double DEFAULT 0,
   `exento_venta` double DEFAULT 0,
@@ -183,6 +184,29 @@ CREATE TABLE `cierres_mes` (
   UNIQUE KEY `uniq_mes_anio` (`mes_cierre`,`anio_cierre`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+-- ----------------------------------------------------------------------
+-- Cobros recibidos de clientes (espejo de `pagos`). Agregado en commit 6
+-- del plan SII: cierra el ciclo de cobros + integración Payku opcional.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS `cobros`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cobros` (
+  `id_cobro` int(11) NOT NULL AUTO_INCREMENT,
+  `fecha_cobro` date DEFAULT NULL,
+  `venta_cobro` int(11) DEFAULT 0,
+  `cliente_cobro` int(11) DEFAULT 0,
+  `medio_cobro` text DEFAULT NULL,
+  `monto_cobro` double DEFAULT 0,
+  `glosa_cobro` text DEFAULT NULL,
+  `estado_cobro` text DEFAULT NULL,
+  `payku_order_cobro` text DEFAULT NULL,
+  `date_created_cobro` date DEFAULT NULL,
+  `date_updated_cobro` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_cobro`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

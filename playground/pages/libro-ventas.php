@@ -144,6 +144,7 @@ include __DIR__ . '/../partials/header.php';
                         <th class="text-end">Total</th>
                         <th>Estado</th>
                         <th>Asiento</th>
+                        <th>Pago online</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -175,6 +176,15 @@ include __DIR__ . '/../partials/header.php';
                                     <span class="badge badge-pendiente" title="Falta generar asiento">pendiente</span>
                                 <?php endif; ?>
                             </td>
+                            <td>
+                                <?php if (($v['estado_venta'] ?? '') === 'pagado'): ?>
+                                    <span class="badge bg-success">pagado</span>
+                                <?php elseif (!empty($v['link_pago_venta'])): ?>
+                                    <a href="<?= htmlspecialchars($v['link_pago_venta']) ?>" target="_blank" class="btn btn-sm btn-outline-success" title="Link generado">↗ Link</a>
+                                <?php elseif (($v['estado_venta'] ?? '') !== 'anulado'): ?>
+                                    <a href="/generar-link-pago?venta=<?= (int)$v['id_venta'] ?>" class="btn btn-sm btn-outline-primary">+ Link pago</a>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -185,7 +195,7 @@ include __DIR__ . '/../partials/header.php';
                         <td class="text-end"><?= pesos($totales['iva']) ?></td>
                         <td class="text-end"><?= pesos($totales['exento']) ?></td>
                         <td class="text-end"><?= pesos($totales['total']) ?></td>
-                        <td colspan="2"></td>
+                        <td colspan="3"></td>
                     </tr>
                 </tfoot>
             </table>
