@@ -350,6 +350,11 @@ function pb_normalizeConfig(array $raw) {
         // Interactive options.
         'private'     => !empty($raw['private']),   // require login to view/submit
         'columns'     => $columns,                  // writable columns for forms
+        // Marks pages explicitly created without a data table (landing / contact /
+        // info). Persisted in $wpbConfig so the CMS can distinguish "intentionally
+        // static" pages from legacy ones that simply lack a table. Optional — pages
+        // generated before this flag existed will not carry it.
+        'confirmedStatic' => !empty($raw['confirmedStatic']) && $table === '',
         // Access control (only applies when private). Empty both = any logged-in
         // user. accessRoles = allowed rol_admin values; accessUsers = allowed
         // admin ids.

@@ -118,7 +118,6 @@ export function registerLoginTool(
                 status: "authenticated",
                 email: session.email,
                 expires_at: session.expires_at,
-                source: session.source,
                 browser_opened: browserOpened,
               },
               null,

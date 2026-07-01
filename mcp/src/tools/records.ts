@@ -170,7 +170,7 @@ export function registerRecordTools(
       title: "Create a record in a table",
       description:
         "Creates a new row in any table exposed by the framework. Requires an authenticated " +
-        "MCP session (FW_AUTH_EMAIL/FW_AUTH_PASSWORD). The `table` parameter is the SQL table " +
+        "MCP session (run `mcp_login` first). The `table` parameter is the SQL table " +
         "name (the `title` from `list_tables`/`describe_table`, e.g. `tests`), not the suffix. " +
         "Field names follow `<name>_<suffix>` — call `describe_table` first to learn them. " +
         "Returns the framework response (typically status 200 with the inserted id).",

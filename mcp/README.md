@@ -11,7 +11,7 @@ cualquier cliente MCP (Claude Desktop, Claude Code, Cursor, etc.) con el
 | Tool | Lo que hace |
 |---|---|
 | `whoami` | Reporta si la sesión MCP está autenticada, el email del admin y la expiración del JWT. |
-| `mcp_login` | Abre el flow interactivo: arranca un listener loopback y devuelve la URL del CMS donde el admin autoriza el uso de su sesión actual. Sin password de por medio. |
+| `mcp_login` | **Única forma de autenticar.** Arranca un listener loopback y devuelve la URL del CMS donde el admin autoriza el uso de su sesión actual. Sin password de por medio. |
 
 ### Lectura
 
@@ -30,7 +30,14 @@ cualquier cliente MCP (Claude Desktop, Claude Code, Cursor, etc.) con el
 |---|---|
 | `create_record` | Inserta una fila en una tabla. Falla si no hay sesión activa. |
 | `update_record` | Modifica una fila por PK. Falla si no hay sesión activa. |
-| `delete_record` | **Destructiva.** Two-step: la primera llamada devuelve un challenge `delete-<table>-<id>`. La segunda llamada debe pasar ese string exacto como `confirm_phrase` o se rechaza. |
+| `delete_record` | **Destructiva.** Two-step: la primera llamada devuelve un nonce random `delete-<table>-<id>-<hex>` con TTL 5 min. La segunda llamada debe pasar ese string exacto como `confirm_phrase` o se rechaza. |
+
+### Scaffolding para agentes (requieren `FW_PHP_CMD` + `FW_REPO_ROOT`)
+
+| Tool | Lo que hace |
+|---|---|
+| `create_section` | Envuelve `tools/make-table.php`: crea tabla MySQL + sección CMS con CRUD automático. `dry_run:true` previsualiza sin tocar la DB. Respeta el deny-list. |
+| `create_page` | Envuelve `tools/make-page.php`: genera `web/pages/<name>.php` con el formato del visual-builder (queda editable desde el CMS). Opcionalmente bindea la página a una tabla. |
 
 ## Resources
 
@@ -46,6 +53,10 @@ framework://docs/GENERADOR-PAGINAS
 framework://docs/DESARROLLO
 framework://docs/INSTALACION
 framework://docs/MANUAL-USUARIO
+
+# Stable alias para el LLM — apunta a la misma fuente que docs/AGENTE-CREAR-PAGINAS.
+# Leerlo antes de invocar create_section / create_page.
+framework://agent/guide
 ```
 
 ## Requisitos
@@ -62,28 +73,10 @@ npm install
 npm run build
 ```
 
-## Modos de autenticación
+## Autenticación
 
-### Modo A — credenciales en env vars (auto-login)
-
-Útil para clientes desatendidos (Claude Desktop, scripts). El server hace login
-al arrancar y mantiene el JWT en memoria.
-
-| Variable | Obligatoria | Descripción |
-|---|---|---|
-| `FW_API_BASE_URL` | sí | URL base de `/api`, sin `/` final. |
-| `FW_API_KEY` | sí | Valor exacto de `api.key` en `api/config.php`. |
-| `FW_AUTH_EMAIL` | sí (modo A) | Email del admin. |
-| `FW_AUTH_PASSWORD` | sí (modo A) | Password del admin. |
-| `FW_AUTH_TABLE` | no | Default `admins`. |
-| `FW_AUTH_SUFFIX` | no | Default `admin`. |
-| `FW_DENY_TABLES` | no | Default `admins,activity_logs,sessions,tokens`. |
-| `FW_HTTP_TIMEOUT_MS` | no | Default `15000`. |
-
-### Modo B — login interactivo desde el LLM
-
-Si no hay `FW_AUTH_EMAIL`/`FW_AUTH_PASSWORD`, el server arranca igual pero los
-tools de escritura quedan deshabilitados hasta que el LLM ejecute `mcp_login`:
+El MCP **no acepta credenciales por env vars**. La única forma de obtener una
+sesión es el flujo interactivo `mcp_login`:
 
 1. El LLM llama el tool `mcp_login` (sin argumentos).
 2. El server arranca un listener loopback y devuelve una URL del CMS.
@@ -92,9 +85,19 @@ tools de escritura quedan deshabilitados hasta que el LLM ejecute `mcp_login`:
 5. A partir de ahí los writes funcionan, sin reiniciar el server.
 
 **No se transmite ni se persiste ninguna password en el MCP.** El JWT vive en
-memoria hasta que caduque (24 h) o el proceso muera.
+memoria hasta que caduque (24 h) o el proceso muera; si eso pasa, el LLM vuelve
+a invocar `mcp_login`.
 
-### Modo C — Docker / framework remoto al MCP
+| Variable | Obligatoria | Descripción |
+|---|---|---|
+| `FW_API_BASE_URL` | sí | URL base de `/api`, sin `/` final. |
+| `FW_API_KEY` | sí | Valor exacto de `api.key` en `api/config.php`. |
+| `FW_DENY_TABLES` | no | Default `admins,activity_logs,sessions,tokens`. |
+| `FW_HTTP_TIMEOUT_MS` | no | Default `15000`. |
+| `FW_CALLBACK_HOST` | no | Default `127.0.0.1`. Usar `host.docker.internal` cuando el framework corre en Docker Desktop. |
+| `FW_OPEN_BROWSER` | no | `1`/`true` para que `mcp_login` abra el browser default. |
+
+### Docker / framework remoto al MCP
 
 Si el framework corre dentro de Docker (compose, kubernetes, etc.) y el MCP
 corre en el host, el callback debe usar un hostname que el container resuelva
@@ -121,27 +124,14 @@ La página `cms/mcp-setup.php` valida que el host sea loopback-equivalente:
       "args": ["/ruta/absoluta/al/repo/mcp/dist/index.js"],
       "env": {
         "FW_API_BASE_URL": "http://localhost:8080/api",
-        "FW_API_KEY": "tu-api-key-real",
-        "FW_AUTH_EMAIL": "admin@your-domain.test",
-        "FW_AUTH_PASSWORD": "your-password"
+        "FW_API_KEY": "tu-api-key-real"
       }
     }
   }
 }
 ```
 
-O para flujo interactivo (sin password en el config):
-
-```json
-{
-  "env": {
-    "FW_API_BASE_URL": "http://localhost:8080/api",
-    "FW_API_KEY": "tu-api-key-real"
-  }
-}
-```
-
-Y el usuario invoca `mcp_login` desde la conversación cuando quiera escribir.
+El usuario invoca `mcp_login` desde la conversación cuando quiera escribir.
 
 ### MCP Inspector (debug)
 
@@ -172,10 +162,9 @@ UI web local con tools, resources, request/response inspector.
 
 ## Próximos PRs
 
-- **PR3** — `create_table`, `create_page` y `run_migration` envolviendo
-  `tools/*.php` por `child_process` con `dry_run`.
-- **PR4** — Resources de esquema (`framework://table/{n}/schema`) y prompts
-  guiados (`scaffold_section`, `seed_records`).
+- **PR4** — `run_migration` (con `dry_run` y allow-list de migration files);
+  resources de esquema (`framework://table/{n}/schema`) y prompts guiados
+  (`scaffold_section`, `seed_records`).
 - **PR5** — `mcp.policy.json` con allow-list por tool, audit log, transporte
   SSE autenticado.
 - **PR6** — Tools de plugins (RBAC, workflow) + packaging para `npx`.

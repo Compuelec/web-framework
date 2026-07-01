@@ -1,0 +1,4 @@
+# The repo's root .gitignore excludes *.sql for safety, but the playground
+# ships hand-crafted fixtures under data/ that are meant to be checked in.
+# Negate the exclude so a normal `git add playground/` picks them up.
+!data/*.sql
