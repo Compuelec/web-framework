@@ -1,0 +1,4 @@
+# Protect plugin configuration from direct web access
+<FilesMatch "^(config\.php|config\.example\.php)$">
+    Require all denied
+</FilesMatch>

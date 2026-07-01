@@ -164,3 +164,13 @@ PluginsRegistry::register('data-protection', [
     'author'      => 'Web Framework'
 ]);
 
+// Register Contabilidad PyMe plugin
+PluginsRegistry::register('contabilidad', [
+    'url'         => 'contabilidad',
+    'name'        => 'Contabilidad PyMe',
+    'description' => 'Contabilidad chilena con doble partida: ventas/compras/pagos/cobros, libros SII, F29, cierre de mes, Payku opcional',
+    'icon'        => 'bi-calculator',
+    'type'        => 'system',
+    'version'     => '1.0.0',
+    'author'      => 'Playground SII CL'
+]);
